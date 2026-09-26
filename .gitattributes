@@ -1,0 +1,1 @@
+fixtures/captures/*.f1cap.zst filter=lfs diff=lfs merge=lfs -text

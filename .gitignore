@@ -1,0 +1,30 @@
+# Build output
+bridge/bin/
+dist/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+.deploy.env
+.mcp.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/tasks.json
+
+# Ad-hoc captures outside the fixtures folder
+*.f1cap
+*.f1cap.zst
+!fixtures/captures/*.f1cap.zst

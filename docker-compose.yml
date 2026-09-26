@@ -1,0 +1,19 @@
+# Local development services. The backend and frontend are added in phase 1.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: engineer
+      POSTGRES_PASSWORD: engineer
+      POSTGRES_DB: engineer
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U engineer"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  db-data:
