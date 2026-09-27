@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { ErrorReporter } from "@/components/ErrorReporter";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { AuthProvider } from "@/lib/auth";
 
@@ -27,7 +28,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} min-h-dvh antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <ErrorReporter />
+        </AuthProvider>
         <ServiceWorker />
       </body>
     </html>

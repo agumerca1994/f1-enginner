@@ -50,7 +50,7 @@ export function useEngineerVoice(messages: EngineerMessage[]) {
 
   // Speak radio calls that arrive while the voice is on; never replay old ones.
   useEffect(() => {
-    const latest = messages.at(-1);
+    const latest = messages.slice(-1)[0];
     if (!latest) return;
     if (!enabled) {
       spoken.current = latest.id;

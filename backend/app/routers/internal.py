@@ -4,6 +4,7 @@ pair a bridge before the web app's pairing page exists.
 Log endpoints ported from registrapp (backend/app/routers/internal_logs.py).
 """
 
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -24,6 +25,7 @@ from app.services import pairing
 from app.telemetry import constants as c
 
 router = APIRouter(prefix="/internal", tags=["internal"])
+public_router = APIRouter(tags=["internal"])
 
 LEVEL_ORDER = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3, "CRITICAL": 4}
 
@@ -206,3 +208,23 @@ async def internal_pair_confirm(body: InternalPairConfirmIn, db: AsyncSession = 
     except pairing.PairingError as e:
         raise HTTPException(404, str(e))
     return {"user_id": user.id, "tenant_id": user.tenant_id, "device_name": req.name}
+
+
+class ClientErrorIn(BaseModel):
+    message: str = Field(max_length=2000)
+    stack: str | None = Field(default=None, max_length=8000)
+    url: str | None = Field(default=None, max_length=500)
+    user_agent: str | None = Field(default=None, max_length=500)
+    email: str | None = Field(default=None, max_length=255)
+
+
+client_logger = logging.getLogger("frontend")
+
+
+@public_router.post("/api/client-errors", status_code=204)
+async def client_error(body: ClientErrorIn):
+    """Errors from players' browsers, so a crash on a phone shows up in the logs."""
+    client_logger.warning(
+        f"frontend error: {body.message}",
+        extra={"stack": body.stack, "url": body.url, "user_agent": body.user_agent, "email": body.email},
+    )

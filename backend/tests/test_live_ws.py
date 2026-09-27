@@ -62,3 +62,29 @@ def test_live_ws_pushes_the_players_snapshot(client):
     with client.websocket_connect("/live/v1") as other:
         other.send_json({"type": "auth", "dev_user": next(_emails)})
         assert other.receive_json() == {"type": "ready"}
+
+
+def test_menu_packets_do_not_break_the_dashboard(client):
+    """In the game's menus the player index is 255 and the session id 0."""
+    import numpy as np
+
+    from app.live import snapshot
+    from app.live.state import LiveSession
+    from app.telemetry import registry
+    from app.telemetry.formats import f2024
+
+    def packet(pid, player):
+        buf = bytearray(f2024.SIZES[pid])
+        h = np.zeros(1, dtype=f2024.HEADER)
+        h["packet_format"], h["packet_id"], h["player_car_index"], h["session_uid"] = 2024, pid, player, 7
+        buf[:29] = h.tobytes()
+        return registry.parse(bytes(buf))
+
+    live = LiveSession(1, 1, 7, 2024)
+    for pid in (1, 2, 4, 6, 7, 10):
+        live.update(packet(pid, 255))
+    data = snapshot.build(live)
+    assert "car" not in data and "lap" not in data and data["cars"] == []
+
+    r = client.post("/api/client-errors", json={"message": "TypeError: x is undefined", "url": "https://app/", "user_agent": "iPhone"})
+    assert r.status_code == 204

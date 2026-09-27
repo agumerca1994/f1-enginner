@@ -49,6 +49,7 @@ async def live_ws(ws: WebSocket):
     await ws.send_json({"type": "engineer_state", **engineer.state()})
     sent_state = (engineer.active, engineer.provider_name)
     last_message = engineer.messages[-1]["id"] if engineer.messages else 0
+    snapshot_failed = False
     try:
         while True:
             # The race engineer: new advice and on/off changes.
@@ -62,7 +63,15 @@ async def live_ws(ws: WebSocket):
             if state is not None and state.updated_at != last_sent_update:
                 last_sent_update = state.updated_at
                 idle_for = 0.0
-                await ws.send_json({"type": "snapshot", "data": snapshot.build(state)})
+                try:
+                    data = snapshot.build(state)
+                except Exception:
+                    # Unexpected game data must not cut the player's dashboard: skip this frame.
+                    if not snapshot_failed:
+                        logger.exception("could not build a live snapshot", extra={"tenant_id": tenant_id})
+                    snapshot_failed = True
+                else:
+                    await ws.send_json({"type": "snapshot", "data": data})
             else:
                 idle_for += PUSH_INTERVAL_S
                 if idle_for >= IDLE_EVERY_S:

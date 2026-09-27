@@ -347,7 +347,7 @@ export function shortName(c: CarRow): string {
 // --- Events ------------------------------------------------------------------
 
 export function EventsCard({ s }: { s: Snapshot }) {
-  const events = [...s.events].reverse().slice(0, 8);
+  const events = [...(s.events ?? [])].reverse().slice(0, 8);
   const name = (idx: unknown) => {
     const c = s.cars?.find((x) => x.index === idx);
     return c ? shortName(c) : null;

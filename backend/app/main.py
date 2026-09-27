@@ -37,6 +37,7 @@ app.include_router(engineer.router)
 app.include_router(live_ws.router)
 app.include_router(replay_ws.router)
 app.include_router(internal.router)
+app.include_router(internal.public_router)
 
 
 @app.get("/health")

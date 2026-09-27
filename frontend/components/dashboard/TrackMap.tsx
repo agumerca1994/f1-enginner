@@ -132,7 +132,7 @@ export function TrackMap({ s }: { s: Snapshot }) {
             </div>
             {se.forecast.some((f) => f.rain_percent >= 40) && (
               <div className="num text-wet">
-                Lluvia {Math.max(...se.forecast.map((f) => f.rain_percent))}% próximos {se.forecast.at(-1)?.in_minutes}′
+                Lluvia {Math.max(...se.forecast.map((f) => f.rain_percent))}% próximos {se.forecast.slice(-1)[0]?.in_minutes}′
               </div>
             )}
           </div>

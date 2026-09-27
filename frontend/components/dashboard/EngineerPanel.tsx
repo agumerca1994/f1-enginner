@@ -31,7 +31,7 @@ export function EngineerPanel({
   busy?: boolean;
 }) {
   const voice = useEngineerVoice(engineer.messages);
-  const latest = engineer.messages.at(-1);
+  const latest = engineer.messages.slice(-1)[0];
   const lastRadio = [...engineer.messages].reverse().find((m) => m.radio);
   const history = engineer.messages.filter((m) => m.radio && m.id !== lastRadio?.id).slice(-5).reverse();
   const cost = engineer.messages.reduce((sum, m) => sum + (m.cost_usd || 0), 0);
@@ -178,7 +178,7 @@ function Strategy({ s }: { s: EngineerState["messages"][number]["estrategia"] })
         )}
         {window.length > 0 && (
           <span>
-            Ventana: <span className="num">{window.length > 1 ? `v${window[0]}–${window.at(-1)}` : `v${window[0]}`}</span>
+            Ventana: <span className="num">{window.length > 1 ? `v${window[0]}–${window.slice(-1)[0]}` : `v${window[0]}`}</span>
           </span>
         )}
         {s.proximo_compuesto && (

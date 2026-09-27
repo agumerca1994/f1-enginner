@@ -106,6 +106,8 @@ class IngestConnection:
                 self._log_once(f"packet:{e}", "rejected a telemetry packet", error=str(e))
                 continue
 
+            if packet.session_uid == 0:
+                continue  # the game sends these from its menus: there is no session to show or record
             live = self.store.session_for(self.device.tenant_id, self.device.id, packet)
             live.update(packet)
             if live.reception is None:  # a new live session starts without the link info
@@ -113,8 +115,6 @@ class IngestConnection:
             if live.layout is not None and not live.layout_loaded:
                 await self._load_layout(db, live)
 
-            if packet.session_uid == 0:  # menus: no session to file it under
-                continue
             open_session = self.sessions.get(packet.session_uid)
             if open_session is None:
                 open_session = await self._open_session(db, packet)

@@ -31,6 +31,8 @@ def build(live: LiveSession) -> dict[str, Any]:
         if name in live.last:
             player = live.last[name].player_car_index
             break
+    if player is not None and not 0 <= player < 22:
+        player = None  # 255 while spectating or in menus: there is no player car to show
 
     out: dict[str, Any] = {
         "session_uid": f"{live.session_uid:016x}",
@@ -72,7 +74,7 @@ def build(live: LiveSession) -> dict[str, Any]:
         }
 
     if player is None:
-        return out
+        return _common(out, live, player)
 
     if (p := live.last.get("participants")) is not None:
         me = p.body["participants"][player]
@@ -160,6 +162,11 @@ def build(live: LiveSession) -> dict[str, Any]:
             "ers_fault": bool(d["ers_fault"]),
         }
 
+    return _common(out, live, player)
+
+
+def _common(out: dict[str, Any], live: LiveSession, player: int | None) -> dict[str, Any]:
+    """Sections that exist with or without a player car: the dashboard always expects them."""
     out["track"] = _track(live)
     out["cars"] = _cars(live, player)
     out["events"] = list(live.events)[-10:]
@@ -185,7 +192,7 @@ def _track(live: LiveSession) -> dict[str, Any] | None:
     }
 
 
-def _cars(live: LiveSession, player: int) -> list[dict[str, Any]]:
+def _cars(live: LiveSession, player: int | None) -> list[dict[str, Any]]:
     """Every car in the session, ordered by position. Fields a restricted online
     player does not share are None, not zero."""
     laps = live.last.get("lap_data")
