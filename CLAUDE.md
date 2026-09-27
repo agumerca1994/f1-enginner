@@ -32,6 +32,8 @@ BRIDGE_CONFIG=/tmp/bridge.json bridge/bin/bridge pair --server http://localhost:
 Until the web app's `/pair` page exists (P2), a pairing code is confirmed with `POST /internal/devices/pair/confirm` and the `x-internal-key` header.
 
 ## Deploy
+The repository is **public** (Easypanel could not read it as private), so secrets never go in git. They live in `.env.production` and `.deploy.env`, both gitignored, and in Easypanel's environment.
+
 Easypanel builds `docker-compose.prod.yml` from GitHub `main`. Run `scripts/deploy.sh`: it checks git state, then calls the webhook stored in the gitignored `.deploy.env`.
 
 Service names carry the `f1eng-` prefix because the `easypanel` Docker network is shared with other projects.
