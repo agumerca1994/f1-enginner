@@ -71,13 +71,14 @@ Decisiones tomadas por el usuario:
   - carrera de 57 vueltas: Estándar ~US$ 0,65, Pro ~US$ 1,60.
 
   Falta confirmarlo con la API, sobre todo la salida y el razonamiento del modelo.
+- **Fin de semana completo:** el ingeniero tiene que trabajar desde la primera práctica, con reglaje base, ajustes tanda a tanda, medición de compuestos, clasificación y estrategia de carrera basada en lo medido. El diseño, pendiente de aprobación, está en `docs/diseno-fin-de-semana.md`.
 - **Prueba en seco** sobre la carrera real de Bakú, con las respuestas de referencia y los hallazgos: `docs/pruebas/ingeniero-baku-2026-09-27.md`.
 
 ### Pendientes conocidos
 - Confirmar la orientación del mapa con una vuelta completa. En Bakú parece correcta: rotada, no espejada.
 - Ver la ventana de la app de la Mac, que no se pudo capturar por falta de permiso de grabación de pantalla.
 - Borrar o filtrar sesiones vacías (sesiones de menú con muy pocos datos).
-- Mejoras del ingeniero detectadas en la prueba en seco: medir la pérdida real en boxes por pista, estimar la salida de boxes si paran todos bajo safety car, sumar los juegos de neumáticos disponibles (TyreSets) y la probabilidad de safety car por pista.
+- Las mejoras de la prueba en seco ya están hechas: pérdida en boxes medida con las paradas en verde, escenario "si paran todos" bajo safety car, juegos de neumáticos y tabla por pista en el manual. Falta persistir la pérdida en boxes por pista cuando el ingeniero corra en vivo.
 - El estado en vivo está en memoria y se pierde en cada deploy; pasa a Redis en P7.
 - La imagen de la API pesa unos 800 MB (numpy y firebase-admin); se puede optimizar.
 
