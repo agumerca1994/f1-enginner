@@ -15,6 +15,11 @@ from app.telemetry import constants as c
 router = APIRouter(prefix="/api", tags=["live"])
 
 
+@router.get("/me")
+async def me(user: User = Depends(get_current_user)):
+    return {"id": user.id, "email": user.email, "display_name": user.display_name, "tenant_id": user.tenant_id}
+
+
 @router.get("/live")
 async def live(user: User = Depends(get_current_user)):
     """The player's current race as seen from the latest packets. The dashboard's source until P2 adds push."""

@@ -52,24 +52,30 @@ async def get_or_create_user(db: AsyncSession, *, email: str, firebase_uid: str 
     return user
 
 
+async def authenticate_token(db: AsyncSession, *, token: str | None, dev_email: str | None = None) -> User | None:
+    """The player behind a Firebase ID token (or a dev email in AUTH_DEV_MODE), or None."""
+    if settings.AUTH_DEV_MODE and dev_email:
+        return await get_or_create_user(db, email=dev_email, firebase_uid=None, name=None)
+    if not token:
+        return None
+    try:
+        claims = _verify_firebase(token)
+    except Exception:
+        return None
+    if not claims.get("email"):
+        return None
+    return await get_or_create_user(db, email=claims["email"], firebase_uid=claims["uid"], name=claims.get("name"))
+
+
 async def get_current_user(
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
     x_dev_user: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    if settings.AUTH_DEV_MODE and x_dev_user:
-        return await get_or_create_user(db, email=x_dev_user, firebase_uid=None, name=None)
-    if creds is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing credentials")
-    try:
-        claims = _verify_firebase(creds.credentials)
-    except Exception:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired Firebase token")
-    if not claims.get("email"):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "The account has no email")
-    return await get_or_create_user(
-        db, email=claims["email"], firebase_uid=claims["uid"], name=claims.get("name")
-    )
+    user = await authenticate_token(db, token=creds.credentials if creds else None, dev_email=x_dev_user)
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing, invalid or expired credentials")
+    return user
 
 
 async def device_from_token(db: AsyncSession, token: str | None) -> Device | None:

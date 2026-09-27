@@ -3,6 +3,9 @@ bridge/bin/
 dist/
 
 # Secrets and local config
+secret/
+*firebase-adminsdk*.json
+*service-account*.json
 .env
 .env.*
 !.env.example

@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+/* Pit-wall palette: near-black panels, one cyan accent for telemetry, and
+   status colours reserved for meaning (ok / watch / act). */
+@theme {
+  --color-bg: #07090c;
+  --color-panel: #0e1217;
+  --color-panel-2: #131922;
+  --color-line: #1d2530;
+  --color-fg: #e9eef3;
+  --color-muted: #7d8996;
+  --color-accent: #22d3ee;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-danger: #f43f5e;
+  --color-soft: #e5484d;
+  --color-medium: #f5c542;
+  --color-hard: #eef2f6;
+  --color-inter: #3fb950;
+  --color-wet: #3b82f6;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.num {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}

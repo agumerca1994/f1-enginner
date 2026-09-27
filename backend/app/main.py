@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.logging_config import log_queue_consumer, setup_logging
-from app.routers import devices, ingest, internal, live
+from app.routers import devices, ingest, internal, live, live_ws
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ app.add_middleware(
 app.include_router(devices.router)
 app.include_router(ingest.router)
 app.include_router(live.router)
+app.include_router(live_ws.router)
 app.include_router(internal.router)
 
 

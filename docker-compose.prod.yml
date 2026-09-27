@@ -45,6 +45,28 @@ services:
       - "traefik.http.routers.f1eng-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.f1eng-api.loadbalancer.server.port=8000"
 
+  f1eng-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN:?set API_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY:?set NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:?set NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID:?set NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:-}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:-}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID:?set NEXT_PUBLIC_FIREBASE_APP_ID}
+    restart: unless-stopped
+    depends_on:
+      - f1eng-api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.f1eng-web.rule=Host(`${APP_DOMAIN:?set APP_DOMAIN}`)"
+      - "traefik.http.routers.f1eng-web.tls=true"
+      - "traefik.http.routers.f1eng-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.f1eng-web.loadbalancer.server.port=3000"
+
 volumes:
   f1eng-db-data:
   f1eng-captures:
