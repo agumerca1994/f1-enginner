@@ -175,6 +175,20 @@ async def download_capture(capture_id: int, db: AsyncSession = Depends(get_db)):
     return FileResponse(row.path, media_type="application/octet-stream", filename=f"capture-{capture_id}.f1cap.zst")
 
 
+@router.get("/engineer", dependencies=[Depends(require_internal_key)])
+async def engineer_config():
+    """Diagnostics: who answers as the race engineer (never shows the key)."""
+    from app.engineer.providers import get_provider
+
+    provider = get_provider()
+    return {
+        "provider": provider.name,
+        "api_key_configured": bool(settings.ANTHROPIC_API_KEY),
+        "tier": settings.ENGINEER_TIER,
+        "models": {"per_lap": getattr(provider, "fast_model", None), "events": getattr(provider, "deep_model", None)},
+    }
+
+
 class InternalPairConfirmIn(BaseModel):
     user_code: str = Field(max_length=20)
     email: str = Field(max_length=255)
