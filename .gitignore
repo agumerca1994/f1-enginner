@@ -31,3 +31,6 @@ node_modules/
 *.f1cap
 *.f1cap.zst
 !fixtures/captures/*.f1cap.zst
+
+# Packaged desktop app
+*.app/

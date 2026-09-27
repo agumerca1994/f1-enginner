@@ -99,3 +99,56 @@ func post(ctx context.Context, server, path string, in, out any) error {
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
+
+// Account is what the server knows about this bridge's link.
+type Account struct {
+	DeviceID int    `json:"device_id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+}
+
+// ErrUnlinked means the server no longer accepts this bridge's token.
+var ErrUnlinked = errors.New("this bridge is no longer linked to an account")
+
+// Self asks the server which account the token belongs to.
+func Self(ctx context.Context, server, token string) (Account, error) {
+	var a Account
+	resp, err := authed(ctx, http.MethodGet, server, "/api/devices/self", token)
+	if err != nil {
+		return a, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		return a, ErrUnlinked
+	}
+	if resp.StatusCode != http.StatusOK {
+		return a, fmt.Errorf("server answered %s", resp.Status)
+	}
+	return a, json.NewDecoder(resp.Body).Decode(&a)
+}
+
+// Unlink revokes this bridge's token on the server.
+func Unlink(ctx context.Context, server, token string) error {
+	resp, err := authed(ctx, http.MethodDelete, server, "/api/devices/self", token)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusUnauthorized {
+		return fmt.Errorf("server answered %s", resp.Status)
+	}
+	return nil
+}
+
+func authed(ctx context.Context, method, server, path, token string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(server, "/")+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("cannot reach %s: %w", server, err)
+	}
+	return resp, nil
+}

@@ -38,6 +38,7 @@ func main() {
 	cmds := map[string]func(context.Context, []string) error{
 		"pair":    cmdPair,
 		"run":     cmdRun,
+		"unpair":  cmdUnpair,
 		"record":  cmdRecord,
 		"replay":  cmdReplay,
 		"inspect": cmdInspect,
@@ -63,6 +64,7 @@ func usage() {
 Usage:
   bridge pair    [--server URL]                        link this bridge to your account (once)
   bridge run     [--listen :20777] [--record FILE]     send the game's telemetry to the server
+  bridge unpair                                        unlink this bridge from your account
   bridge doctor  [--listen :20777] [--seconds 15]     check that telemetry reaches this computer
   bridge record  --out FILE [--listen :20777] [--duration 0] [--note TEXT]
   bridge replay  --in FILE [--to 127.0.0.1:20777] [--speed 1]

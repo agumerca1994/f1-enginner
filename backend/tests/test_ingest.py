@@ -162,3 +162,18 @@ def test_baku_race_through_the_uplink(client):
     assert len(files) == 1
     _, stored = capture.read(files[0])
     assert [r.data for r in stored] == [r.data for r in records]
+
+
+def test_bridge_sees_its_account_and_unlinks_itself(client):
+    email = next(_emails)
+    token = pair_bridge(client, email)
+    auth = {"Authorization": f"Bearer {token}"}
+    me = client.get("/api/devices/self", headers=auth).json()
+    assert me["email"] == email and me["name"] == "Test Mac"
+
+    assert client.delete("/api/devices/self", headers=auth).status_code == 204
+    assert client.get("/api/devices/self", headers=auth).status_code == 401
+    devices = client.get("/api/devices", headers={"X-Dev-User": email}).json()
+    assert devices[0]["revoked_at"] is not None
+    # The player-facing delete still works by id, and "self" is not mistaken for one.
+    assert client.delete("/api/devices/self", headers={"X-Dev-User": email}).status_code == 401

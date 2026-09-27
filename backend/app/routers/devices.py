@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, utcnow
+from app.core.auth import get_current_device, get_current_user, utcnow
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import format_user_code
@@ -103,7 +103,7 @@ async def list_devices(user: User = Depends(get_current_user), db: AsyncSession 
     return [DeviceOut.model_validate(d, from_attributes=True) for d in rows]
 
 
-@router.delete("/{device_id}", status_code=204)
+@router.delete("/{device_id:int}", status_code=204)
 async def revoke_device(device_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     device = await db.get(Device, device_id)
     if device is None or device.tenant_id != user.tenant_id:
@@ -111,3 +111,17 @@ async def revoke_device(device_id: int, user: User = Depends(get_current_user), 
     if device.revoked_at is None:
         device.revoked_at = utcnow()
         await db.commit()
+
+
+@router.get("/self")
+async def device_self(device: Device = Depends(get_current_device), db: AsyncSession = Depends(get_db)):
+    """Called by a bridge to show which account it is linked to."""
+    user = await db.get(User, device.user_id)
+    return {"device_id": device.id, "name": device.name, "email": user.email if user else None}
+
+
+@router.delete("/self", status_code=204)
+async def unlink_self(device: Device = Depends(get_current_device), db: AsyncSession = Depends(get_db)):
+    """A bridge unlinking itself: its token stops working immediately."""
+    device.revoked_at = utcnow()
+    await db.commit()

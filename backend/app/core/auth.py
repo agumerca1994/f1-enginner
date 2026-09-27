@@ -90,3 +90,14 @@ async def device_from_token(db: AsyncSession, token: str | None) -> Device | Non
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+async def get_current_device(
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: AsyncSession = Depends(get_db),
+) -> Device:
+    """The bridge calling with its own device token."""
+    device = await device_from_token(db, creds.credentials if creds else None)
+    if device is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or revoked device token")
+    return device
