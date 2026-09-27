@@ -34,3 +34,6 @@ node_modules/
 
 # Packaged desktop app
 *.app/
+
+# Real sessions downloaded for local testing (player data: never published)
+fixtures/local/

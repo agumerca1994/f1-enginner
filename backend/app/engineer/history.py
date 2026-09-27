@@ -70,6 +70,7 @@ class SessionHistory:
         self.events: list[dict] = []
         self.triggers: list[Trigger] = []
         self.compounds_used: list[str] = []
+        self.tyre_sets = None  # the player's last TyreSets packet body
         self._last_lap: dict[int, int] = {}
         # Per-lap accumulators for the player, reset when a lap completes.
         self._lap_sc = False
@@ -114,6 +115,9 @@ class SessionHistory:
             self._note_compound(live)
             st = packet.body["car_status_data"][packet.player_car_index]
             self._lap_ers_deployed = max(self._lap_ers_deployed, float(st["ers_deployed_this_lap"]))
+        elif packet.name == "tyre_sets":
+            if int(packet.body["car_idx"]) == packet.player_car_index:
+                self.tyre_sets = packet.body
         elif packet.name == "car_telemetry":
             tel = packet.body["car_telemetry_data"][packet.player_car_index]
             self._temp_samples.append(([int(x) for x in tel["tyres_surface_temperature"]],
@@ -254,6 +258,38 @@ class SessionHistory:
         self._lap_pit = self._lap_invalid = False
         self._lap_ers_deployed = 0.0
         return record
+
+
+def pit_loss_samples(car_laps: dict[int, list[CarLap]]) -> list[float]:
+    """Time lost by each green-flag pit stop, in seconds, from every car's laps.
+
+    A stop costs time over its in-lap and out-lap; the loss is the sum of those
+    two laps minus two of that car's normal laps. Stops near a safety car, or
+    with a missing lap around them, are skipped.
+    """
+    samples = []
+    for laps in car_laps.values():
+        by_lap = {cl.lap: cl for cl in laps}
+        normal = sorted(cl.time_ms for cl in laps if cl.time_ms and not cl.safety_car and cl.lap > 1)
+        if len(normal) < 3:
+            continue
+        reference = normal[len(normal) // 2]
+        for cl in laps:
+            before = by_lap.get(cl.lap - 1)
+            if before is None or cl.pit_stops <= before.pit_stops:
+                continue
+            # The stop is counted on this lap; it cost time on this lap and the
+            # one before or after, whichever pair is slower.
+            pairs = [(before, cl), (cl, by_lap.get(cl.lap + 1))]
+            valid = [(a, b) for a, b in pairs if b is not None and b.lap == a.lap + 1
+                     and a.time_ms and b.time_ms and not a.safety_car and not b.safety_car]
+            if not valid:
+                continue
+            slowest = max(a.time_ms + b.time_ms for a, b in valid)
+            loss = (slowest - 2 * reference) / 1000
+            if 10 < loss < 45:  # outside this range it was not a normal stop
+                samples.append(round(loss, 1))
+    return samples
 
 
 def _average(samples: list[list[int]]) -> list[float] | None:

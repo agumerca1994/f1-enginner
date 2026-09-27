@@ -9,7 +9,7 @@ enough context (sample size, estimated or measured) to judge how much to trust i
 import statistics
 from typing import Any
 
-from app.engineer.history import CarLap, PlayerLap, SessionHistory
+from app.engineer.history import PlayerLap, SessionHistory, pit_loss_samples
 from app.live import snapshot
 from app.live.state import LiveSession
 from app.telemetry import constants as c
@@ -236,23 +236,53 @@ def _strategy(snap: dict, history: SessionHistory, laps: list[PlayerLap], sessio
     cars = snap.get("cars") or []
     me = next((car for car in cars if car["is_player"]), None)
     sc = session.get("safety_car")
+    samples = pit_loss_samples(history.car_laps)
+    green_loss = statistics.median(samples) if samples else DEFAULT_PIT_LOSS_S
     factor = SAFETY_CAR_PIT_FACTOR if sc == "Full safety car" else VSC_PIT_FACTOR if sc == "Virtual safety car" else 1.0
-    pit_loss = round(DEFAULT_PIT_LOSS_S * factor, 1)
-    rejoin = _rejoin(cars, me, pit_loss, laps, session)
+    pit_loss = round(green_loss * factor, 1)
     dry = [x for x in history.compounds_used if x in ("Soft", "Medium", "Hard")]
-    return {
-        "perdida_box_estimada_s": pit_loss,
-        "perdida_box_es_estimacion": True,
-        "si_para_ahora": rejoin,
+    out = {
+        "perdida_box_s": pit_loss,
+        "perdida_box_origen": (f"medida en esta sesión ({len(samples)} paradas en verde)" if samples
+                               else "estimación genérica, sin paradas medidas todavía")
+                              + (" y reducida por el safety car" if factor < 1 else ""),
+        "si_para_ahora": _rejoin(cars, me, pit_loss, laps, session),
         "regla_dos_compuestos": {
             "compuestos_secos_usados": sorted(set(dry)),
             "cumplida": len(set(dry)) >= 2,
             "aplica": session.get("type", "").startswith("Race") and session.get("weather") in ("Clear", "Light cloud", "Overcast"),
         },
+        "juegos_de_neumaticos": _tyre_sets(history),
     }
+    if factor < 1:
+        # Under a safety car most of the field stops too: then the player keeps
+        # roughly their place instead of dropping behind everyone who stayed out.
+        out["si_para_ahora_y_paran_todos"] = _rejoin(cars, me, pit_loss, laps, session, everyone_stops=True)
+    return out
 
 
-def _rejoin(cars: list[dict], me: dict | None, pit_loss: float, laps: list[PlayerLap], session: dict) -> dict | None:
+def _tyre_sets(history: SessionHistory) -> list[dict] | None:
+    """The player's sets, identical ones grouped: compound, wear, count and the game's pace delta."""
+    body = history.tyre_sets
+    if body is None:
+        return None
+    groups: dict[tuple, dict] = {}
+    for ts in body["tyre_set_data"]:
+        compound = c.VISUAL_COMPOUNDS.get(int(ts["visual_tyre_compound"]))
+        if compound is None or not (int(ts["available"]) or int(ts["fitted"])):
+            continue
+        key = (compound, int(ts["wear"]), bool(ts["fitted"]))
+        group = groups.setdefault(key, {
+            "compuesto": compound, "desgaste_pct": key[1], "puesto": key[2], "cantidad": 0,
+            "vida_util_vueltas": int(ts["usable_life"]),
+            "delta_ritmo_s": round(int(ts["lap_delta_time"]) / 1000, 2),
+        })
+        group["cantidad"] += 1
+    return list(groups.values())
+
+
+def _rejoin(cars: list[dict], me: dict | None, pit_loss: float, laps: list[PlayerLap], session: dict,
+            everyone_stops: bool = False) -> dict | None:
     """Where the player would come out after a stop now.
 
     Uses each car's total distance (always current) rather than the game's gaps
@@ -266,18 +296,24 @@ def _rejoin(cars: list[dict], me: dict | None, pit_loss: float, laps: list[Playe
     speed = track_m / (statistics.mean(lap_times) / 1000)  # metres per second at race pace
     lost_m = pit_loss * speed
     my_pos_m = me["total_distance_m"] - lost_m
-    ahead = [car for car in cars if not car["is_player"] and car["result"] == "active"
-             and car["pit"] == "On track" and car["total_distance_m"] > my_pos_m]
-    behind = [car for car in cars if not car["is_player"] and car["result"] == "active"
-              and car["pit"] == "On track" and car["total_distance_m"] <= my_pos_m]
-    nearest_ahead = min(ahead, key=lambda car: car["total_distance_m"], default=None)
-    nearest_behind = max(behind, key=lambda car: car["total_distance_m"], default=None)
+    others = []
+    for car in cars:
+        if car["is_player"] or car["result"] != "active":
+            continue
+        pos_m = car["total_distance_m"]
+        if everyone_stops and car["pit_stops"] == 0 and car["pit"] == "On track":
+            pos_m -= lost_m  # assume the ones who have not stopped yet also stop now
+        others.append((car, pos_m))
+    ahead = [(car, m) for car, m in others if m > my_pos_m]
+    behind = [(car, m) for car, m in others if m <= my_pos_m]
+    nearest_ahead = min(ahead, key=lambda cm: cm[1], default=None)
+    nearest_behind = max(behind, key=lambda cm: cm[1], default=None)
     return {
         "posicion_estimada_al_salir": len(ahead) + 1,
-        "auto_delante_al_salir": nearest_ahead["name"] if nearest_ahead else None,
-        "distancia_al_de_adelante_s": round((nearest_ahead["total_distance_m"] - my_pos_m) / speed, 1) if nearest_ahead else None,
-        "auto_detras_al_salir": nearest_behind["name"] if nearest_behind else None,
-        "distancia_al_de_atras_s": round((my_pos_m - nearest_behind["total_distance_m"]) / speed, 1) if nearest_behind else None,
+        "auto_delante_al_salir": nearest_ahead[0]["name"] if nearest_ahead else None,
+        "distancia_al_de_adelante_s": round((nearest_ahead[1] - my_pos_m) / speed, 1) if nearest_ahead else None,
+        "auto_detras_al_salir": nearest_behind[0]["name"] if nearest_behind else None,
+        "distancia_al_de_atras_s": round((my_pos_m - nearest_behind[1]) / speed, 1) if nearest_behind else None,
     }
 
 

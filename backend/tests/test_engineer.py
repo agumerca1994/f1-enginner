@@ -33,3 +33,18 @@ def test_engineer_requests_over_a_real_race():
     # Events name the drivers, and the player is "VOS".
     assert all("_idx" not in key for e in facts["eventos_recientes"] for key in e)
     assert "Formato de respuesta" in system_prompt()
+
+
+def test_pit_loss_from_green_flag_stops():
+    from app.engineer.history import CarLap, pit_loss_samples
+
+    def lap(n, t, stops, sc=False):
+        return CarLap(lap=n, time_ms=t, position=5, gap_ahead_ms=0, gap_leader_ms=0, pit_stops=stops,
+                      compound=None, tyre_age=None, safety_car=sc)
+
+    normal = 100_000
+    green = [lap(1, 110_000, 0), lap(2, normal, 0), lap(3, normal, 0), lap(4, normal + 12_000, 1),
+             lap(5, normal + 9_000, 1), lap(6, normal, 1), lap(7, normal, 1)]
+    under_sc = [lap(1, 110_000, 0), lap(2, normal, 0), lap(3, normal, 0), lap(4, 130_000, 1, sc=True),
+                lap(5, 125_000, 1, sc=True), lap(6, normal, 1)]
+    assert pit_loss_samples({0: green, 1: under_sc}) == [21.0]
