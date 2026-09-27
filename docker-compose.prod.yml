@@ -1,0 +1,55 @@
+# Production stack, built by Easypanel from GitHub main (same pattern as registrapp).
+# Service names are prefixed: every Easypanel app shares the external `easypanel`
+# network, so a plain `db` would collide with other projects' hostnames.
+services:
+  f1eng-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-engineer}
+      POSTGRES_USER: ${POSTGRES_USER:-engineer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - f1eng-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-engineer}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  f1eng-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-engineer}:${POSTGRES_PASSWORD}@f1eng-db:5432/${POSTGRES_DB:-engineer}
+      ENVIRONMENT: production
+      API_DOMAIN: ${API_DOMAIN}
+      APP_DOMAIN: ${APP_DOMAIN:-}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      INTERNAL_LOG_KEY: ${INTERNAL_LOG_KEY}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CREDENTIALS_B64: ${FIREBASE_CREDENTIALS_B64:-}
+      CAPTURE_DIR: /data/captures
+    volumes:
+      - f1eng-captures:/data/captures
+    restart: unless-stopped
+    depends_on:
+      f1eng-db:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.f1eng-api.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.f1eng-api.tls=true"
+      - "traefik.http.routers.f1eng-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.f1eng-api.loadbalancer.server.port=8000"
+
+volumes:
+  f1eng-db-data:
+  f1eng-captures:
+
+networks:
+  default:
+    external: true
+    name: easypanel

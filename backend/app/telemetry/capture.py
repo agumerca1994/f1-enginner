@@ -36,6 +36,29 @@ def read(path: str | Path) -> tuple[dict, Iterator[Record]]:
     return meta, _records(buf, 10 + meta_len)
 
 
+class Writer:
+    """Streams records into a .f1cap.zst file the bridge's `inspect` and `replay` can read."""
+
+    def __init__(self, path: str | Path, meta: dict):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._file = open(self.path, "wb")
+        self._zw = zstandard.ZstdCompressor(level=3).stream_writer(self._file)
+        js = json.dumps(meta).encode()
+        self._zw.write(MAGIC + bytes([VERSION]) + struct.pack("<I", len(js)) + js)
+        self._first_ns: int | None = None
+        self.records = 0
+
+    def write(self, received_ns: int, data: bytes) -> None:
+        if self._first_ns is None:
+            self._first_ns = received_ns
+        self._zw.write(_RECORD.pack(max(0, received_ns - self._first_ns), len(data)) + data)
+        self.records += 1
+
+    def close(self) -> None:
+        self._zw.close()  # also closes the underlying file
+
+
 def _records(buf: memoryview, pos: int) -> Iterator[Record]:
     end = len(buf)
     while pos < end:

@@ -161,11 +161,16 @@ func (s *Stats) printDiagnosis(w io.Writer) {
 }
 
 // Reception estimates the share of CarTelemetry packets the game sent that
-// arrived. The smallest frame step between two received packets is taken as the
-// game's send interval; a backwards step (flashback, restart) starts a new segment.
-// ok is false when there is too little data to tell.
+// arrived during the whole capture. ok is false when there is too little data.
 func (s *Stats) Reception() (ratio float64, ok bool) {
-	frames := s.telemetryFrames
+	return EstimateReception(s.telemetryFrames)
+}
+
+// EstimateReception estimates which share of a packet stream arrived, from the
+// frame identifiers of the packets that did. The smallest frame step between
+// two received packets is taken as the game's send interval; a backwards step
+// (flashback, restart) starts a new segment.
+func EstimateReception(frames []uint32) (ratio float64, ok bool) {
 	if len(frames) < 3 {
 		return 0, false
 	}
@@ -192,6 +197,29 @@ func (s *Stats) Reception() (ratio float64, ok bool) {
 	}
 	return ratio, true
 }
+
+// ReceptionWindow keeps the frame identifiers of the latest CarTelemetry
+// packets, to estimate the current reception while the bridge runs for hours.
+type ReceptionWindow struct {
+	frames []uint32
+	size   int
+}
+
+// NewReceptionWindow tracks the last size packets.
+func NewReceptionWindow(size int) *ReceptionWindow {
+	return &ReceptionWindow{size: size}
+}
+
+// Add records a received CarTelemetry frame identifier.
+func (w *ReceptionWindow) Add(frame uint32) {
+	w.frames = append(w.frames, frame)
+	if len(w.frames) > w.size {
+		w.frames = append(w.frames[:0], w.frames[len(w.frames)-w.size:]...)
+	}
+}
+
+// Estimate returns the reception over the window.
+func (w *ReceptionWindow) Estimate() (float64, bool) { return EstimateReception(w.frames) }
 
 func quality(r float64) string {
 	switch {

@@ -6,8 +6,8 @@ Plan completo: [docs/plan.md](docs/plan.md).
 
 | Carpeta | Contenido | Estado |
 |---|---|---|
-| `bridge/` | Programa en Go que recibe el UDP en la red local | P0 listo |
-| `backend/` | API FastAPI: ingest, parser, reglas, agente, MCP | P1 |
+| `bridge/` | Programa en Go que recibe el UDP en la red local y lo sube al servidor | P0 y P1 listos |
+| `backend/` | API FastAPI: ingest, parser, reglas, agente, MCP | P1 listo en local, falta el deploy |
 | `frontend/` | Dashboard PWA en Next.js | P2 |
 | `mcp-logs/` | MCP local para leer los logs de producción | P6 |
 | `fixtures/captures/` | Capturas reales para los tests (git-lfs) | a grabar |
@@ -32,13 +32,21 @@ En F1 24, entrá a *Configuración → Configuración de telemetría* y dejá:
 ```
 Muestra las IP de la Mac y el estado del firewall. Después escucha durante 15 s y resume qué paquetes llegaron.
 
-### 3. Grabar sesiones
+### 3. Vincular el bridge y enviar la telemetría al servidor
+```sh
+./bin/bridge pair     # muestra un código de 8 caracteres para confirmar en la web (una sola vez)
+./bin/bridge run      # escucha el juego y sube los datos; Ctrl+C para cortar
+./bin/bridge run --record ../fixtures/captures/sesion.f1cap.zst   # además graba todo lo recibido
+```
+`run` filtra los paquetes de alta frecuencia, arma lotes de 100 ms comprimidos con zstd y los envía por WebSocket. Se reconecta solo si se corta la conexión y, mientras está desconectado, guarda en memoria unos 30 s de datos.
+
+### 4. Grabar sesiones
 ```sh
 ./bin/bridge record --out ../fixtures/captures/tt-monza.f1cap.zst --note "contrarreloj Monza, seco"
 ```
 `Ctrl+C` corta la grabación.
 
-### 4. Reproducir y comparar
+### 5. Reproducir y comparar
 ```sh
 ./bin/bridge inspect --in ../fixtures/captures/tt-monza.f1cap.zst
 ./bin/bridge replay  --in ../fixtures/captures/tt-monza.f1cap.zst --to 127.0.0.1:20777 --speed 1

@@ -1,7 +1,7 @@
 // Command bridge receives the F1 24 UDP telemetry on the local network.
 //
-// Phase 0 commands: record, replay, inspect, compare, synth and doctor.
-// Uploading to the server (run, pair) arrives in phase 1.
+// pair and run connect it to the server; record, replay, inspect, compare,
+// synth and doctor are local tools for captures and troubleshooting.
 package main
 
 import (
@@ -36,6 +36,8 @@ func main() {
 	defer stop()
 
 	cmds := map[string]func(context.Context, []string) error{
+		"pair":    cmdPair,
+		"run":     cmdRun,
 		"record":  cmdRecord,
 		"replay":  cmdReplay,
 		"inspect": cmdInspect,
@@ -59,6 +61,8 @@ func usage() {
 	fmt.Fprint(os.Stderr, `bridge — F1 24 telemetry bridge
 
 Usage:
+  bridge pair    [--server URL]                        link this bridge to your account (once)
+  bridge run     [--listen :20777] [--record FILE]     send the game's telemetry to the server
   bridge doctor  [--listen :20777] [--seconds 15]     check that telemetry reaches this computer
   bridge record  --out FILE [--listen :20777] [--duration 0] [--note TEXT]
   bridge replay  --in FILE [--to 127.0.0.1:20777] [--speed 1]
