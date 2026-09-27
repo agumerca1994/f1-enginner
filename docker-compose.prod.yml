@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-engineer}
       POSTGRES_USER: ${POSTGRES_USER:-engineer}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in Easypanel > Environment}
     volumes:
       - f1eng-db-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -22,13 +22,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-engineer}:${POSTGRES_PASSWORD}@f1eng-db:5432/${POSTGRES_DB:-engineer}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-engineer}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@f1eng-db:5432/${POSTGRES_DB:-engineer}
       ENVIRONMENT: production
-      API_DOMAIN: ${API_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in Easypanel > Environment}
       APP_DOMAIN: ${APP_DOMAIN:-}
       FRONTEND_URL: ${FRONTEND_URL:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
-      INTERNAL_LOG_KEY: ${INTERNAL_LOG_KEY}
+      INTERNAL_LOG_KEY: ${INTERNAL_LOG_KEY:?set INTERNAL_LOG_KEY in Easypanel > Environment}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
       FIREBASE_CREDENTIALS_B64: ${FIREBASE_CREDENTIALS_B64:-}
       CAPTURE_DIR: /data/captures
@@ -40,7 +40,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.f1eng-api.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.f1eng-api.rule=Host(`${API_DOMAIN:?set API_DOMAIN}`)"
       - "traefik.http.routers.f1eng-api.tls=true"
       - "traefik.http.routers.f1eng-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.f1eng-api.loadbalancer.server.port=8000"
