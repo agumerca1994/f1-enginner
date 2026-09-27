@@ -26,7 +26,7 @@ Decisiones tomadas por el usuario:
 | P2 Dashboard PWA | ✅ En producción | Login con Google, dashboard en vivo apaisado, mapa del circuito, monoplaza, posiciones, `/pair`, `/settings` |
 | Extra: app de la Mac | ✅ Hecha (uso local) | `Ingeniero Bridge.app`: barra de menú y ventana, vincular/desvincular, enviar, abrir al iniciar sesión |
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
-| P3 Procesamiento y reglas | ⏳ Pendiente | Solo existe la agregación del trazado de pista; faltan vueltas/stints en DB y las reglas del ingeniero |
+| P3 Procesamiento e ingeniero | 🟡 En curso | Motor del ingeniero (`app/engineer/`): historial por vuelta, análisis, momentos para hablar, manual del ingeniero y prueba en seco sobre grabaciones. Falta conectarlo a una API de IA y mostrarlo en el dashboard |
 | P4 Agente y voz | ⏳ Pendiente | — |
 | P5 MCP público | ⏳ Pendiente | — |
 | P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
@@ -49,10 +49,35 @@ Decisiones tomadas por el usuario:
 - **Repeticiones con el mismo motor del vivo.** Leen las capturas crudas del servidor; los silencios de más de 10 s entre grabaciones se acortan a 1 s.
 - **Desvincular** lo puede hacer el propio bridge (`DELETE /api/devices/self`) o el usuario desde Ajustes.
 
+### Estrategia de IA del ingeniero (definida 2026-09-27)
+- **La IA es el ingeniero de pista, no un locutor.** Pone el conocimiento de F1 que el jugador no tiene y toma las decisiones:
+  - reglaje, solo en práctica y clasificación;
+  - modos de manejo y ERS;
+  - estrategia de boxes y compuestos;
+  - lectura del ritmo propio y de los rivales;
+  - gestión de daños.
+- **El código hace de sensores y calculadora.** Calcula ritmos limpios, degradación, desgaste proyectado, consumo, tendencia de gaps y dónde se vuelve a pista si se para, y cumple las reglas. La IA interpreta y decide.
+- **El conocimiento sale de tres fuentes:**
+  - el modelo;
+  - el manual del ingeniero específico de F1 24 (`backend/app/engineer/prompts/manual_es.md`, en caché, mejorable con el tiempo);
+  - el historial del jugador (pendiente).
+- **Radio "como un ingeniero real":** 1 o 2 frases, como mucho una por vuelta, solo cuando aporta. Lo urgente interrumpe. El análisis largo va al muro de boxes del dashboard.
+- **Momentos en que habla:** largada, cada vuelta, safety car, pronóstico de lluvia, daño (confirmado, sin flashback), penalización, parada y final.
+- **Niveles de IA a comparar con la API:**
+  - **Estándar:** Haiku en la radio de cada vuelta y Sonnet en estrategia y eventos.
+  - **Pro:** Sonnet en la radio de cada vuelta y Opus 5.5 en estrategia y eventos.
+- **Costo estimado con los tamaños medidos** (manual ~2.900 tokens en caché, datos ~1.700 por pedido):
+  - carrera de 18 vueltas: Estándar ~US$ 0,25, Pro ~US$ 0,60;
+  - carrera de 57 vueltas: Estándar ~US$ 0,65, Pro ~US$ 1,60.
+
+  Falta confirmarlo con la API, sobre todo la salida y el razonamiento del modelo.
+- **Prueba en seco** sobre la carrera real de Bakú, con las respuestas de referencia y los hallazgos: `docs/pruebas/ingeniero-baku-2026-09-27.md`.
+
 ### Pendientes conocidos
 - Confirmar la orientación del mapa con una vuelta completa. En Bakú parece correcta: rotada, no espejada.
 - Ver la ventana de la app de la Mac, que no se pudo capturar por falta de permiso de grabación de pantalla.
 - Borrar o filtrar sesiones vacías (sesiones de menú con muy pocos datos).
+- Mejoras del ingeniero detectadas en la prueba en seco: medir la pérdida real en boxes por pista, estimar la salida de boxes si paran todos bajo safety car, sumar los juegos de neumáticos disponibles (TyreSets) y la probabilidad de safety car por pista.
 - El estado en vivo está en memoria y se pierde en cada deploy; pasa a Redis en P7.
 - La imagen de la API pesa unos 800 MB (numpy y firebase-admin); se puede optimizar.
 

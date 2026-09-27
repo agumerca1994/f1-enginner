@@ -6,7 +6,7 @@ Current state:
 - P0, P1 and P2 are in production.
 - The Mac menu-bar app is built.
 - Session replays are in production.
-- Next: P3 (processing and rules), then P4 (engineer agent with voice).
+- P3 is in progress: the engineer engine exists in `backend/app/engineer/` and was dry-run tested on a real race (see "Estrategia de IA del ingeniero" in `docs/plan.md`). Next: connect it to an AI API and show it in the dashboard.
 
 ## Layout
 - **`bridge/`** (Go) runs on the player's computer. It reads only the 29-byte packet header; all body parsing happens on the server.
