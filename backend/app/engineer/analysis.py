@@ -178,11 +178,14 @@ def _fuel(snap: dict, laps: list[PlayerLap], total: int, current: int | None) ->
         pairs = [(a, b) for a, b in zip(green, green[1:]) if b.lap == a.lap + 1]
         if pairs:
             per_lap = round(statistics.mean(a.fuel_kg - b.fuel_kg for a, b in pairs), 3)
+    spare = st.get("fuel_remaining_laps")
     return {
         "kg": st.get("fuel_kg"),
-        "margen_vueltas_segun_juego": st.get("fuel_remaining_laps"),
+        "alcanza_hasta_el_final": None if spare is None else spare >= 0,
+        "vueltas_de_sobra": spare,
         "consumo_kg_por_vuelta_verde": per_lap,
-        "nota": "El margen del juego es cuántas vueltas de más alcanzan (+) o faltan (−) al ritmo actual.",
+        "nota": "vueltas_de_sobra es el dato del juego: positivo = sobra combustible para esa cantidad de vueltas "
+                "además de terminar la carrera; negativo = faltan. Solo hay que ahorrar si es negativo o muy cercano a 0.",
     }
 
 

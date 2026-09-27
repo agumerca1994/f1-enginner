@@ -117,7 +117,7 @@ def test_rules_pick_a_different_compound_and_do_not_repeat():
                    "safety_car": "None"},
         "piloto": {"posicion": 2, "ers": {"bateria_pct": 5.0}, "advertencias": 0, "penalizacion_s": 0},
         "neumaticos": {"compuesto": "Medium", "edad_vueltas": 6, "desgaste_pct": {"del_der": 12.0}},
-        "combustible": {"margen_vueltas_segun_juego": 2.0},
+        "combustible": {"vueltas_de_sobra": 2.0},
         "ritmo": {},
         "estrategia_calculos": {
             "perdida_box_s": 22.0, "si_para_ahora": {"posicion_estimada_al_salir": 17},

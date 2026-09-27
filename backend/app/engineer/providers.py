@@ -152,7 +152,7 @@ def rules_response(request: EngineerRequest) -> dict:
     owes_stop = race and rule["aplica"] and not rule["cumplida"]
     window = [w for w in se.get("ventana_box_juego") or [] if w]
     ers = (pl.get("ers") or {}).get("bateria_pct")
-    margin = co.get("margen_vueltas_segun_juego")
+    margin = co.get("vueltas_de_sobra")
     wear = max((ne.get("desgaste_pct") or {}).values(), default=0)
     to60 = ne.get("vueltas_hasta_60pct")
     rejoin = es.get("si_para_ahora") or {}
