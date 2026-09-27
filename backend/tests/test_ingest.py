@@ -128,6 +128,17 @@ def test_baku_race_through_the_uplink(client):
     assert (s["track"], s["session_type"], s["total_laps"], s["game_version"]) == ("Baku (Azerbaijan)", "Race", 18, "24 v1.21")
     assert s["packets_received"] == 1715
 
+    # Operator diagnostics see the same session, and only with the internal key.
+    assert client.get("/internal/sessions", headers={"x-internal-key": "wrong"}).status_code == 403
+    assert s["session_uid"] in [x["session_uid"] for x in client.get("/internal/sessions", headers=INTERNAL).json()]
+    live_rows = client.get("/internal/live", headers=INTERNAL).json()
+    row = next(r for r in live_rows if r["session_uid"] == s["session_uid"])
+    assert row["packets"] == 1715 and row["reception"] == 0.19
+    full = client.get("/internal/live", params={"tenant_id": row["tenant_id"]}, headers=INTERNAL).json()
+    assert full["driver"]["name"] == "GASLY"
+    device = next(d for d in client.get("/internal/devices", headers=INTERNAL).json() if d["email"] == email)
+    assert device["last_reception"] == 0.19 and device["bridge_version"] == "test"
+
     # The server kept a raw capture the bridge can replay, byte for byte.
     files = list(Path(os.environ["CAPTURE_DIR"]).rglob(f"{s['session_uid']}-*.f1cap.zst"))
     assert len(files) == 1

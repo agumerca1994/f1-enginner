@@ -47,6 +47,9 @@ class LiveSession:
         at = self.last_at.get(name)
         return None if at is None else time.monotonic() - at
 
+    def age_since_update(self) -> float:
+        return time.monotonic() - self.updated_at
+
 
 class LiveStore:
     def __init__(self) -> None:
@@ -54,6 +57,9 @@ class LiveStore:
 
     def get(self, tenant_id: int) -> LiveSession | None:
         return self._by_tenant.get(tenant_id)
+
+    def all(self) -> list[LiveSession]:
+        return list(self._by_tenant.values())
 
     def session_for(self, tenant_id: int, device_id: int, packet: Packet) -> LiveSession:
         """The tenant's live session, replaced when the game starts a new one."""
