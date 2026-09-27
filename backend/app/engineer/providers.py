@@ -182,7 +182,7 @@ def rules_response(request: EngineerRequest) -> dict:
             radio = "Safety car: no hace falta parar, cuidá la temperatura de las gomas."
             priority = "importante"
     elif "safety_car" in kinds:
-        radio = f"Relargada: batería al {ers:.0f}%, usá Overtake en la recta para defenderte." if ers is not None else "Relargada, atento."
+        radio = f"Relargada: batería al {ers:.0f}%, usá el modo adelantamiento en la recta para defenderte." if ers is not None else "Relargada, atento."
         priority = "importante"
     elif "damage" in kinds:
         parts = request.triggers[-1].detail.get("parts", {})
@@ -204,7 +204,7 @@ def rules_response(request: EngineerRequest) -> dict:
             f" Hay que parar una vez, la ventana es de la {window[0]} a la {window[-1]}." if owes_stop and window else "")
     else:  # a routine lap: speak only when something needs attention
         if ers is not None and ers < 15:
-            radio, priority = f"Batería al {ers:.0f}%: una vuelta en modo None o medio para recargar.", "importante"
+            radio, priority = f"Batería al {ers:.0f}%: hacé una vuelta sin desplegar ERS para recargar.", "importante"
         elif margin is not None and margin < 0:
             radio, priority = f"Combustible justo: nos faltan {abs(margin):.1f} vueltas, levantá antes de frenar.", "importante"
         elif wear >= 60 or (to60 is not None and left is not None and to60 < left and to60 < 3):
@@ -217,7 +217,7 @@ def rules_response(request: EngineerRequest) -> dict:
     if radio and priority != "urgente" and _said_recently(request, radio):
         radio = None  # the same advice twice in a row gets ignored; keep it for the panel
     if ers is not None and ers < 15:
-        driving.append("Batería baja: modo None o medio una vuelta para recargar.")
+        driving.append("Batería baja: una vuelta sin desplegar ERS (modo recarga) para recuperarla.")
     if margin is not None and margin < 0:
         driving.append("Ahorro de combustible: levantar antes de las frenadas largas.")
 

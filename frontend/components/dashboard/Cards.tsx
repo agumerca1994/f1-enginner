@@ -19,7 +19,7 @@ const SESSION_ES: Record<string, string> = {
   "One-Shot Qualifying": "Clasificación a una vuelta",
 };
 const FUEL_MIX_ES: Record<string, string> = { Lean: "pobre", Standard: "estándar", Rich: "rica", Max: "máxima" };
-const ERS_MODE_ES: Record<string, string> = { None: "apagado", Medium: "medio", Hotlap: "vuelta rápida", Overtake: "adelantamiento" };
+const ERS_MODE_ES: Record<string, string> = { None: "recarga", Medium: "normal", Hotlap: "vuelta rápida", Overtake: "adelantamiento" };
 
 export function sessionName(type: string): string {
   return type === "Unknown" ? "Sesión" : (SESSION_ES[type] ?? type);

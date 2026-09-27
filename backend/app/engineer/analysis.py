@@ -15,6 +15,9 @@ from app.live.state import LiveSession
 from app.telemetry import constants as c
 
 WHEELS = ("tras_izq", "tras_der", "del_izq", "del_der")
+# The game's names, in the words an engineer uses on the radio.
+ERS_MODE_ES = {"None": "recarga (sin desplegar)", "Medium": "normal", "Hotlap": "vuelta rápida", "Overtake": "adelantamiento"}
+FUEL_MIX_ES = {"Lean": "pobre", "Standard": "estándar", "Rich": "rica", "Max": "máxima"}
 # Time lost with a pit stop at racing speed, when this track's real value is
 # unknown. Under a safety car the field is slow, so a stop costs about half.
 DEFAULT_PIT_LOSS_S = 22.0
@@ -89,10 +92,10 @@ def _player(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dict[
         "advertencias": lap.get("warnings"),
         "vuelta_invalida": lap.get("lap_invalid"),
         "compuestos_usados": history.compounds_used,
-        "ers": {"bateria_pct": st.get("ers_percent"), "modo": st.get("ers_mode"),
+        "ers": {"bateria_pct": st.get("ers_percent"), "modo": ERS_MODE_ES.get(st.get("ers_mode"), st.get("ers_mode")),
                 "desplegado_ultima_vuelta_mj": laps[-1].ers_deployed_mj if laps else None},
         "reparto_frenada_pct": st.get("brake_bias"),
-        "mezcla_combustible": st.get("fuel_mix"),
+        "mezcla_combustible": FUEL_MIX_ES.get(st.get("fuel_mix"), st.get("fuel_mix")),
         "drs_disponible": st.get("drs_allowed"),
         "temp_motor_c": car.get("engine_temperature_c"),
         "danos_pct": {k: v for k, v in (snap.get("damage") or {}).items()
