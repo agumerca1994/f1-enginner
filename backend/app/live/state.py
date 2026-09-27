@@ -70,9 +70,17 @@ class LiveSession:
             self._feed_layout(motion=self.last.get("motion"), lap=packet)
 
     def active_cars(self) -> list[int]:
-        participants = self.last.get("participants")
-        n = int(participants.body["num_active_cars"]) if participants is not None else 22
-        return list(range(min(max(n, 0), 22)))
+        """Indices of the cars taking part in the session.
+
+        The game keeps each car in a fixed slot (0-21). When a car retires,
+        `num_active_cars` drops but the other slots do not move, so the count
+        cannot be used as a range: the player can sit in slot 19 of a 19-car field.
+        """
+        laps = self.last.get("lap_data")
+        if laps is None:
+            return list(range(22))
+        # result_status 0 = invalid, 1 = inactive (an unused slot).
+        return [i for i in range(22) if int(laps.body["lap_data"][i]["result_status"]) >= 2]
 
     def _feed_layout(self, motion: Packet | None, lap: Packet | None) -> None:
         # Pair each new Motion or LapData packet with the latest of the other kind;

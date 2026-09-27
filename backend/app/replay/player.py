@@ -63,7 +63,7 @@ class ReplaySource:
         duration, count = 0.0, 0
         builder: LayoutBuilder | None = None
         last_lap = None
-        active = list(range(22))
+        active = list(range(22))  # filtered per car inside add_frame
         for t, data in self.records():
             duration, count = t, count + 1
             if len(data) < 7 or data[6] not in _LAYOUT_PACKETS:
@@ -74,8 +74,6 @@ class ReplaySource:
                 continue
             if p.name == "session" and builder is None and int(p.body["track_length"]) > 0:
                 builder = LayoutBuilder(int(p.body["track_length"]))
-            elif p.name == "participants":
-                active = list(range(min(int(p.body["num_active_cars"]), 22)))
             elif p.name == "lap_data":
                 last_lap = p
             elif p.name == "motion" and builder is not None and last_lap is not None:
