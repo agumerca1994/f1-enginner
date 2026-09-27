@@ -13,6 +13,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from app.core.auth import authenticate_token
 from app.core.database import AsyncSessionLocal
+from app.engineer.runner import engineer_hub
 from app.live import snapshot
 from app.live.state import live_store
 
@@ -44,8 +45,19 @@ async def live_ws(ws: WebSocket):
     await ws.send_json({"type": "ready"})
     last_sent_update = None
     idle_for = 0.0
+    engineer = engineer_hub.runner(tenant_id)
+    await ws.send_json({"type": "engineer_state", **engineer.state()})
+    sent_state = (engineer.active, engineer.provider_name)
+    last_message = engineer.messages[-1]["id"] if engineer.messages else 0
     try:
         while True:
+            # The race engineer: new advice and on/off changes.
+            for message in engineer.messages_after(last_message):
+                await ws.send_json({"type": "engineer_message", "message": message})
+                last_message = message["id"]
+            if (engineer.active, engineer.provider_name) != sent_state:
+                sent_state = (engineer.active, engineer.provider_name)
+                await ws.send_json({"type": "engineer_state", "active": engineer.active, "provider": engineer.provider_name})
             state = live_store.get(tenant_id)
             if state is not None and state.updated_at != last_sent_update:
                 last_sent_update = state.updated_at

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Snapshot } from "@/lib/types";
+import type { EngineerState, Snapshot } from "@/lib/types";
 
 export type ReplayState = {
   status: "loading" | "ready" | "error";
@@ -14,6 +14,7 @@ export type ReplayState = {
   duration: number;
   playing: boolean;
   speed: number;
+  engineer: EngineerState;
 };
 
 export const REPLAY_SPEEDS = [0.5, 1, 2, 4, 8, 16] as const;
@@ -30,6 +31,7 @@ export function useReplay(sessionId: number) {
     duration: 0,
     playing: false,
     speed: 1,
+    engineer: { active: false, provider: null, messages: [] },
   });
 
   useEffect(() => {
@@ -46,6 +48,13 @@ export function useReplay(sessionId: number) {
         const msg = JSON.parse(ev.data);
         if (msg.type === "ready") {
           setState((s) => ({ ...s, status: "ready", duration: msg.duration_s }));
+        } else if (msg.type === "engineer_state") {
+          setState((s) => ({
+            ...s,
+            engineer: { active: msg.active, provider: msg.provider, messages: msg.messages ?? s.engineer.messages },
+          }));
+        } else if (msg.type === "engineer_message") {
+          setState((s) => ({ ...s, engineer: { ...s.engineer, messages: [...s.engineer.messages, msg.message].slice(-40) } }));
         } else if (msg.type === "frame") {
           setState((s) => ({
             ...s,
@@ -89,5 +98,6 @@ export function useReplay(sessionId: number) {
     pause: useCallback(() => send({ type: "pause" }), [send]),
     seek: useCallback((t: number) => send({ type: "seek", t }), [send]),
     setSpeed: useCallback((value: number) => send({ type: "speed", value }), [send]),
+    toggleEngineer: useCallback((active: boolean) => send({ type: "engineer", active }), [send]),
   };
 }

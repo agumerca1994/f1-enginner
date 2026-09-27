@@ -27,6 +27,7 @@ def test_live_ws_idle_without_telemetry(client, monkeypatch):
     with client.websocket_connect("/live/v1") as ws:
         ws.send_json({"type": "auth", "dev_user": next(_emails)})
         assert ws.receive_json() == {"type": "ready"}
+        assert ws.receive_json() == {"type": "engineer_state", "active": False, "provider": "reglas", "messages": []}
         assert ws.receive_json() == {"type": "idle", "seconds_since_last_packet": None}
 
 

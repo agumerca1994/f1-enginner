@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { liveSocketUrl } from "@/lib/api";
+import { api, liveSocketUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Snapshot } from "@/lib/types";
+import type { EngineerState, Snapshot } from "@/lib/types";
 
 export type LiveStatus = "connecting" | "live" | "waiting" | "offline";
 
@@ -12,11 +12,13 @@ export type LiveStatus = "connecting" | "live" | "waiting" | "offline";
  * Subscribes to the player's live snapshot. Reconnects with backoff and keeps
  * the last snapshot on screen while offline, so a hiccup never blanks the page.
  */
-export function useLive(): { status: LiveStatus; snapshot: Snapshot | null; receivedAt: number | null } {
+export function useLive() {
   const { credentials, email } = useAuth();
   const [status, setStatus] = useState<LiveStatus>("connecting");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [receivedAt, setReceivedAt] = useState<number | null>(null);
+  const [engineer, setEngineer] = useState<EngineerState>({ active: false, provider: null, messages: [] });
+  const [engineerBusy, setEngineerBusy] = useState(false);
   const retry = useRef(0);
 
   useEffect(() => {
@@ -42,6 +44,14 @@ export function useLive(): { status: LiveStatus; snapshot: Snapshot | null; rece
           setStatus("live");
         } else if (msg.type === "idle") {
           setStatus("waiting");
+        } else if (msg.type === "engineer_state") {
+          setEngineer((e) => ({
+            active: msg.active,
+            provider: msg.provider,
+            messages: msg.messages ?? e.messages,
+          }));
+        } else if (msg.type === "engineer_message") {
+          setEngineer((e) => ({ ...e, messages: [...e.messages, msg.message].slice(-40) }));
         }
       };
       ws.onclose = () => {
@@ -60,5 +70,18 @@ export function useLive(): { status: LiveStatus; snapshot: Snapshot | null; rece
     };
   }, [email, credentials]);
 
-  return { status, snapshot, receivedAt };
+  const toggleEngineer = useCallback(
+    async (active: boolean) => {
+      setEngineerBusy(true);
+      try {
+        const state = await api<EngineerState>("/api/engineer/live", await credentials(), { method: "POST", body: { active } });
+        setEngineer(state);
+      } finally {
+        setEngineerBusy(false);
+      }
+    },
+    [credentials],
+  );
+
+  return { status, snapshot, receivedAt, engineer, engineerBusy, toggleEngineer };
 }

@@ -82,12 +82,17 @@ class ReplaySource:
 
 
 class ReplayPlayer:
-    def __init__(self, source: ReplaySource):
+    def __init__(self, source: ReplaySource, on_packet=None, on_reset=None):
         self.source = source
         self.t = 0.0
+        # Optional observers, e.g. the race engineer following the replay.
+        self.on_packet = on_packet
+        self.on_reset = on_reset
         self._reset()
 
     def _reset(self) -> None:
+        if self.on_reset is not None:
+            self.on_reset()
         self.t = 0.0
         self.live: LiveSession | None = None
         self._records = self.source.records()
@@ -121,3 +126,5 @@ class ReplayPlayer:
                 build_layout=False, clock=lambda: self.t,
             )
         self.live.update(packet)
+        if self.on_packet is not None:
+            self.on_packet(packet, self.live)

@@ -133,3 +133,32 @@ export type TrackLayout = {
   ready: boolean;
   segments: [number, number][][];
 };
+
+export type EngineerMessage = {
+  id: number;
+  session_time: number;
+  lap: number | null;
+  triggers: string[];
+  provider: string;
+  latency_ms: number;
+  cost_usd: number;
+  radio: string | null;
+  prioridad: "info" | "importante" | "urgente";
+  estrategia: {
+    plan: string;
+    vuelta_box: number | null;
+    ventana_box: number[] | null;
+    proximo_compuesto: string | null;
+    alternativa: string;
+    certeza: "baja" | "media" | "alta";
+  };
+  manejo: string[];
+  reglaje: { parametro: string; cambio: string; motivo: string }[];
+  analisis: string;
+};
+
+export type EngineerState = {
+  active: boolean;
+  provider: string | null;
+  messages: EngineerMessage[];
+};

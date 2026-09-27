@@ -32,6 +32,9 @@ services:
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
       FIREBASE_CREDENTIALS_B64: ${FIREBASE_CREDENTIALS_B64:-}
       CAPTURE_DIR: /data/captures
+      # Race engineer: without a key it runs on rules (no AI).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ENGINEER_TIER: ${ENGINEER_TIER:-standard}
     volumes:
       - f1eng-captures:/data/captures
     restart: unless-stopped

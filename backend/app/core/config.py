@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000"
     INTERNAL_LOG_KEY: str = ""
 
+    # Race engineer. Without an API key it runs on rules (no AI).
+    ANTHROPIC_API_KEY: str = ""
+    ENGINEER_TIER: str = "standard"  # standard | pro
+    ENGINEER_FAST_MODEL: str = ""  # per-lap radio; empty = the tier's default
+    ENGINEER_DEEP_MODEL: str = ""  # strategy and important moments; empty = the tier's default
+
     # Raw telemetry received from bridges, one .f1cap.zst per connection and game session.
     CAPTURE_DIR: str = "/data/captures"
     PAIRING_TTL_SECONDS: int = 600

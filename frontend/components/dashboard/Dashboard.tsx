@@ -11,23 +11,33 @@ import {
   TelemetryCard,
   TimingCard,
 } from "@/components/dashboard/Cards";
+import { EngineerPanel } from "@/components/dashboard/EngineerPanel";
 import { TrackMap } from "@/components/dashboard/TrackMap";
 import { WakeLockButton } from "@/components/WakeLockButton";
 import { type LiveStatus, useLive } from "@/lib/live";
 import type { Snapshot } from "@/lib/types";
 
 export function Dashboard() {
-  const { status, snapshot } = useLive();
+  const { status, snapshot, engineer, engineerBusy, toggleEngineer } = useLive();
+  const panel = <EngineerPanel engineer={engineer} onToggle={toggleEngineer} busy={engineerBusy} />;
   return (
     <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
       <TopBar status={status} s={snapshot} />
-      {snapshot ? <DashboardGrid s={snapshot} /> : <Waiting status={status} />}
+      {snapshot ? (
+        <DashboardGrid s={snapshot} engineer={panel} />
+      ) : (
+        <>
+          {/* The engineer can be switched on before the race starts. */}
+          <div className="mt-3">{panel}</div>
+          <Waiting status={status} />
+        </>
+      )}
     </main>
   );
 }
 
 /** The cards, shared by the live dashboard and session replays. */
-export function DashboardGrid({ s: snapshot }: { s: Snapshot }) {
+export function DashboardGrid({ s: snapshot, engineer }: { s: Snapshot; engineer?: React.ReactNode }) {
   return (
     // Landscape first (tablet, computer, TV): session and standings | map and
     // timing | car. On a phone the columns stack with the car on top.
@@ -37,6 +47,7 @@ export function DashboardGrid({ s: snapshot }: { s: Snapshot }) {
         <StandingsCard s={snapshot} />
       </div>
       <div className="order-2 flex flex-col gap-3">
+        {engineer}
         <TrackMap s={snapshot} />
         <TimingCard s={snapshot} />
         <EventsCard s={snapshot} />

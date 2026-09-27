@@ -17,6 +17,7 @@ from sqlalchemy import select
 
 from app.core.auth import authenticate_token
 from app.core.database import AsyncSessionLocal
+from app.engineer.runner import EngineerRunner
 from app.live import snapshot
 from app.live.track_layout import LayoutBuilder
 from app.models import GameSession, SessionCapture, TrackLayout
@@ -64,9 +65,12 @@ async def replay_ws(ws: WebSocket):
     if builder is not None and game_session.track_id is not None:
         await _improve_layout(game_session.track_id, builder)
 
-    player = ReplayPlayer(source)
+    engineer = EngineerRunner(user.tenant_id, "replay", game_session.id)
+    player = ReplayPlayer(source, on_packet=engineer.observe, on_reset=engineer.reset)
     state = {"playing": False, "speed": 1.0, "dirty": True}
     await ws.send_json({"type": "ready", "duration_s": round(duration, 2), "records": count})
+    await ws.send_json({"type": "engineer_state", **engineer.state()})
+    last_message = 0
 
     async def controls():
         while True:
@@ -82,6 +86,12 @@ async def replay_ws(ws: WebSocket):
                 state["speed"] = float(msg["value"])
             elif kind == "seek" and isinstance(msg.get("t"), (int, float)):
                 await asyncio.to_thread(player.seek, max(0.0, min(float(msg["t"]), duration)))
+                engineer.discard_pending()  # a jump is not something the engineer lived through
+            elif kind == "engineer" and isinstance(msg.get("active"), bool):
+                engineer.active = msg["active"]
+                if not engineer.active:
+                    engineer.discard_pending()
+                await ws.send_json({"type": "engineer_state", "active": engineer.active, "provider": engineer.provider_name})
             state["dirty"] = True
 
     control_task = asyncio.create_task(controls())
@@ -90,9 +100,13 @@ async def replay_ws(ws: WebSocket):
             if state["playing"]:
                 target = min(duration, player.t + TICK_S * state["speed"])
                 await asyncio.to_thread(player.seek, target)
+                engineer.dispatch()
                 if target >= duration:
                     state["playing"] = False
                 state["dirty"] = True
+            for message in engineer.messages_after(last_message):
+                await ws.send_json({"type": "engineer_message", "message": message})
+                last_message = message["id"]
             if state["dirty"]:
                 state["dirty"] = False
                 await ws.send_json({

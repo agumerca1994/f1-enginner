@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import utcnow
 from app.core.config import settings
+from app.engineer.runner import engineer_hub
 from app.ingest.protocol import ProtocolError, decode_batch
 from app.live.state import LiveStore
 from app.models import Device, GameSession, SessionCapture, TrackLayout
@@ -119,9 +120,13 @@ class IngestConnection:
                 open_session = await self._open_session(db, packet)
             open_session.writer.write(received_ns, data)
             open_session.received += 1
+            engineer = engineer_hub.runner(self.device.tenant_id)
+            engineer.game_session_id = open_session.game_session.id
+            engineer.observe(packet, live)
             open_session.last_packet_at = datetime.fromtimestamp(received_ns / 1e9, timezone.utc)
             self._apply_metadata(open_session, packet)
 
+        engineer_hub.runner(self.device.tenant_id).dispatch()
         await self.maybe_flush(db)
 
     # --- sessions -----------------------------------------------------------

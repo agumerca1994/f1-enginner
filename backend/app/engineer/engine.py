@@ -41,8 +41,40 @@ class EngineerRequest:
     triggers: list[Trigger]
     session_time: float
     lap: int | None
-    system: str
-    user: str
+    moments: list[str]
+    radio_json: str
+    facts_json: str
+    system: str = field(default_factory=lambda: system_prompt())
+
+    @property
+    def user(self) -> str:
+        return "\n".join([
+            "## Momento",
+            *[f"- {m}" for m in self.moments],
+            "",
+            "## Tus mensajes de radio anteriores (del más viejo al más nuevo)",
+            self.radio_json,
+            "",
+            "## Datos de la sesión",
+            self.facts_json,
+        ])
+
+    @property
+    def deep(self) -> bool:
+        """Moments that deserve the stronger model: anything but a routine lap."""
+        return any(t.kind != "lap_completed" for t in self.triggers)
+
+
+def merge(older: "EngineerRequest", newer: "EngineerRequest") -> "EngineerRequest":
+    """Two requests waiting for the model: keep every moment, with the newest data."""
+    return EngineerRequest(
+        triggers=older.triggers + newer.triggers,
+        session_time=newer.session_time,
+        lap=newer.lap,
+        moments=older.moments + [m for m in newer.moments if m not in older.moments],
+        radio_json=newer.radio_json,
+        facts_json=newer.facts_json,
+    )
 
 
 @dataclass
@@ -67,18 +99,14 @@ class RaceEngineer:
 
     def build_request(self, triggers: list[Trigger], live: LiveSession) -> EngineerRequest:
         facts = analysis.build(live, self.history)
-        moments = [TRIGGER_TEXT[t.kind].format(lap=t.lap, **t.detail) for t in triggers]
-        user = "\n".join([
-            "## Momento",
-            *[f"- {m}" for m in moments],
-            "",
-            "## Tus mensajes de radio anteriores (del más viejo al más nuevo)",
-            json.dumps(self.recent_radio[-6:], ensure_ascii=False) if self.recent_radio else "Ninguno todavía.",
-            "",
-            "## Datos de la sesión",
-            json.dumps(facts, ensure_ascii=False, separators=(",", ":")),
-        ])
-        return EngineerRequest(triggers, triggers[-1].session_time, triggers[-1].lap, system_prompt(), user)
+        return EngineerRequest(
+            triggers=triggers,
+            session_time=triggers[-1].session_time,
+            lap=triggers[-1].lap,
+            moments=[TRIGGER_TEXT[t.kind].format(lap=t.lap, **t.detail) for t in triggers],
+            radio_json=json.dumps(self.recent_radio[-6:], ensure_ascii=False) if self.recent_radio else "Ninguno todavía.",
+            facts_json=json.dumps(facts, ensure_ascii=False, separators=(",", ":")),
+        )
 
     def remember(self, request: EngineerRequest, response: dict) -> None:
         """Keep what the engineer said, so it does not repeat itself."""

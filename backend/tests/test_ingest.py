@@ -158,7 +158,8 @@ def test_baku_race_through_the_uplink(client):
     assert device["last_reception"] == 0.19 and device["bridge_version"] == "test"
 
     # The server kept a raw capture the bridge can replay, byte for byte.
-    files = list(Path(os.environ["CAPTURE_DIR"]).rglob(f"{s['session_uid']}-*.f1cap.zst"))
+    tenant_id = client.get("/api/me", headers=headers).json()["tenant_id"]
+    files = list((Path(os.environ["CAPTURE_DIR"]) / str(tenant_id)).glob(f"{s['session_uid']}-*.f1cap.zst"))
     assert len(files) == 1
     _, stored = capture.read(files[0])
     assert [r.data for r in stored] == [r.data for r in records]

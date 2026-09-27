@@ -17,6 +17,7 @@ os.environ.update(
     ENVIRONMENT="test",
     AUTH_DEV_MODE="true",
     INTERNAL_LOG_KEY="test-internal-key",
+    ANTHROPIC_API_KEY="",  # the engineer runs on rules in tests; never spend on an API
     CAPTURE_DIR=CAPTURE_DIR,
     FRONTEND_URL="https://app.example.test",
 )
@@ -66,9 +67,11 @@ def database():
 def client(database):
     from fastapi.testclient import TestClient
 
+    from app.engineer.runner import engineer_hub
     from app.live.state import live_store
     from app.main import app
 
     live_store.clear()
+    engineer_hub.clear()
     with TestClient(app) as c:
         yield c

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
 import { DashboardGrid } from "@/components/dashboard/Dashboard";
+import { EngineerPanel } from "@/components/dashboard/EngineerPanel";
 import { sessionName } from "@/components/dashboard/Cards";
 import { RequireAuth } from "@/components/RequireAuth";
 import { REPLAY_SPEEDS, useReplay } from "@/lib/replay";
@@ -47,11 +48,18 @@ function Replay({ sessionId }: { sessionId: number }) {
       {r.status === "error" ? (
         <p className="mt-10 text-center text-danger">{r.error}</p>
       ) : r.snapshot ? (
-        <DashboardGrid s={r.snapshot} />
+        <DashboardGrid s={r.snapshot} engineer={<EngineerPanel engineer={r.engineer} onToggle={r.toggleEngineer} />} />
       ) : (
-        <p className="mt-10 text-center text-muted">
-          {r.status === "loading" ? "Preparando la repetición…" : "Tocá ▶ o mové la línea de tiempo para empezar."}
-        </p>
+        <>
+          {r.status === "ready" && (
+            <div className="mx-auto mt-3 max-w-2xl">
+              <EngineerPanel engineer={r.engineer} onToggle={r.toggleEngineer} />
+            </div>
+          )}
+          <p className="mt-10 text-center text-muted">
+            {r.status === "loading" ? "Preparando la repetición…" : "Tocá ▶ o mové la línea de tiempo para empezar."}
+          </p>
+        </>
       )}
 
       {r.status !== "error" && <Transport r={r} />}
