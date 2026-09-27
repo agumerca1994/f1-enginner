@@ -121,12 +121,30 @@ def test_baku_race_through_the_uplink(client):
     assert live["damage"]["front_left_wing"] == 100
     assert live["link"] == {"reception": 0.19, "source": "192.168.100.133", "packets": 1715, "rejected": 0}
     assert {e["code"] for e in live["events"]} & {"OVTK", "COLL", "SCAR", "PENA"}
+    assert live["car"]["suggested_gear"] in (None, *range(1, 9))
+
+    # Every car, ordered, with the player marked and map coordinates.
+    cars = live["cars"]
+    assert len(cars) == 20 and [c["position"] for c in cars] == list(range(1, 21))
+    assert [c["name"] for c in cars if c["is_player"]] == ["GASLY"]
+    assert cars[0]["name"] == "VERSTAPPEN" and all(c["x"] is not None for c in cars)
+
+    # The circuit outline is being built from those positions (Baku is 5994 m;
+    # the capture ends before any car completes the first lap).
+    assert live["track"]["id"] == 20 and not live["track"]["layout_ready"]
+    layout = client.get("/api/tracks/20/layout", headers={"X-Dev-User": email}).json()
+    assert 0.6 < layout["coverage"] < 0.8
+    assert len(layout["segments"]) == 1 and len(layout["segments"][0]) > 350
 
     sessions = client.get("/api/sessions", headers=headers).json()
     assert len(sessions) == 1
     s = sessions[0]
     assert (s["track"], s["session_type"], s["total_laps"], s["game_version"]) == ("Baku (Azerbaijan)", "Race", 18, "24 v1.21")
     assert s["packets_received"] == 1715
+
+    # The outline was saved for everyone: another player gets it from the database.
+    saved = client.get("/api/tracks/20/layout", headers={"X-Dev-User": next(_emails)}).json()
+    assert saved["coverage"] == layout["coverage"]
 
     # Operator diagnostics see the same session, and only with the internal key.
     assert client.get("/internal/sessions", headers={"x-internal-key": "wrong"}).status_code == 403

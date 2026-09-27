@@ -52,6 +52,8 @@ export type Snapshot = {
     brake: number;
     steer: number;
     drs_open: boolean;
+    suggested_gear: number | null;
+    rev_lights_percent: number;
     engine_temperature_c: number;
     brakes_temperature_c: Wheels;
     tyres_surface_temperature_c: Wheels;
@@ -87,5 +89,47 @@ export type Snapshot = {
     drs_fault: boolean;
     ers_fault: boolean;
   };
+  track?: {
+    id: number;
+    length_m: number;
+    sector2_m: number;
+    sector3_m: number;
+    layout_coverage: number;
+    layout_ready: boolean;
+  } | null;
+  cars?: CarRow[];
   events: ({ code: string; session_time: number } & Record<string, number | string>)[];
+};
+
+export type CarRow = {
+  index: number;
+  is_player: boolean;
+  position: number;
+  lap: number;
+  lap_distance_m: number;
+  gap_ahead_ms: number;
+  gap_leader_ms: number;
+  last_lap_ms: number | null;
+  best_lap_ms: number | null;
+  pit: string;
+  pit_stops: number;
+  penalties_s: number;
+  result: string;
+  name: string | null;
+  team: string | null;
+  team_id: number | null;
+  race_number: number | null;
+  ai: boolean | null;
+  tyre: string | null;
+  tyre_age_laps: number | null;
+  x: number | null;
+  z: number | null;
+};
+
+export type TrackLayout = {
+  track_id: number;
+  length_m: number;
+  coverage: number;
+  ready: boolean;
+  segments: [number, number][][];
 };

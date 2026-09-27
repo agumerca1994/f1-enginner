@@ -53,3 +53,37 @@ export const EVENT_LABELS: Record<string, string> = {
   SCAR: "Safety car",
   COLL: "Choque",
 };
+
+export const WEATHER_ES: Record<string, string> = {
+  Clear: "Despejado",
+  "Light cloud": "Algo nublado",
+  Overcast: "Nublado",
+  "Light rain": "Lluvia leve",
+  "Heavy rain": "Lluvia fuerte",
+  Storm: "Tormenta",
+};
+
+/** Fill colour for a tyre from its surface temperature: cold blue, in window green, hot amber/red. */
+export function tyreTempColor(c: number): string {
+  if (c < 65) return "#3b82f6";
+  if (c < 80) return "#38bdf8";
+  if (c <= 105) return "#34d399";
+  if (c <= 115) return "#fbbf24";
+  return "#f43f5e";
+}
+
+/** Brake discs work roughly between 400 and 900 °C. */
+export function brakeTempColor(c: number): string {
+  if (c < 300) return "#3b82f6";
+  if (c <= 900) return "#34d399";
+  if (c <= 1050) return "#fbbf24";
+  return "#f43f5e";
+}
+
+/** Part colour by damage: untouched parts stay neutral so damage stands out. */
+export function damageColor(percent: number): string {
+  if (percent <= 0) return "#2a3441";
+  if (percent < 20) return "#7c6a2a";
+  if (percent < 50) return "#fbbf24";
+  return "#f43f5e";
+}

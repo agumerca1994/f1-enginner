@@ -9,7 +9,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.live import snapshot
 from app.live.state import live_store
-from app.models import GameSession, User
+from app.models import GameSession, TrackLayout, User
 from app.telemetry import constants as c
 
 router = APIRouter(prefix="/api", tags=["live"])
@@ -67,3 +67,18 @@ async def sessions(user: User = Depends(get_current_user), db: AsyncSession = De
         )
         for g in rows
     ]
+
+
+@router.get("/tracks/{track_id}/layout")
+async def track_layout(track_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The circuit outline built from telemetry, as polylines of [x, z] world coordinates."""
+    live_state = live_store.get(user.tenant_id)
+    if live_state is not None and live_state.track_id == track_id and live_state.layout is not None:
+        b = live_state.layout  # freshest: includes this session's samples not saved yet
+        return {"track_id": track_id, "length_m": b.track_length, "coverage": round(b.coverage, 3),
+                "ready": b.ready, "segments": b.segments()}
+    row = await db.get(TrackLayout, track_id)
+    if row is None:
+        raise HTTPException(404, "No outline for this track yet: it is drawn during the first lap")
+    return {"track_id": track_id, "length_m": row.track_length_m, "coverage": round(row.coverage, 3),
+            "ready": row.ready, "segments": row.points}

@@ -12,6 +12,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
+from app.live.track_layout import LayoutBuilder
 from app.telemetry import registry
 from app.telemetry.registry import Packet
 
@@ -31,6 +32,12 @@ class LiveSession:
     rejected: int = 0
     started_at: float = field(default_factory=time.monotonic)
     updated_at: float = field(default_factory=time.monotonic)
+    # Best lap per car index, from SessionHistory packets (they cycle through the cars).
+    best_lap_ms: dict[int, int] = field(default_factory=dict)
+    # Circuit outline built from every car's position; loaded and saved by the ingest service.
+    track_id: int | None = None
+    layout: LayoutBuilder | None = None
+    layout_loaded: bool = False
 
     def update(self, packet: Packet) -> None:
         now = time.monotonic()
@@ -42,6 +49,38 @@ class LiveSession:
             code, details = registry.event_details(packet)
             if code != "BUTN":  # button presses are noise for the engineer
                 self.events.append({"code": code, "session_time": packet.session_time, **details})
+        elif packet.name == "session":
+            track_id, length = int(packet.body["track_id"]), int(packet.body["track_length"])
+            if track_id != self.track_id and length > 0:
+                self.track_id = track_id
+                self.layout = LayoutBuilder(length)
+                self.layout_loaded = False
+        elif packet.name == "session_history":
+            self._record_best_lap(packet)
+        elif packet.name == "motion":
+            self._feed_layout(motion=packet, lap=self.last.get("lap_data"))
+        elif packet.name == "lap_data":
+            self._feed_layout(motion=self.last.get("motion"), lap=packet)
+
+    def active_cars(self) -> list[int]:
+        participants = self.last.get("participants")
+        n = int(participants.body["num_active_cars"]) if participants is not None else 22
+        return list(range(min(max(n, 0), 22)))
+
+    def _feed_layout(self, motion: Packet | None, lap: Packet | None) -> None:
+        # Pair each new Motion or LapData packet with the latest of the other kind;
+        # the lap-distance correction for the time between them keeps both pairings consistent.
+        if self.layout is None or motion is None or lap is None:
+            return
+        self.layout.add_frame(motion.body, lap.body, motion.session_time, lap.session_time, self.active_cars())
+
+    def _record_best_lap(self, packet: Packet) -> None:
+        b = packet.body
+        car, lap_num = int(b["car_idx"]), int(b["best_lap_time_lap_num"])
+        if 0 < lap_num <= 100:
+            ms = int(b["lap_history_data"][lap_num - 1]["lap_time_in_ms"])
+            if ms > 0:
+                self.best_lap_ms[car] = ms
 
     def age(self, name: str) -> float | None:
         at = self.last_at.get(name)

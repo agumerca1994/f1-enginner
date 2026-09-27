@@ -18,7 +18,7 @@ from app.core.auth import utcnow
 from app.core.config import settings
 from app.ingest.protocol import ProtocolError, decode_batch
 from app.live.state import LiveStore
-from app.models import Device, GameSession, SessionCapture
+from app.models import Device, GameSession, SessionCapture, TrackLayout
 from app.telemetry import capture, registry
 
 logger = logging.getLogger(__name__)
@@ -109,6 +109,8 @@ class IngestConnection:
             live.update(packet)
             if live.reception is None:  # a new live session starts without the link info
                 self._apply_link(live)
+            if live.layout is not None and not live.layout_loaded:
+                await self._load_layout(db, live)
 
             if packet.session_uid == 0:  # menus: no session to file it under
                 continue
@@ -174,6 +176,33 @@ class IngestConnection:
             if code == "SEND":
                 open_session.ended = True
 
+    # --- track layouts ------------------------------------------------------
+
+    @staticmethod
+    async def _load_layout(db: AsyncSession, live) -> None:
+        """Start from what earlier sessions (of any player) learned about this track."""
+        live.layout_loaded = True
+        saved = await db.get(TrackLayout, live.track_id)
+        if saved is not None:
+            live.layout.merge(saved.sums, saved.counts)
+
+    async def _save_layout(self, db: AsyncSession) -> None:
+        live = self.store.get(self.device.tenant_id)
+        if live is None or live.layout is None or not live.layout_loaded or live.layout.added_since_save == 0:
+            return
+        b = live.layout
+        sums, counts = b.arrays()
+        row = await db.get(TrackLayout, live.track_id)
+        if row is None:
+            row = TrackLayout(track_id=live.track_id)
+            db.add(row)
+        # The in-memory builder already includes what was saved when it loaded, so
+        # it replaces the row. Two players on the same track at once: last write wins.
+        row.track_length_m, row.bin_m = b.track_length, 10.0
+        row.sums, row.counts, row.points = sums, counts, b.segments()
+        row.coverage, row.ready = b.coverage, b.ready
+        b.added_since_save = 0
+
     # --- persistence --------------------------------------------------------
 
     async def maybe_flush(self, db: AsyncSession) -> None:
@@ -196,6 +225,7 @@ class IngestConnection:
                 gs.ended_at = now
             s.received = 0
         self.rejected.clear()
+        await self._save_layout(db)
         await db.commit()
 
     async def close(self, db: AsyncSession) -> None:

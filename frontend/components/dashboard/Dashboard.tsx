@@ -2,52 +2,43 @@
 
 import Link from "next/link";
 
+import { CarTopView } from "@/components/dashboard/CarTopView";
 import {
-  CarCard,
-  DamageCard,
   EventsCard,
-  FuelErsCard,
-  PositionCard,
+  sessionName,
+  SessionCard,
+  StandingsCard,
+  TelemetryCard,
   TimingCard,
-  TyresCard,
-  WeatherCard,
 } from "@/components/dashboard/Cards";
+import { TrackMap } from "@/components/dashboard/TrackMap";
 import { WakeLockButton } from "@/components/WakeLockButton";
 import { type LiveStatus, useLive } from "@/lib/live";
 import type { Snapshot } from "@/lib/types";
-
-const SESSION_ES: Record<string, string> = {
-  Race: "Carrera",
-  "Race 2": "Carrera 2",
-  "Race 3": "Carrera 3",
-  "Time Trial": "Contrarreloj",
-  "Practice 1": "Práctica 1",
-  "Practice 2": "Práctica 2",
-  "Practice 3": "Práctica 3",
-  "Short Practice": "Práctica corta",
-  "Qualifying 1": "Clasificación 1",
-  "Qualifying 2": "Clasificación 2",
-  "Qualifying 3": "Clasificación 3",
-  "Short Qualifying": "Clasificación corta",
-  "One-Shot Qualifying": "Clasificación a una vuelta",
-};
 
 export function Dashboard() {
   const { status, snapshot } = useLive();
 
   return (
-    <main className="mx-auto max-w-7xl px-3 pb-10 pt-3 sm:px-5">
+    <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
       <TopBar status={status} s={snapshot} />
       {snapshot ? (
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <PositionCard s={snapshot} />
-          <TimingCard s={snapshot} />
-          <CarCard s={snapshot} />
-          <TyresCard s={snapshot} />
-          <FuelErsCard s={snapshot} />
-          <DamageCard s={snapshot} />
-          <WeatherCard s={snapshot} />
-          <EventsCard s={snapshot} />
+        // Landscape first (tablet, computer, TV): session and standings | map and
+        // timing | car. On a phone the columns stack with the car on top.
+        <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div className="order-3 flex flex-col gap-3 lg:order-1">
+            <SessionCard s={snapshot} />
+            <StandingsCard s={snapshot} />
+          </div>
+          <div className="order-2 flex flex-col gap-3">
+            <TrackMap s={snapshot} />
+            <TimingCard s={snapshot} />
+            <EventsCard s={snapshot} />
+          </div>
+          <div className="order-1 flex flex-col gap-3 lg:order-3">
+            <TelemetryCard s={snapshot} />
+            <CarTopView s={snapshot} />
+          </div>
         </div>
       ) : (
         <Waiting status={status} />
@@ -61,12 +52,11 @@ function TopBar({ status, s }: { status: LiveStatus; s: Snapshot | null }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-4 py-3">
       <div className="min-w-0">
-        <div className="truncate text-lg font-semibold">{se ? se.track : "Ingeniero de carrera"}</div>
+        <div className="truncate text-lg font-semibold">Ingeniero de carrera</div>
         <div className="text-sm text-muted">
           {se ? (
             <>
-              {SESSION_ES[se.type] ?? se.type}
-              {s?.driver && ` · ${s.driver.name} #${s.driver.race_number} · ${s.driver.team}`}
+              {s?.driver ? `${s.driver.name} #${s.driver.race_number} · ${s.driver.team}` : sessionName(se.type)}
               {se.safety_car !== "None" && <span className="ml-2 font-semibold text-warn">{safetyCar(se.safety_car)}</span>}
               {se.paused && <span className="ml-2 text-warn">En pausa</span>}
             </>

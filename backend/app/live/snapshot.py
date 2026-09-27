@@ -115,6 +115,8 @@ def build(live: LiveSession) -> dict[str, Any]:
             "brake": round(float(t["brake"]), 3),
             "steer": round(float(t["steer"]), 3),
             "drs_open": bool(t["drs"]),
+            "suggested_gear": int(p.body["suggested_gear"]) or None,  # 0 = no suggestion
+            "rev_lights_percent": int(t["rev_lights_percent"]),
             "engine_temperature_c": int(t["engine_temperature"]),
             "brakes_temperature_c": _wheels(t["brakes_temperature"]),
             "tyres_surface_temperature_c": _wheels(t["tyres_surface_temperature"]),
@@ -157,5 +159,87 @@ def build(live: LiveSession) -> dict[str, Any]:
             "ers_fault": bool(d["ers_fault"]),
         }
 
+    out["track"] = _track(live)
+    out["cars"] = _cars(live, player)
     out["events"] = list(live.events)[-10:]
     return out
+
+
+RESULT_STATUS = {0: "invalid", 1: "inactive", 2: "active", 3: "finished", 4: "dnf", 5: "dsq", 6: "not_classified", 7: "retired"}
+
+
+def _track(live: LiveSession) -> dict[str, Any] | None:
+    session = live.last.get("session")
+    if session is None or live.layout is None:
+        return None
+    b = session.body
+    return {
+        "id": live.track_id,
+        "length_m": int(b["track_length"]),
+        "sector2_m": round(float(b["sector2_lap_distance_start"]), 1),
+        "sector3_m": round(float(b["sector3_lap_distance_start"]), 1),
+        # Rounded so the dashboard refetches the outline only when it grew noticeably.
+        "layout_coverage": round(live.layout.coverage * 20) / 20,
+        "layout_ready": live.layout.ready,
+    }
+
+
+def _cars(live: LiveSession, player: int) -> list[dict[str, Any]]:
+    """Every car in the session, ordered by position. Fields a restricted online
+    player does not share are None, not zero."""
+    laps = live.last.get("lap_data")
+    if laps is None:
+        return []
+    participants = live.last.get("participants")
+    motion = live.last.get("motion")
+    status = live.last.get("car_status")
+    cars = []
+    for i in live.active_cars():
+        lap = laps.body["lap_data"][i]
+        result = RESULT_STATUS.get(int(lap["result_status"]), "invalid")
+        if result in ("invalid", "inactive") or int(lap["car_position"]) == 0:
+            continue
+        car: dict[str, Any] = {
+            "index": i,
+            "is_player": i == player,
+            "position": int(lap["car_position"]),
+            "lap": int(lap["current_lap_num"]),
+            "lap_distance_m": round(float(lap["lap_distance"]), 1),
+            "gap_ahead_ms": _ms(lap["delta_to_car_in_front_minutes_part"], lap["delta_to_car_in_front_ms_part"]),
+            "gap_leader_ms": _ms(lap["delta_to_race_leader_minutes_part"], lap["delta_to_race_leader_ms_part"]),
+            "last_lap_ms": int(lap["last_lap_time_in_ms"]) or None,
+            "best_lap_ms": live.best_lap_ms.get(i),
+            "pit": c.PIT_STATUS.get(int(lap["pit_status"]), "Unknown"),
+            "pit_stops": int(lap["num_pit_stops"]),
+            "penalties_s": int(lap["penalties"]),
+            "result": result,
+            "name": None,
+            "team": None,
+            "team_id": None,
+            "race_number": None,
+            "ai": None,
+            "tyre": None,
+            "tyre_age_laps": None,
+            "x": None,
+            "z": None,
+        }
+        if participants is not None:
+            pp = participants.body["participants"][i]
+            car.update(
+                name=pp["name"].decode("utf-8", "replace") or None,
+                team_id=int(pp["team_id"]),
+                team=c.TEAMS.get(int(pp["team_id"])),
+                race_number=int(pp["race_number"]),
+                ai=bool(pp["ai_controlled"]),
+            )
+        if status is not None:
+            st = status.body["car_status_data"][i]
+            visual = int(st["visual_tyre_compound"])
+            if visual in c.VISUAL_COMPOUNDS:  # 0 when the player restricts their telemetry
+                car.update(tyre=c.VISUAL_COMPOUNDS[visual], tyre_age_laps=int(st["tyres_age_laps"]))
+        if motion is not None:
+            m = motion.body["car_motion_data"][i]
+            car.update(x=round(float(m["world_position_x"]), 1), z=round(float(m["world_position_z"]), 1))
+        cars.append(car)
+    cars.sort(key=lambda car: car["position"])
+    return cars
