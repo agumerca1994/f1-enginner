@@ -26,7 +26,7 @@ Decisiones tomadas por el usuario:
 | P2 Dashboard PWA | ✅ En producción | Login con Google, dashboard en vivo apaisado, mapa del circuito, monoplaza, posiciones, `/pair`, `/settings` |
 | Extra: app de la Mac | ✅ Hecha (uso local) | `Ingeniero Bridge.app`: barra de menú y ventana, vincular/desvincular, enviar, abrir al iniciar sesión |
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
-| P3 Procesamiento e ingeniero | 🟡 En curso | Motor del ingeniero (`app/engineer/`): historial por vuelta, análisis, momentos para hablar, manual del ingeniero y prueba en seco sobre grabaciones. Falta conectarlo a una API de IA y mostrarlo en el dashboard |
+| P3 Procesamiento e ingeniero | 🟡 En producción (modo reglas) | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude (niveles estándar y pro). Falta cargar la key y comparar los niveles con costo real |
 | P4 Agente y voz | ⏳ Pendiente | — |
 | P5 MCP público | ⏳ Pendiente | — |
 | P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
