@@ -2,21 +2,33 @@
 
 Un asistente de IA que actúa como ingeniero de carreras. Usa la telemetría UDP que emite el juego EA SPORTS F1® 24 en PS4.
 
-Plan completo: [docs/plan.md](docs/plan.md).
+El plan completo, con el estado de cada fase y las decisiones tomadas, está en [docs/plan.md](docs/plan.md).
+
+- **Dashboard:** https://f1.imanzanastore.com.ar (en vivo, historial de sesiones y repeticiones).
+- **API:** https://f1-api.imanzanastore.com.ar
 
 | Carpeta | Contenido | Estado |
 |---|---|---|
-| `bridge/` | Programa en Go que recibe el UDP en la red local y lo sube al servidor | P0 y P1 listos |
-| `backend/` | API FastAPI: ingest, parser, reglas, agente, MCP | P1 listo en local, falta el deploy |
-| `frontend/` | Dashboard PWA en Next.js | P2 |
-| `mcp-logs/` | MCP local para leer los logs de producción | P6 |
-| `fixtures/captures/` | Capturas reales para los tests (git-lfs) | a grabar |
+| `bridge/` | CLI en Go y app de la Mac (barra de menú) que reciben el UDP del juego y lo suben al servidor | ✅ |
+| `backend/` | API FastAPI: parser, ingest, estado en vivo, trazado de pistas, repeticiones | ✅ P1–P2 · reglas, agente y MCP pendientes |
+| `frontend/` | Dashboard PWA en Next.js: en vivo, sesiones, repeticiones, vinculación | ✅ |
+| `fixtures/captures/` | Capturas reales para los tests (git-lfs) | carrera en Bakú |
+
+## Uso rápido (Mac)
+1. Armá la app con `./scripts/build-mac-app.sh` y abrí `bridge/bin/Ingeniero Bridge.app`. Aparece un ícono en la barra de menú.
+2. Tocá **Vincular esta Mac**: se abre la web con el código cargado, iniciás sesión con Google y confirmás.
+3. En el juego, activá la telemetría UDP (formato 2024, puerto 20777) y salí a pista: los datos aparecen en el dashboard.
+4. Tus sesiones quedan grabadas: en **Sesiones → Ver repetición** las volvés a ver con todos los datos.
+
+La app y `bridge run` usan el mismo puerto: no los abras a la vez.
 
 ## Bridge
 
 ```sh
 cd bridge && go build -o bin/bridge ./cmd/bridge
 ```
+
+Para usar la terminal en lugar de la app, compilá el bridge así. Es útil para desarrollo y para grabar capturas.
 
 ### 1. Configurar el juego
 En F1 24, entrá a *Configuración → Configuración de telemetría* y dejá:
@@ -36,6 +48,7 @@ Muestra las IP de la Mac y el estado del firewall. Después escucha durante 15 s
 ```sh
 ./bin/bridge pair     # muestra un código de 8 caracteres para confirmar en la web (una sola vez)
 ./bin/bridge run      # escucha el juego y sube los datos; Ctrl+C para cortar
+./bin/bridge unpair   # desvincula esta computadora de tu cuenta
 ./bin/bridge run --record ../fixtures/captures/sesion.f1cap.zst   # además graba todo lo recibido
 ```
 `run` filtra los paquetes de alta frecuencia, arma lotes de 100 ms comprimidos con zstd y los envía por WebSocket. Se reconecta solo si se corta la conexión y, mientras está desconectado, guarda en memoria unos 30 s de datos.

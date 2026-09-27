@@ -17,6 +17,45 @@ Decisiones tomadas por el usuario:
 - el proveedor de LLM es configurable;
 - el producto es comercial y multiusuario.
 
+## Estado actual (actualizado 2026-09-27)
+
+| Fase | Estado | Qué hay |
+|---|---|---|
+| P0 Captura/replay | ✅ Hecha | `bridge doctor/record/replay/inspect/compare/synth`, formato `.f1cap.zst`, estimación de recepción |
+| P1 Ingest y parser | ✅ En producción | Parser de los 15 paquetes, WSS `/ingest/v1`, vinculación por código, captura cruda por sesión, probado con una carrera real desde el PS4 |
+| P2 Dashboard PWA | ✅ En producción | Login con Google, dashboard en vivo apaisado, mapa del circuito, monoplaza, posiciones, `/pair`, `/settings` |
+| Extra: app de la Mac | ✅ Hecha (uso local) | `Ingeniero Bridge.app`: barra de menú y ventana, vincular/desvincular, enviar, abrir al iniciar sesión |
+| Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
+| P3 Procesamiento y reglas | ⏳ Pendiente | Solo existe la agregación del trazado de pista; faltan vueltas/stints en DB y las reglas del ingeniero |
+| P4 Agente y voz | ⏳ Pendiente | — |
+| P5 MCP público | ⏳ Pendiente | — |
+| P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
+| P7 Hardening comercial | ⏳ Pendiente | — |
+
+### Producción
+- **Web:** https://f1.imanzanastore.com.ar (Next.js, servicio `f1eng-web`).
+- **API:** https://f1-api.imanzanastore.com.ar (FastAPI, servicio `f1eng-api`, más `f1eng-db` con Postgres 16).
+- **Hosting:** Easypanel en el VPS de registrapp (159.112.147.178), servicio compose `f1-engineer` dentro del proyecto `n8n`, construido desde `github.com/agumerca1994/f1-enginner` (rama `main`, repo **público**).
+- **Deploy:** `scripts/deploy.sh`, que verifica el estado de git y dispara el webhook guardado en `.deploy.env`. Las variables viven en Easypanel → Entorno; la copia local es `.env.production`. Ambos archivos están gitignorados.
+- **DNS:** registros A `f1` y `f1-api` → VPS, en modo **solo DNS**, sin el proxy de Cloudflare, igual que registrapp. Los certificados los emite Let's Encrypt vía Traefik.
+- **Firebase:** proyecto `f1-engineer` con login de Google. La clave de la cuenta de servicio está en `secret/` (gitignorado) y en base64 en `FIREBASE_CREDENTIALS_B64`.
+
+### Decisiones tomadas en el camino
+- **Agnóstico a la conexión** (ver abajo). El PS4 del usuario va por Wi-Fi y llega el 19–30% de la telemetría: el sistema trabaja con eso y lo muestra como "Señal X%".
+- **Repo público.** Easypanel no pudo leerlo como privado ni con token de GitHub. Por eso los secretos nunca van a git (hay `.gitignore` para `secret/`, `.env*`, `.deploy.env` y claves `*adminsdk*.json`).
+- **Mapa del circuito armado con la telemetría.** Se usan las posiciones de todos los autos (Motion) y su distancia en la vuelta (LapData), en bins de 10 m. Se guarda por pista en `track_layouts`, se comparte entre todos los usuarios y se completa entre sesiones. Los tramos no recorridos quedan abiertos. Abrir una repetición completa el trazado con la sesión entera.
+- **Dashboard pensado para pantalla apaisada** (tablet, compu o TV) en tres columnas: sesión y posiciones | mapa, tiempos y eventos | telemetría y monoplaza. En el celular vertical las cards se apilan.
+- **App de la Mac con Fyne** (Go), ícono en la barra de menú más ventana. Comparte `internal/agent` con `bridge run`. Firma ad hoc; la firma de Apple Developer queda para P7.
+- **Repeticiones con el mismo motor del vivo.** Leen las capturas crudas del servidor; los silencios de más de 10 s entre grabaciones se acortan a 1 s.
+- **Desvincular** lo puede hacer el propio bridge (`DELETE /api/devices/self`) o el usuario desde Ajustes.
+
+### Pendientes conocidos
+- Confirmar la orientación del mapa con una vuelta completa. En Bakú parece correcta: rotada, no espejada.
+- Ver la ventana de la app de la Mac, que no se pudo capturar por falta de permiso de grabación de pantalla.
+- Borrar o filtrar sesiones vacías (sesiones de menú con muy pocos datos).
+- El estado en vivo está en memoria y se pierde en cada deploy; pasa a Redis en P7.
+- La imagen de la API pesa unos 800 MB (numpy y firebase-admin); se puede optimizar.
+
 ## Arquitectura
 ```
 PS4 ──UDP :20777 (broadcast o unicast, 20 Hz)──▶ Bridge (Go, en la Mac)
@@ -73,15 +112,30 @@ PWA Next.js: dashboard en vivo, voz, vinculación del bridge, historial, ajustes
   - Damage, History, TyreSets y Setups solo se envían si cambian.
 
 ## Estructura del repo
+Lo que existe hoy:
 ```
-bridge/     cmd/bridge (run|record|replay|pair|doctor), internal/{udp,header,throttle,uplink,capture,pairing,config}
-backend/    app/{telemetry/{header,registry,formats/f2024/},ingest,live,processing,rules,
-            engineer/{context,tools,prompts,llm,voice},mcp_server,routers,models,services,core}, alembic/, tests/
-frontend/   Next.js PWA
-mcp-logs/   FastMCP stdio (copiado de registrapp/mcp/server.py)
-fixtures/captures/  *.f1cap.zst (git-lfs)
-docs/  scripts/deploy.sh  docker-compose.yml  docker-compose.prod.yml  CLAUDE.md
+bridge/
+  cmd/bridge/        CLI: pair | unpair | run | doctor | record | replay | inspect | compare | synth
+  cmd/bridge-app/    app de la Mac (Fyne): barra de menú y ventana; Icon.png, tray.svg
+  internal/          header, udp, capture (.f1cap, replay, compare, synth), doctor (stats, recepción),
+                     throttle, uplink (WSS con reconexión), agent (ciclo compartido CLI/app),
+                     pairing (pair, self, unlink), config, autostart (LaunchAgent)
+backend/app/
+  telemetry/         formats/f2024.py (dtypes), registry.py, capture.py, constants.py
+  ingest/            protocol.py (lotes zstd), service.py (por conexión, sesiones, capturas, trazado)
+  live/              state.py (LiveSession/LiveStore), snapshot.py, track_layout.py (LayoutBuilder)
+  replay/            player.py (ReplaySource, ReplayPlayer)
+  routers/           devices, ingest (/ingest/v1), live (/api/me, /api/live, /api/sessions, /api/tracks),
+                     live_ws (/live/v1), replay_ws (/replay/v1), internal (/internal/*)
+  models/, core/ (config, auth, security, database, logging_config), services/pairing.py
+backend/alembic/     05fd98fa34e0 esquema inicial · a7b184d54fc9 track_layouts
+frontend/            Next.js 15 + Tailwind 4: / (dashboard), /sessions, /replay/[id], /pair, /settings
+  components/dashboard/  Dashboard, Cards, TrackMap, CarTopView, Panel
+  lib/               auth (Firebase), api, live, replay, types, format, teams
+fixtures/captures/   baku-carrera-wifi.f1cap.zst (git-lfs), la captura real usada en los tests
+scripts/             deploy.sh, build-mac-app.sh
 ```
+Lo planificado que todavía no existe: `processing/`, `rules/`, `engineer/`, `mcp_server/` y `mcp-logs/`.
 
 Archivos de registrapp que se portan:
 - `backend/app/mcp_server/transport.py`
@@ -96,17 +150,20 @@ Archivos de registrapp que se portan:
 - `docker-compose.prod.yml`: red `easypanel`, labels de Traefik y `certresolver=letsencrypt`.
 
 ## Modelo de datos (resumen)
-- `tenants`, `users`
-- `devices`: hash del token, versión, SO, `last_seen`
-- `game_sessions`: `session_uid`, formato, pista, tipo, clima, `capture_key`
-- `session_participants`: incluye el flag `telemetry_restricted`
-- `laps`: tiempos, sectores, compuesto, edad del neumático, combustible, desgaste, pit y penalizaciones
-- `lap_traces`, `stints`
-- `session_events`: eventos del juego y del ingeniero
-- `conversations`, `messages`, `llm_usage`, `provider_configs`
-- las tablas de auth del MCP
-- `app_logs`, `bridge_heartbeats`
-- `plans`, `subscriptions`, `usage_counters`: se implementan en la fase 7
+Tablas que existen hoy:
+- `tenants` y `users`, con login de Firebase (`firebase_uid`, email en minúsculas).
+- `devices`: bridges vinculados; token `rbd_` guardado solo como hash, `last_seen_at`, `last_reception`, `revoked_at`.
+- `pairing_requests`: el flujo de código de dispositivo, con el `device_code` hasheado.
+- `game_sessions`: `session_uid` en hexadecimal, formato, versión del juego, pista, tipo, vueltas, contadores de paquetes.
+- `session_captures`: una grabación `.f1cap.zst` por conexión y sesión, en el volumen `/data/captures`.
+- `track_layouts`: el trazado por pista, compartido entre usuarios (`sums`/`counts` por bin, `points`, `coverage`, `ready`).
+- `app_logs`: WARNING o más, para el MCP de logs.
+
+Tablas planificadas:
+- `laps`, `lap_traces`, `stints` y `session_events`, en P3.
+- `conversations`, `messages`, `llm_usage` y `provider_configs`, en P4.
+- las tablas de auth del MCP, en P5.
+- `plans`, `subscriptions` y `usage_counters`, en P7.
 
 ## Fases
 **P0. Base y captura/replay**
