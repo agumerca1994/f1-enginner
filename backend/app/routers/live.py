@@ -9,7 +9,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.live import snapshot
 from app.live.state import live_store
-from app.models import GameSession, TrackLayout, User
+from app.models import GameSession, SessionCapture, TrackLayout, User
 from app.telemetry import constants as c
 
 router = APIRouter(prefix="/api", tags=["live"])
@@ -41,16 +41,20 @@ class GameSessionOut(BaseModel):
     last_packet_at: datetime | None
     ended_at: datetime | None
     packets_received: int
+    has_recording: bool
 
 
 @router.get("/sessions", response_model=list[GameSessionOut])
 async def sessions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    rows = await db.scalars(
+    rows = list(await db.scalars(
         select(GameSession)
         .where(GameSession.tenant_id == user.tenant_id)
         .order_by(GameSession.started_at.desc())
         .limit(50)
-    )
+    ))
+    recorded = set(await db.scalars(
+        select(SessionCapture.game_session_id).where(SessionCapture.game_session_id.in_([g.id for g in rows]))
+    ))
     return [
         GameSessionOut(
             id=g.id,
@@ -64,6 +68,7 @@ async def sessions(user: User = Depends(get_current_user), db: AsyncSession = De
             last_packet_at=g.last_packet_at,
             ended_at=g.ended_at,
             packets_received=g.packets_received,
+            has_recording=g.id in recorded,
         )
         for g in rows
     ]

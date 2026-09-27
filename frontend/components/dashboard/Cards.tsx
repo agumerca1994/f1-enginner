@@ -22,7 +22,7 @@ const FUEL_MIX_ES: Record<string, string> = { Lean: "pobre", Standard: "estánda
 const ERS_MODE_ES: Record<string, string> = { None: "apagado", Medium: "medio", Hotlap: "vuelta rápida", Overtake: "adelantamiento" };
 
 export function sessionName(type: string): string {
-  return SESSION_ES[type] ?? type;
+  return type === "Unknown" ? "Sesión" : (SESSION_ES[type] ?? type);
 }
 
 // --- Session -----------------------------------------------------------------

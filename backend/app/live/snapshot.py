@@ -170,17 +170,17 @@ RESULT_STATUS = {0: "invalid", 1: "inactive", 2: "active", 3: "finished", 4: "dn
 
 def _track(live: LiveSession) -> dict[str, Any] | None:
     session = live.last.get("session")
-    if session is None or live.layout is None:
+    if session is None:
         return None
     b = session.body
     return {
-        "id": live.track_id,
+        "id": int(b["track_id"]),
         "length_m": int(b["track_length"]),
         "sector2_m": round(float(b["sector2_lap_distance_start"]), 1),
         "sector3_m": round(float(b["sector3_lap_distance_start"]), 1),
         # Rounded so the dashboard refetches the outline only when it grew noticeably.
-        "layout_coverage": round(live.layout.coverage * 20) / 20,
-        "layout_ready": live.layout.ready,
+        "layout_coverage": round(live.layout.coverage * 20) / 20 if live.layout else 1.0,
+        "layout_ready": live.layout.ready if live.layout else True,
     }
 
 

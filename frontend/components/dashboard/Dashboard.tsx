@@ -18,32 +18,34 @@ import type { Snapshot } from "@/lib/types";
 
 export function Dashboard() {
   const { status, snapshot } = useLive();
-
   return (
     <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
       <TopBar status={status} s={snapshot} />
-      {snapshot ? (
-        // Landscape first (tablet, computer, TV): session and standings | map and
-        // timing | car. On a phone the columns stack with the car on top.
-        <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
-          <div className="order-3 flex flex-col gap-3 lg:order-1">
-            <SessionCard s={snapshot} />
-            <StandingsCard s={snapshot} />
-          </div>
-          <div className="order-2 flex flex-col gap-3">
-            <TrackMap s={snapshot} />
-            <TimingCard s={snapshot} />
-            <EventsCard s={snapshot} />
-          </div>
-          <div className="order-1 flex flex-col gap-3 lg:order-3">
-            <TelemetryCard s={snapshot} />
-            <CarTopView s={snapshot} />
-          </div>
-        </div>
-      ) : (
-        <Waiting status={status} />
-      )}
+      {snapshot ? <DashboardGrid s={snapshot} /> : <Waiting status={status} />}
     </main>
+  );
+}
+
+/** The cards, shared by the live dashboard and session replays. */
+export function DashboardGrid({ s: snapshot }: { s: Snapshot }) {
+  return (
+    // Landscape first (tablet, computer, TV): session and standings | map and
+    // timing | car. On a phone the columns stack with the car on top.
+    <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="order-3 flex flex-col gap-3 lg:order-1">
+        <SessionCard s={snapshot} />
+        <StandingsCard s={snapshot} />
+      </div>
+      <div className="order-2 flex flex-col gap-3">
+        <TrackMap s={snapshot} />
+        <TimingCard s={snapshot} />
+        <EventsCard s={snapshot} />
+      </div>
+      <div className="order-1 flex flex-col gap-3 lg:order-3">
+        <TelemetryCard s={snapshot} />
+        <CarTopView s={snapshot} />
+      </div>
+    </div>
   );
 }
 
@@ -69,6 +71,9 @@ function TopBar({ status, s }: { status: LiveStatus; s: Snapshot | null }) {
         <LinkBadge reception={s?.link.reception ?? null} />
         <StatusPill status={status} />
         <WakeLockButton />
+        <Link href="/sessions" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+          Sesiones
+        </Link>
         <Link href="/settings" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
           Ajustes
         </Link>

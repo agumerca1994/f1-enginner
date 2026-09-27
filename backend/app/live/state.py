@@ -10,6 +10,7 @@ One process holds the state for now; a Redis-backed store can replace
 
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from app.live.track_layout import LayoutBuilder
@@ -38,9 +39,15 @@ class LiveSession:
     track_id: int | None = None
     layout: LayoutBuilder | None = None
     layout_loaded: bool = False
+    build_layout: bool = True
+    # Replays run on the race's own clock so data ages read as they did live.
+    clock: Callable[[], float] = time.monotonic
+
+    def __post_init__(self) -> None:
+        self.started_at = self.updated_at = self.clock()
 
     def update(self, packet: Packet) -> None:
-        now = time.monotonic()
+        now = self.clock()
         self.last[packet.name] = packet
         self.last_at[packet.name] = now
         self.updated_at = now
@@ -53,7 +60,7 @@ class LiveSession:
             track_id, length = int(packet.body["track_id"]), int(packet.body["track_length"])
             if track_id != self.track_id and length > 0:
                 self.track_id = track_id
-                self.layout = LayoutBuilder(length)
+                self.layout = LayoutBuilder(length) if self.build_layout else None
                 self.layout_loaded = False
         elif packet.name == "session_history":
             self._record_best_lap(packet)
@@ -84,10 +91,10 @@ class LiveSession:
 
     def age(self, name: str) -> float | None:
         at = self.last_at.get(name)
-        return None if at is None else time.monotonic() - at
+        return None if at is None else self.clock() - at
 
     def age_since_update(self) -> float:
-        return time.monotonic() - self.updated_at
+        return self.clock() - self.updated_at
 
 
 class LiveStore:
