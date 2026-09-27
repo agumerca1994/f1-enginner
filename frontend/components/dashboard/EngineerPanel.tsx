@@ -84,6 +84,9 @@ export function EngineerPanel({
               <div className="flex items-center justify-between text-[0.65rem] tracking-wider">
                 <span className={PRIORITY[lastRadio.prioridad]?.text ?? "text-accent"}>
                   {PRIORITY[lastRadio.prioridad]?.label ?? "RADIO"}
+                  {lastRadio.provider === "aviso inmediato" && ai && (
+                    <span className="ml-2 text-muted">· aviso inmediato, la IA está analizando…</span>
+                  )}
                 </span>
                 {lastRadio.lap != null && <span className="num text-muted">V{lastRadio.lap}</span>}
               </div>

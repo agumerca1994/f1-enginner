@@ -13,7 +13,7 @@ from collections import deque
 
 from app.core.database import AsyncSessionLocal
 from app.engineer.engine import EngineerRequest, RaceEngineer, merge
-from app.engineer.providers import Advice, get_provider
+from app.engineer.providers import Advice, RulesProvider, get_provider, rules_response
 from app.live.state import LiveSession
 from app.models import EngineerMessage
 from app.telemetry.registry import Packet
@@ -65,8 +65,19 @@ class EngineerRunner:
         if self._busy or self._pending is None or not self.active:
             return
         request, self._pending = self._pending, None
+        if request.urgent and not isinstance(self.provider, RulesProvider):
+            self._immediate(request)
         self._busy = True
         asyncio.create_task(self._ask(request))
+
+    def _immediate(self, request: EngineerRequest) -> None:
+        """An instant rules call for urgent moments, while the AI works out the full decision."""
+        response = rules_response(request)
+        if not response.get("radio"):
+            return
+        advice = Advice(response, "aviso inmediato", 0)
+        self.engineer.remember(request, response)  # the AI sees it and confirms or corrects it
+        self.messages.append(self._message(request, advice))
 
     async def _ask(self, request: EngineerRequest) -> None:
         try:

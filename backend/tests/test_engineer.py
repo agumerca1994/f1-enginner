@@ -137,3 +137,44 @@ def test_rules_pick_a_different_compound_and_do_not_repeat():
     assert first["radio"].startswith("Batería al 5%")
     repeat = EngineerRequest(lap, 600.0, 7, ["vuelta"], json.dumps([{"radio": first["radio"]}]), json.dumps(facts))
     assert rules_response(repeat)["radio"] is None
+
+
+async def test_urgent_moments_get_an_immediate_call_before_the_ai():
+    import asyncio
+
+    from app.engineer.engine import EngineerRequest
+    from app.engineer.history import Trigger
+    from app.engineer.providers import Advice
+    from app.engineer.runner import EngineerRunner
+
+    class SlowAI:
+        name = "claude (test)"
+
+        async def advise(self, request):
+            await asyncio.sleep(0.05)
+            return Advice({"radio": "Decisión de la IA", "prioridad": "urgente",
+                           "estrategia": {"plan": "p", "vuelta_box": 4, "ventana_box": None, "proximo_compuesto": "Hard",
+                                          "alternativa": "a", "certeza": "alta"},
+                           "manejo": [], "reglaje": [], "analisis": "x"}, "claude-test", 50)
+
+    facts = json.loads(json.dumps({
+        "sesion": {"tipo": "Race", "vueltas_restantes": 14, "ventana_box_juego": [8, 17], "vuelta_actual": 4,
+                   "safety_car": "Full safety car"},
+        "piloto": {"posicion": 12, "ers": {"bateria_pct": 50.0}},
+        "neumaticos": {"compuesto": "Medium", "edad_vueltas": 3, "desgaste_pct": {"del_der": 8.0}},
+        "combustible": {"vueltas_de_sobra": 2.0}, "ritmo": {},
+        "estrategia_calculos": {"perdida_box_s": 11.0, "si_para_ahora": {"posicion_estimada_al_salir": 20},
+                                "si_para_ahora_y_paran_todos": {"posicion_estimada_al_salir": 12},
+                                "regla_dos_compuestos": {"compuestos_secos_usados": ["Medium"], "cumplida": False, "aplica": True},
+                                "juegos_de_neumaticos": []},
+    }))
+    runner = EngineerRunner(tenant_id=1, mode="replay", provider=SlowAI())
+    runner.active = True
+    runner._store = lambda *a: asyncio.sleep(0)  # no database in this unit test
+    sc = Trigger("safety_car", 420.0, 4, {"from": "None", "to": "Full safety car"})
+    runner._pending = EngineerRequest([sc], 420.0, 4, ["safety car"], "Ninguno todavía.", json.dumps(facts))
+    runner.dispatch()
+    assert [m["provider"] for m in runner.messages] == ["aviso inmediato"]
+    assert runner.messages[0]["radio"].startswith("¡Box, box!") and "P12" in runner.messages[0]["radio"]
+    await asyncio.sleep(0.2)
+    assert [m["provider"] for m in runner.messages] == ["aviso inmediato", "claude-test"]

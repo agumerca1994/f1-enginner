@@ -60,6 +60,16 @@ class EngineerRequest:
         ])
 
     @property
+    def urgent(self) -> bool:
+        """Moments where a few seconds matter: the driver hears a rules call at once, then the AI's."""
+        for t in self.triggers:
+            if t.kind in ("damage", "rain_forecast"):
+                return True
+            if t.kind == "safety_car" and t.detail.get("to") in ("Full safety car", "Virtual safety car"):
+                return True
+        return False
+
+    @property
     def deep(self) -> bool:
         """Moments that deserve the stronger model: anything but a routine lap."""
         return any(t.kind != "lap_completed" for t in self.triggers)

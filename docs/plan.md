@@ -63,14 +63,12 @@ Decisiones tomadas por el usuario:
   - el historial del jugador (pendiente).
 - **Radio "como un ingeniero real":** 1 o 2 frases, como mucho una por vuelta, solo cuando aporta. Lo urgente interrumpe. El análisis largo va al muro de boxes del dashboard.
 - **Momentos en que habla:** largada, cada vuelta, safety car, pronóstico de lluvia, daño (confirmado, sin flashback), penalización, parada y final.
-- **Niveles de IA a comparar con la API:**
-  - **Estándar:** Haiku en la radio de cada vuelta y Sonnet en estrategia y eventos.
-  - **Pro:** Sonnet en la radio de cada vuelta y Opus 5.5 en estrategia y eventos.
-- **Costo estimado con los tamaños medidos** (manual ~2.900 tokens en caché, datos ~1.700 por pedido):
-  - carrera de 18 vueltas: Estándar ~US$ 0,25, Pro ~US$ 0,60;
-  - carrera de 57 vueltas: Estándar ~US$ 0,65, Pro ~US$ 1,60.
-
-  Falta confirmarlo con la API, sobre todo la salida y el razonamiento del modelo.
+- **Niveles de IA** (decididos después de la prueba real del 2026-09-27; Haiku malinterpretaba el estado de la carrera):
+  - **Estándar:** Sonnet 5 en todo, con esfuerzo bajo por vuelta y medio en eventos. ~US$ 0,50 por carrera de 18 vueltas.
+  - **Pro:** Sonnet 5 por vuelta y Opus 5 en eventos. ~US$ 0,85 por carrera de 18 vueltas.
+  - **Reglas:** el nivel gratuito, sin IA.
+- **Eventos urgentes** (safety car, daño, lluvia): sale al instante un aviso por reglas y después llega la decisión completa de la IA, que tarda 15–25 s.
+- **Costo real medido:** manual de ~6.400 tokens en caché, datos de 3.000–4.400 por pedido y respuestas de 450–2.800. Resultados en `docs/pruebas/ingeniero-ia-real-2026-09-27.md`.
 - **Fin de semana completo:** el ingeniero tiene que trabajar desde la primera práctica, con reglaje base, ajustes tanda a tanda, medición de compuestos, clasificación y estrategia de carrera basada en lo medido. El diseño, pendiente de aprobación, está en `docs/diseno-fin-de-semana.md`.
 - **Prueba en seco** sobre la carrera real de Bakú, con las respuestas de referencia y los hallazgos: `docs/pruebas/ingeniero-baku-2026-09-27.md`.
 

@@ -60,8 +60,11 @@ PRICES = {
     "claude-opus-5": (5.0, 25.0),
     "claude-opus-5-5": (4.0, 20.0),
 }
+# (per-lap model, model for important moments). Haiku was tested and misread the
+# race state (see docs/pruebas/ingeniero-ia-real-2026-09-27.md), so both tiers use
+# Sonnet per lap; Pro adds Opus for the decisions that matter most.
 TIERS = {
-    "standard": ("claude-haiku-4-5", "claude-sonnet-5"),
+    "standard": ("claude-sonnet-5", "claude-sonnet-5"),
     "pro": ("claude-sonnet-5", "claude-opus-5"),
 }
 
