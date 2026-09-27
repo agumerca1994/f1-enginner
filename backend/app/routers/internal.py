@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +19,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.live import snapshot
 from app.live.state import live_store
-from app.models import AppLog, Device, GameSession, User
+from app.models import AppLog, Device, GameSession, SessionCapture, User
 from app.services import pairing
 from app.telemetry import constants as c
 
@@ -156,6 +157,22 @@ async def live_sessions(tenant_id: int | None = Query(None)):
         }
         for s in live_store.all()
     ]
+
+
+@router.get("/sessions/{session_id}/captures", dependencies=[Depends(require_internal_key)])
+async def session_captures(session_id: int, db: AsyncSession = Depends(get_db)):
+    """Diagnostics: the recordings stored for a session."""
+    rows = await db.scalars(select(SessionCapture).where(SessionCapture.game_session_id == session_id))
+    return [{"id": c.id, "records": c.records, "created_at": c.created_at.isoformat(), "closed": c.closed_at is not None} for c in rows]
+
+
+@router.get("/captures/{capture_id}", dependencies=[Depends(require_internal_key)])
+async def download_capture(capture_id: int, db: AsyncSession = Depends(get_db)):
+    """Diagnostics: download one raw recording, to replay or analyse it locally with the bridge tools."""
+    row = await db.get(SessionCapture, capture_id)
+    if row is None:
+        raise HTTPException(404, "Capture not found")
+    return FileResponse(row.path, media_type="application/octet-stream", filename=f"capture-{capture_id}.f1cap.zst")
 
 
 class InternalPairConfirmIn(BaseModel):
