@@ -67,6 +67,16 @@ function Settings() {
         </div>
       </section>
 
+      <section className="mt-4 flex items-center justify-between rounded-2xl border border-line bg-panel p-4">
+        <div>
+          <h2 className="label">Consumo de IA</h2>
+          <p className="mt-1 text-sm text-muted">Cuánto usó y costó el ingeniero de pista, por día, sesión y modelo.</p>
+        </div>
+        <Link href="/usage" className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm hover:border-accent">
+          Ver detalle
+        </Link>
+      </section>
+
       <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
         <div className="flex items-center justify-between">
           <h2 className="label">Bridges vinculados</h2>

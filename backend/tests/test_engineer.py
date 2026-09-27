@@ -178,3 +178,42 @@ async def test_urgent_moments_get_an_immediate_call_before_the_ai():
     assert runner.messages[0]["radio"].startswith("¡Box, box!") and "P12" in runner.messages[0]["radio"]
     await asyncio.sleep(0.2)
     assert [m["provider"] for m in runner.messages] == ["aviso inmediato", "claude-test"]
+
+
+def test_usage_summary(client):
+    import asyncio
+
+    from app.core.database import AsyncSessionLocal
+    from app.models import EngineerMessage, GameSession, User
+    from sqlalchemy import select
+
+    email = "usage@example.test"
+    headers = {"X-Dev-User": email}
+    client.get("/api/me", headers=headers)  # creates the account
+
+    async def seed():
+        async with AsyncSessionLocal() as db:
+            user = await db.scalar(select(User).where(User.email == email))
+            session = GameSession(tenant_id=user.tenant_id, session_uid="abc", packet_format=2024, track_id=20, session_type=15)
+            db.add(session)
+            await db.flush()
+            for provider, cost, usage in [
+                ("claude-sonnet-5", 0.02, {"input": 3000, "output": 600, "cache_read": 6400, "cache_write": 0}),
+                ("claude-sonnet-5", 0.03, {"input": 3500, "output": 900, "cache_read": 6400, "cache_write": 0}),
+                ("aviso inmediato", 0.0, None),
+            ]:
+                db.add(EngineerMessage(tenant_id=user.tenant_id, game_session_id=session.id, mode="replay", lap=3,
+                                       triggers=["lap_completed"], response={}, provider=provider, usage=usage,
+                                       cost_usd=cost, latency_ms=10_000))
+            await db.commit()
+
+    asyncio.run(seed())
+    u = client.get("/api/engineer/usage", headers=headers).json()
+    assert u["month"]["calls"] == 2 and u["month"]["cost_usd"] == 0.05
+    assert u["month"]["output_tokens"] == 1500 and u["month"]["cache_read_tokens"] == 12800
+    assert u["free_answers"] == 1
+    assert u["by_session"][0]["track"] == "Baku (Azerbaijan)" and u["by_session"][0]["modes"] == ["replay"]
+    assert u["by_model"][0]["model"] == "claude-sonnet-5" and u["by_model"][0]["avg_latency_ms"] == 10_000
+    assert len(u["by_day"]) == 30 and u["by_day"][-1]["cost_usd"] == 0.05
+    # Nobody else sees it.
+    assert client.get("/api/engineer/usage", headers={"X-Dev-User": "other@example.test"}).json()["total"]["calls"] == 0

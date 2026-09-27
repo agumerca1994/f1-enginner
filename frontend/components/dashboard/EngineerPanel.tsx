@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Panel } from "@/components/dashboard/Panel";
 import { useEngineerVoice } from "@/lib/voice";
 import { COMPOUND_COLORS } from "@/lib/teams";
@@ -137,7 +139,14 @@ export function EngineerPanel({
             </div>
           )}
 
-          {cost > 0 && <p className="num text-right text-[0.65rem] text-muted">Costo de IA en esta sesión: US$ {cost.toFixed(3)}</p>}
+          {cost > 0 && (
+            <p className="num text-right text-[0.65rem] text-muted">
+              Costo de IA en esta sesión: US$ {cost.toFixed(3)} ·{" "}
+              <Link href="/usage" className="text-accent underline">
+                ver consumo
+              </Link>
+            </p>
+          )}
         </div>
       )}
     </Panel>
