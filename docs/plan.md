@@ -28,7 +28,7 @@ Decisiones tomadas por el usuario:
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
 | P3 Procesamiento e ingeniero | 🟡 En producción (modo reglas) | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude (niveles estándar y pro). Falta cargar la key y comparar los niveles con costo real |
 | P4 Agente y voz | ⏳ Pendiente | — |
-| P5 MCP público | 🟡 Hecho, sin deploy | `/mcp` con OAuth 2.1 (registro dinámico, PKCE, rotación de refresh) y tokens personales `rbm_pat_`, scope `telemetry:read`. Tools: `list_sessions`, `get_session_review`, `compare_laps`, `get_engineer_radio`, `get_live_session`. Consentimiento en `/oauth/authorize` y sección en Ajustes. Falta probarlo en producción con claude.ai y MCP Inspector |
+| P5 MCP público | 🟡 En producción | `/mcp` con OAuth 2.1 (registro dinámico, PKCE, rotación de refresh) y tokens personales `rbm_pat_`, scope `telemetry:read`. Tools: `list_sessions`, `get_session_review`, `compare_laps`, `get_engineer_radio`, `get_live_session`. Consentimiento en `/oauth/authorize` y sección en Ajustes. Discovery, registro y redirección al consentimiento verificados en producción; falta conectarlo desde claude.ai |
 | P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
 | P7 Hardening comercial | ⏳ Pendiente | — |
 

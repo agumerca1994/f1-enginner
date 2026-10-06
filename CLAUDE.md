@@ -7,7 +7,7 @@ Current state:
 - The Mac menu-bar app is built.
 - Session replays are in production.
 - P3 is in progress: the engineer engine exists in `backend/app/engineer/` and was dry-run tested on a real race (see "Estrategia de IA del ingeniero" in `docs/plan.md`). Next: connect it to an AI API and show it in the dashboard.
-- P5 is built but not deployed yet: a public, read-only MCP at `/mcp` (OAuth 2.1 plus personal tokens, ported from registrapp). The tools live in `backend/app/mcp_server/tools.py`; recorded sessions are analysed by `app/engineer/review.py`.
+- P5 is in production: a public, read-only MCP at `/mcp` (OAuth 2.1 plus personal tokens, ported from registrapp). The tools live in `backend/app/mcp_server/tools.py`; recorded sessions are analysed by `app/engineer/review.py`.
 
 ## Layout
 - **`bridge/`** (Go) runs on the player's computer. It reads only the 29-byte packet header; all body parsing happens on the server.
