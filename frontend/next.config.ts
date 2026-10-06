@@ -31,9 +31,20 @@ const CSP = [
   "object-src 'none'",
 ].join("; ");
 
+// Google sign-in served from our own domain. With the default authDomain
+// (<project>.firebaseapp.com) the sign-in handler is third-party to the app,
+// and browsers that partition its storage (Safari, Brave, windows opened by
+// another app such as Claude's connector flow) fail with "missing initial
+// state". Proxying /__/auth here and setting NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN to
+// the app's own domain keeps the whole flow first-party.
+const FIREBASE_HOSTING = `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "f1-engineer"}.firebaseapp.com`;
+
 const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
+  async rewrites() {
+    return [{ source: "/__/auth/:path*", destination: `${FIREBASE_HOSTING}/__/auth/:path*` }];
+  },
   async headers() {
     return [
       {
