@@ -10,7 +10,7 @@ El plan completo, con el estado de cada fase y las decisiones tomadas, está en 
 | Carpeta | Contenido | Estado |
 |---|---|---|
 | `bridge/` | CLI en Go y app de la Mac (barra de menú) que reciben el UDP del juego y lo suben al servidor | ✅ |
-| `backend/` | API FastAPI: parser, ingest, estado en vivo, trazado de pistas, repeticiones | ✅ P1–P2 · reglas, agente y MCP pendientes |
+| `backend/` | API FastAPI: parser, ingest, estado en vivo, trazado de pistas, repeticiones, ingeniero y conector MCP | ✅ P1–P2 · 🟡 ingeniero y MCP |
 | `frontend/` | Dashboard PWA en Next.js: en vivo, sesiones, repeticiones, vinculación | ✅ |
 | `fixtures/captures/` | Capturas reales para los tests (git-lfs) | carrera en Bakú |
 
@@ -19,6 +19,7 @@ El plan completo, con el estado de cada fase y las decisiones tomadas, está en 
 2. Tocá **Vincular esta Mac**: se abre la web con el código cargado, iniciás sesión con Google y confirmás.
 3. En el juego, activá la telemetría UDP (formato 2024, puerto 20777) y salí a pista: los datos aparecen en el dashboard.
 4. Tus sesiones quedan grabadas: en **Sesiones → Ver repetición** las volvés a ver con todos los datos.
+5. Para hablar de tus carreras con Claude u otra IA, copiá la URL del conector en **Ajustes → Conectar con una IA (MCP)**. Después agregala como conector personalizado en la app y autorizala con tu cuenta. El conector sólo puede leer.
 
 La app y `bridge run` usan el mismo puerto: no los abras a la vez.
 

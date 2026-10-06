@@ -7,6 +7,7 @@ Current state:
 - The Mac menu-bar app is built.
 - Session replays are in production.
 - P3 is in progress: the engineer engine exists in `backend/app/engineer/` and was dry-run tested on a real race (see "Estrategia de IA del ingeniero" in `docs/plan.md`). Next: connect it to an AI API and show it in the dashboard.
+- P5 is built but not deployed yet: a public, read-only MCP at `/mcp` (OAuth 2.1 plus personal tokens, ported from registrapp). The tools live in `backend/app/mcp_server/tools.py`; recorded sessions are analysed by `app/engineer/review.py`.
 
 ## Layout
 - **`bridge/`** (Go) runs on the player's computer. It reads only the 29-byte packet header; all body parsing happens on the server.
@@ -18,6 +19,7 @@ Current state:
   - `app/ingest/` handles the uplink.
   - `app/live/` holds the in-memory state, the snapshot and the track-outline builder.
   - `app/replay/` plays stored captures back through the same live state.
+  - `app/mcp_server/` is the MCP connector; its OAuth endpoints are in `routers/oauth.py`.
 - **`frontend/`** (Next.js 15 + Tailwind 4 PWA): `/`, `/sessions`, `/replay/[id]`, `/pair`, `/settings`.
 - **`fixtures/captures/`**: real `.f1cap.zst` captures, stored in git-lfs. They are the golden test data; `baku-carrera-wifi` was recorded over a lossy link at ~19% reception.
 
@@ -28,7 +30,7 @@ Current state:
   - Rules derive facts from state packets as well as from one-shot Event packets.
   - Fields that a restricted online player does not share are `None`, never `0`.
 - **Nothing per packet touches the database.** Live state lives in memory; the DB is written only on session changes and in periodic flushes.
-- **Bridge tokens (`rbd_`) and pairing codes (`rbp_`) are stored only as sha256 hashes.**
+- **Bridge tokens (`rbd_`), pairing codes (`rbp_`) and MCP tokens (`rbm_`) are stored only as sha256 hashes.**
 - **Track outlines are built from telemetry** and shared across all players, in the `track_layouts` table. Undriven stretches stay open rather than being drawn as a straight line.
 
 ## Commands
@@ -43,6 +45,8 @@ BRIDGE_CONFIG=/tmp/bridge.json bridge/bin/bridge pair --server http://localhost:
 bridge/bin/bridge replay --in fixtures/captures/baku-carrera-wifi.f1cap.zst --to 127.0.0.1:20777   # feed a running bridge
 ./scripts/build-mac-app.sh                                # builds bridge/bin/Ingeniero Bridge.app
 ```
+
+`MCP_AUTH_DISABLED=true` opens `/mcp` without a token, acting as the first player (local only; forced off in production).
 
 `AUTH_DEV_MODE` makes the API accept `X-Dev-User: <email>` in HTTP requests, or `dev_user` in the first message on a WebSocket. It is forced off in production.
 

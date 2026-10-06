@@ -14,3 +14,7 @@ httpx==0.28.1
 numpy==2.5.3
 zstandard==0.25.0
 anthropic==1.8.0
+# MCP connector (P5). sse-starlette 3.x demands starlette>=0.49.1, so it is pinned
+# to the last 2.x like registrapp does.
+mcp==1.29.0
+sse-starlette==2.1.3

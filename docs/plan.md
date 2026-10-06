@@ -17,7 +17,7 @@ Decisiones tomadas por el usuario:
 - el proveedor de LLM es configurable;
 - el producto es comercial y multiusuario.
 
-## Estado actual (actualizado 2026-09-27)
+## Estado actual (actualizado 2026-10-05)
 
 | Fase | Estado | Qué hay |
 |---|---|---|
@@ -28,7 +28,7 @@ Decisiones tomadas por el usuario:
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
 | P3 Procesamiento e ingeniero | 🟡 En producción (modo reglas) | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude (niveles estándar y pro). Falta cargar la key y comparar los niveles con costo real |
 | P4 Agente y voz | ⏳ Pendiente | — |
-| P5 MCP público | ⏳ Pendiente | — |
+| P5 MCP público | 🟡 Hecho, sin deploy | `/mcp` con OAuth 2.1 (registro dinámico, PKCE, rotación de refresh) y tokens personales `rbm_pat_`, scope `telemetry:read`. Tools: `list_sessions`, `get_session_review`, `compare_laps`, `get_engineer_radio`, `get_live_session`. Consentimiento en `/oauth/authorize` y sección en Ajustes. Falta probarlo en producción con claude.ai y MCP Inspector |
 | P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
 | P7 Hardening comercial | ⏳ Pendiente | — |
 
@@ -48,6 +48,7 @@ Decisiones tomadas por el usuario:
 - **App de la Mac con Fyne** (Go), ícono en la barra de menú más ventana. Comparte `internal/agent` con `bridge run`. Firma ad hoc; la firma de Apple Developer queda para P7.
 - **Repeticiones con el mismo motor del vivo.** Leen las capturas crudas del servidor; los silencios de más de 10 s entre grabaciones se acortan a 1 s.
 - **Desvincular** lo puede hacer el propio bridge (`DELETE /api/devices/self`) o el usuario desde Ajustes.
+- **MCP público portado de registrapp** (2026-10-05). Es sólo lectura. La sesión grabada se analiza re-jugando sus capturas con el mismo `RaceEngineer` (`app/engineer/review.py`, con caché de 8 sesiones), así las cifras coinciden con las del ingeniero. Los prefijos de token son `rbm_at_`, `rbm_rt_` y `rbm_pat_`. Cada lifespan crea su propio session manager de MCP, porque sólo se puede arrancar una vez y los tests abren uno por cliente. `mcp` 1.29.0 obliga a fijar `sse-starlette==2.1.3` para mantener starlette 0.41.
 
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
 - **La IA es el ingeniero de pista, no un locutor.** Pone el conocimiento de F1 que el jugador no tiene y toma las decisiones:
@@ -149,17 +150,21 @@ backend/app/
   ingest/            protocol.py (lotes zstd), service.py (por conexión, sesiones, capturas, trazado)
   live/              state.py (LiveSession/LiveStore), snapshot.py, track_layout.py (LayoutBuilder)
   replay/            player.py (ReplaySource, ReplayPlayer)
+  engineer/          motor del ingeniero; review.py analiza una sesión grabada completa
+  mcp_server/        instance (FastMCP), transport (/mcp + auth), context (quién llama), tools
   routers/           devices, ingest (/ingest/v1), live (/api/me, /api/live, /api/sessions, /api/tracks),
-                     live_ws (/live/v1), replay_ws (/replay/v1), internal (/internal/*)
-  models/, core/ (config, auth, security, database, logging_config), services/pairing.py
-backend/alembic/     05fd98fa34e0 esquema inicial · a7b184d54fc9 track_layouts
-frontend/            Next.js 15 + Tailwind 4: / (dashboard), /sessions, /replay/[id], /pair, /settings
+                     live_ws (/live/v1), replay_ws (/replay/v1), internal (/internal/*),
+                     engineer (/api/engineer/*), oauth (/.well-known/*, /oauth/*)
+  models/, core/ (config, auth, security, database, logging_config)
+  services/          pairing, mcp_tokens, oauth_provider, rate_limit
+backend/alembic/     05fd98fa34e0 esquema inicial · a7b184d54fc9 track_layouts · de9c03b6f9cf engineer_messages · c50f98e2c6fb tablas del MCP
+frontend/            Next.js 15 + Tailwind 4: / (dashboard), /sessions, /replay/[id], /pair, /settings, /usage, /oauth/authorize
   components/dashboard/  Dashboard, Cards, TrackMap, CarTopView, Panel
   lib/               auth (Firebase), api, live, replay, types, format, teams
 fixtures/captures/   baku-carrera-wifi.f1cap.zst (git-lfs), la captura real usada en los tests
 scripts/             deploy.sh, build-mac-app.sh
 ```
-Lo planificado que todavía no existe: `processing/`, `rules/`, `engineer/`, `mcp_server/` y `mcp-logs/`.
+Lo planificado que todavía no existe: `processing/`, `rules/` y `mcp-logs/`.
 
 Archivos de registrapp que se portan:
 - `backend/app/mcp_server/transport.py`
