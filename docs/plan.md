@@ -48,6 +48,7 @@ Decisiones tomadas por el usuario:
 - **App de la Mac con Fyne** (Go), ícono en la barra de menú más ventana. Comparte `internal/agent` con `bridge run`. Firma ad hoc; la firma de Apple Developer queda para P7.
 - **Repeticiones con el mismo motor del vivo.** Leen las capturas crudas del servidor; los silencios de más de 10 s entre grabaciones se acortan a 1 s.
 - **Desvincular** lo puede hacer el propio bridge (`DELETE /api/devices/self`) o el usuario desde Ajustes.
+- **Login de Google desde el propio dominio** (2026-10-05). `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=f1.imanzanastore.com.ar` y la web reenvía `/__/auth/*` a `f1-engineer.firebaseapp.com` (`next.config.ts`). Con el dominio de firebaseapp.com el login fallaba con "missing initial state" en navegadores que aíslan el almacenamiento de terceros, como la ventana del conector de Claude. El cliente OAuth de Google Cloud tiene `https://f1.imanzanastore.com.ar/__/auth/handler` como URI de redirección.
 - **MCP público portado de registrapp** (2026-10-05). Es sólo lectura. La sesión grabada se analiza re-jugando sus capturas con el mismo `RaceEngineer` (`app/engineer/review.py`, con caché de 8 sesiones), así las cifras coinciden con las del ingeniero. Los prefijos de token son `rbm_at_`, `rbm_rt_` y `rbm_pat_`. Cada lifespan crea su propio session manager de MCP, porque sólo se puede arrancar una vez y los tests abren uno por cliente. `mcp` 1.29.0 obliga a fijar `sse-starlette==2.1.3` para mantener starlette 0.41.
 
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
