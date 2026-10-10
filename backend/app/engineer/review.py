@@ -94,6 +94,7 @@ def lap_row(pl: PlayerLap) -> dict[str, Any]:
         "margen_combustible_vueltas": _round(pl.fuel_margin_laps, 2),
         "ers_pct": _round(pl.ers_percent, 1),
         "ers_desplegado_mj": _round(pl.ers_deployed_mj, 2),
+        "sectores_s": [analysis._s(x) for x in pl.sectors_ms] if pl.sectors_ms else None,
         "safety_car": pl.safety_car,
         "box": pl.pitted,
         "invalida": pl.invalid,

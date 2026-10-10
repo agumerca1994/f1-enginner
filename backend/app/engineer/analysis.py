@@ -51,6 +51,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
         },
         "piloto": _player(snap, history, laps),
         "ritmo": _pace(laps, history, player_idx),
+        "sectores": _sectores(snap, history, laps),
         "neumaticos": _tyres(snap, laps),
         "combustible": _fuel(snap, laps, total, current),
         "rivales": _rivals(snap, history),
@@ -133,6 +134,43 @@ def _pace(laps: list[PlayerLap], history: SessionHistory, player_idx: int | None
         "consistencia_desvio_s": round(statistics.pstdev(pl.time_ms for pl in last3) / 1000, 3) if len(last3) >= 2 else None,
         "mejor_vuelta_del_resto_s": _s(min(field_best)) if field_best else None,
         "nota": "Vueltas limpias: sin safety car, sin box, válidas y desde la vuelta 2.",
+    }
+
+
+def _sectores(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dict[str, Any] | None:
+    """Live sector progress, personal bests and the theoretical lap, so the engineer
+    can read the lap sector by sector instead of only when it ends."""
+    lap = snap.get("lap") or {}
+    best = history.best_sectors
+    s1_now, s2_now = lap.get("sector1_ms"), lap.get("sector2_ms")
+    ll = history.last_lap_sectors
+
+    def delta(now_ms, best_ms):
+        return None if now_ms is None or best_ms is None else round((now_ms - best_ms) / 1000, 3)
+
+    if not best and not ll and s1_now is None:
+        return None  # nothing crossed yet
+
+    teorica = _s(sum(best[i] for i in (1, 2, 3))) if all(best.get(i) for i in (1, 2, 3)) else None
+    ultima = None
+    if ll:
+        ultima = {
+            "numero": laps[-1].lap if laps else None,
+            "s1_s": _s(ll[0]), "s2_s": _s(ll[1]), "s3_s": _s(ll[2]),
+            "total_s": _s(sum(x for x in ll if x)) if all(ll) else None,
+        }
+    return {
+        "vuelta_en_curso": {
+            "numero": lap.get("lap"),
+            "sector_actual": lap.get("sector"),
+            "s1_s": _s(s1_now), "s2_s": _s(s2_now), "s3_s": None,
+            "vs_mi_mejor": {"s1_s": delta(s1_now, best.get(1)), "s2_s": delta(s2_now, best.get(2)), "s3_s": None},
+        },
+        "mis_mejores_s": {f"s{i}": _s(best.get(i)) for i in (1, 2, 3)},
+        "vuelta_teorica_s": teorica,
+        "mi_mejor_vuelta_s": _s(min((pl.time_ms for pl in _clean(laps)), default=None)),
+        "ultima_vuelta": ultima,
+        "nota": "Parciales del juego. S3 se calcula al cerrar la vuelta (total − S1 − S2). Con recepción baja puede faltar alguno.",
     }
 
 

@@ -195,6 +195,12 @@ def rules_response(request: EngineerRequest) -> dict:
     elif "penalty" in kinds:
         radio = f"Ojo con los límites de pista: vas {pl.get('advertencias')} advertencias." if not pl.get("penalizacion_s") else f"Tenemos {pl['penalizacion_s']} segundos de penalización."
         priority = "importante"
+    elif "sector_completed" in kinds:
+        d = next((t.detail for t in request.triggers if t.kind == "sector_completed"), {})
+        if d.get("mejor_personal"):
+            radio = f"Mejor sector {d.get('sector')} de la tanda: {d.get('tiempo_s')}s. Ahí estás."
+        else:
+            radio = f"Perdiste {d.get('delta_s')}s en el sector {d.get('sector')}, ahí tenés para buscar."
     elif "pitted" in kinds:
         radio = "Buena parada. Dos vueltas para darle temperatura a las gomas nuevas."
     elif "session_end" in kinds:

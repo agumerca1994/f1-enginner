@@ -31,6 +31,7 @@ TRIGGER_TEXT = {
     "rain_forecast": "El pronóstico marca {rain_percent}% de lluvia en los próximos 15 minutos.",
     "damage": "El auto sufrió daño nuevo: {parts}.",
     "penalty": "Nueva penalización o advertencia: {penalties_s}s de penalización, {warnings} advertencias.",
+    "sector_completed": "Cerró el sector {sector} en {tiempo_s}s (delta {delta_s}s vs su mejor). Comentario corto, sin frenar la vuelta.",
     "pitted": "El piloto acaba de parar en boxes (parada {stops}).",
     "session_end": "Terminó la sesión: hacé un resumen breve para el piloto.",
 }
@@ -76,8 +77,8 @@ class EngineerRequest:
 
     @property
     def deep(self) -> bool:
-        """Moments that deserve the stronger model: anything but a routine lap."""
-        return any(t.kind != "lap_completed" for t in self.triggers)
+        """Moments that deserve the stronger model: anything but a routine lap or a sector note."""
+        return any(t.kind not in ("lap_completed", "sector_completed") for t in self.triggers)
 
 
 def merge(older: "EngineerRequest", newer: "EngineerRequest") -> "EngineerRequest":

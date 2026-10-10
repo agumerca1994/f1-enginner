@@ -19,6 +19,8 @@ DAMAGE_STEP = 15
 # reported only if no flashback follows within this many seconds.
 DAMAGE_CONFIRM_S = 8.0
 RAIN_ALERT_PERCENT = 40
+# A sector is worth a radio call only on a personal best or a loss of at least this.
+SECTOR_LOSS_MS = 300
 
 
 @dataclass
@@ -53,6 +55,7 @@ class PlayerLap:
     weather: str | None
     surface_temp_avg: list[float] | None = None  # RL, RR, FL, FR, averaged over the lap
     inner_temp_avg: list[float] | None = None
+    sectors_ms: list[int | None] | None = None  # [S1, S2, S3] of this lap
 
 
 @dataclass
@@ -78,6 +81,12 @@ class SessionHistory:
         self._lap_invalid = False
         self._lap_ers_deployed = 0.0
         self._temp_samples: list[tuple[list[int], list[int]]] = []
+        # Sector tracking for the player.
+        self._sector = 0
+        self._cur_s1: int | None = None  # this lap's S1/S2 as they are crossed
+        self._cur_s2: int | None = None
+        self.best_sectors: dict[int, int] = {}  # best S1/S2/S3 of the session, ms
+        self.last_lap_sectors: list[int | None] | None = None  # [S1, S2, S3] of the last completed lap
         # Previous values, to detect changes.
         self._sc_status = "None"
         self._rain_alerted = False
@@ -212,10 +221,12 @@ class SessionHistory:
                 safety_car=self._lap_sc or self._sc_status in ("Full safety car", "Virtual safety car"),
             ))
             if i == player:
-                self.player_laps.append(self._player_record(num - 1, lap, live))
+                sectors = self._finalize_sectors(int(lap["last_lap_time_in_ms"]) or None)
+                self.player_laps.append(self._player_record(num - 1, lap, live, sectors))
                 out.append(Trigger("lap_completed", packet.session_time, num - 1))
 
         me = laps[player]
+        out += self._player_sector_triggers(me, packet.session_time, live)
         if int(me["pit_status"]) != 0:
             self._lap_pit = True
         if int(me["current_lap_invalid"]):
@@ -231,7 +242,50 @@ class SessionHistory:
         self._penalties, self._warnings = pen, warn
         return out
 
-    def _player_record(self, lap_num: int, lap, live: LiveSession) -> PlayerLap:
+    def _player_sector_triggers(self, me, t: float, live: LiveSession) -> list[Trigger]:
+        """Capture S1/S2 as the player crosses them, and flag a notable sector."""
+        cur = int(me["sector"])  # 0, 1 or 2
+        invalid = bool(me["current_lap_invalid"])
+        s1 = _ms(me["sector1_time_minutes_part"], me["sector1_time_ms_part"]) or None
+        s2 = _ms(me["sector2_time_minutes_part"], me["sector2_time_ms_part"]) or None
+        out = []
+        if cur >= 1 and self._cur_s1 is None and s1:
+            self._cur_s1 = s1
+            out += self._sector_note(1, s1, invalid, t, live)
+        if cur >= 2 and self._cur_s2 is None and s2:
+            self._cur_s2 = s2
+            out += self._sector_note(2, s2, invalid, t, live)
+        self._sector = cur
+        return out
+
+    def _sector_note(self, idx: int, val: int, invalid: bool, t: float, live: LiveSession) -> list[Trigger]:
+        best = self.best_sectors.get(idx)
+        if invalid:
+            return []  # an invalid sector is not a fair comparison
+        is_pb = best is None or val < best
+        loss = val - best if best is not None else 0
+        if not (is_pb or loss >= SECTOR_LOSS_MS):
+            return []
+        return [Trigger("sector_completed", t, self._player_lap(live), {
+            "sector": idx, "tiempo_s": round(val / 1000, 3),
+            "mejor_personal": is_pb, "delta_s": round(loss / 1000, 3),
+        })]
+
+    def _finalize_sectors(self, total_ms: int | None) -> list[int | None]:
+        """At lap completion: S3 = total − S1 − S2, record the lap and update the bests."""
+        s1, s2 = self._cur_s1, self._cur_s2
+        s3 = total_ms - s1 - s2 if (total_ms and s1 and s2 and total_ms > s1 + s2) else None
+        sectors = [s1, s2, s3]
+        self.last_lap_sectors = sectors
+        if not (self._lap_invalid or self._lap_sc or self._lap_pit):
+            for i, val in zip((1, 2, 3), sectors):
+                if val and (self.best_sectors.get(i) is None or val < self.best_sectors[i]):
+                    self.best_sectors[i] = val
+        self._cur_s1 = self._cur_s2 = None
+        self._sector = 0
+        return sectors
+
+    def _player_record(self, lap_num: int, lap, live: LiveSession, sectors: list[int | None] | None = None) -> PlayerLap:
         status = live.last.get("car_status")
         damage = live.last.get("car_damage")
         session = live.last.get("session")
@@ -256,6 +310,7 @@ class SessionHistory:
             weather=c.WEATHER.get(int(session.body["weather"])) if session else None,
             surface_temp_avg=_average([sample[0] for sample in self._temp_samples]),
             inner_temp_avg=_average([sample[1] for sample in self._temp_samples]),
+            sectors_ms=sectors,
         )
         self._temp_samples = []
         self._lap_sc = self._sc_status in ("Full safety car", "Virtual safety car")
