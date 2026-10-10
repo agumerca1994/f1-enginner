@@ -23,7 +23,7 @@ def test_engineer_requests_over_a_real_race():
             requests.append(request)
 
     kinds = [tr.kind for r in requests for tr in r.triggers]
-    assert kinds[0] == "session_start"
+    assert kinds[0] == "race_start"  # Baku es carrera: el arranque exige plan de paradas
     facts = json.loads(requests[-1].user.split("## Datos de la sesión\n", 1)[1])
     assert facts["sesion"]["pista"] == "Baku (Azerbaijan)"
     assert facts["piloto"]["piloto"] == "GASLY"
@@ -84,7 +84,7 @@ def test_live_engineer_speaks_when_active(client):
 
     state = client.get("/api/engineer/live", headers=headers).json()
     first = state["messages"][0]
-    assert first["triggers"] == ["session_start"] and first["provider"] == "reglas"
+    assert first["triggers"] == ["race_start"] and first["provider"] == "reglas"
     assert first["radio"].startswith("Largamos P16")
     assert first["estrategia"]["proximo_compuesto"] is not None  # the two-compound stop is planned
 
@@ -104,7 +104,7 @@ def test_replay_engineer_only_speaks_during_playback(client):
         ws.send_json({"type": "speed", "value": 16})
         ws.send_json({"type": "play"})
         message = _frames_until(ws, lambda m: m["type"] == "engineer_message")["message"]
-        assert message["provider"] == "reglas" and "session_start" not in message["triggers"]
+        assert message["provider"] == "reglas" and not ({"session_start", "race_start"} & set(message["triggers"]))
 
 
 def test_rules_pick_a_different_compound_and_do_not_repeat():
@@ -217,3 +217,38 @@ def test_usage_summary(client):
     assert len(u["by_day"]) == 30 and u["by_day"][-1]["cost_usd"] == 0.05
     # Nobody else sees it.
     assert client.get("/api/engineer/usage", headers={"X-Dev-User": "other@example.test"}).json()["total"]["calls"] == 0
+
+
+@needs_baku
+def test_race_start_brief_has_strategy_inputs():
+    """At a race start the engineer gets a race_start trigger with the inputs to plan stops:
+    total laps, the weather forecast and the available tyre sets, before any lap is run."""
+    import json as _json
+
+    from app.engineer.engine import RaceEngineer, TRIGGER_TEXT
+    from app.engineer.history import Trigger
+    from app.live.state import LiveSession
+    from app.replay.player import ReplaySource
+    from app.telemetry import registry
+
+    engineer = RaceEngineer()
+    live = None
+    clock = {"t": 0.0}
+    first_race = None
+    for t, data in ReplaySource([str(BAKU_RACE)]).records():
+        clock["t"] = t
+        packet = registry.parse(data)
+        if live is None:
+            live = LiveSession(0, 0, packet.session_uid, 2024, build_layout=False, clock=lambda: clock["t"])
+        live.update(packet)
+        request = engineer.observe(packet, live)
+        if request and first_race is None and any(tr.kind == "race_start" for tr in request.triggers):
+            first_race = request
+            break
+
+    assert first_race is not None, "a race must open with a race_start trigger"
+    facts = _json.loads(first_race.facts_json)
+    assert facts["sesion"]["tipo"].startswith("Race")
+    assert facts["sesion"]["vueltas_totales"]
+    assert facts["sesion"]["pronostico"]  # weather is available from the grid
+    assert "estrategia de paradas" in TRIGGER_TEXT["race_start"]

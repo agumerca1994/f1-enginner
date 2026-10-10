@@ -199,7 +199,7 @@ def rules_response(request: EngineerRequest) -> dict:
         radio = "Buena parada. Dos vueltas para darle temperatura a las gomas nuevas."
     elif "session_end" in kinds:
         radio = f"Bandera a cuadros, terminamos P{pl.get('posicion')}. Buen trabajo."
-    elif "session_start" in kinds:
+    elif "session_start" in kinds or "race_start" in kinds:
         radio = f"Largamos P{pl.get('posicion')} con {ne.get('compuesto')}." + (
             f" Hay que parar una vez, la ventana es de la {window[0]} a la {window[-1]}." if owes_stop and window else "")
     else:  # a routine lap: speak only when something needs attention

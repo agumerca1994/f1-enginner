@@ -21,6 +21,11 @@ DEBOUNCE_S = 15.0
 
 TRIGGER_TEXT = {
     "session_start": "Arranca la sesión: dale al piloto el plan inicial.",
+    "race_start": ("Arranca la carrera. Antes de meterte en la pelea, bajá la estrategia de paradas "
+                   "completa: cuántas paradas, con qué compuestos y en qué ventana de vueltas, apoyándote "
+                   "en las vueltas totales, el pronóstico (y qué hacer si llega la lluvia), la vida útil de "
+                   "los juegos de neumáticos y la regla de dos compuestos. Comprometé un plan base aunque "
+                   "todavía no tengas ritmo real; lo ajustás en las primeras vueltas."),
     "lap_completed": "El piloto completó la vuelta {lap}.",
     "safety_car": "Cambio de safety car: {from} → {to}.",
     "rain_forecast": "El pronóstico marca {rain_percent}% de lluvia en los próximos 15 minutos.",

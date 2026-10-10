@@ -138,8 +138,12 @@ class SessionHistory:
         b = packet.body
         t = packet.session_time
         if not self._started and live.last.get("lap_data") is not None:
-            self._started = True
-            out.append(Trigger("session_start", t, self._player_lap(live)))
+            is_race = int(b["session_type"]) in (15, 16, 17)
+            # For a race, wait until the compound is known so the opening brief
+            # can lay out a real pit-stop plan, not a blank one.
+            if not is_race or live.last.get("car_status") is not None:
+                self._started = True
+                out.append(Trigger("race_start" if is_race else "session_start", t, self._player_lap(live)))
         sc = c.SAFETY_CAR_STATUS.get(int(b["safety_car_status"]), "None")
         if sc != self._sc_status:
             if sc in ("Full safety car", "Virtual safety car") or self._sc_status in ("Full safety car", "Virtual safety car"):

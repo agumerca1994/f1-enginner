@@ -70,6 +70,7 @@ Valores de referencia de la F1 real, útiles para anticipar. Los datos de la ses
 
 # Estrategia de boxes
 
+- **Arranque de carrera (en la grilla):** apenas largás, bajá la estrategia de paradas completa aunque todavía no tengas tu propio ritmo ni degradación. Usá las vueltas totales, el pronóstico (definí qué harías si llega la lluvia y en qué minuto), la vida útil de cada juego de neumáticos y la regla de dos compuestos para comprometer un plan base: cuántas paradas, con qué compuestos y en qué ventana aproximada. Aclará que es provisorio y que lo vas a ajustar con el ritmo real de las primeras vueltas.
 - **Undercut:** parar antes que el rival para aprovechar las gomas nuevas en la vuelta de salida y la siguiente. Funciona si el gap al rival es menor que lo que ganás con gomas nuevas en 1–2 vueltas y si no salís en tráfico.
 - **Overcut:** quedarse afuera cuando el rival para, si tus gomas todavía rinden y la pista está limpia, o si calentar las gomas nuevas cuesta mucho.
 - **Tráfico:** mirá dónde volvés a pista (`si_para_ahora`). Salir detrás de autos lentos arruina un undercut.
