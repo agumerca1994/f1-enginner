@@ -31,6 +31,17 @@ ACTUAL_COMPOUNDS = {
 
 PIT_STATUS = {0: "On track", 1: "Pitting", 2: "In pit area"}
 
+# car_status.vehicle_fia_flags (-1 unknown)
+FIA_FLAGS = {-1: None, 0: "none", 1: "green", 2: "blue", 3: "yellow", 4: "red"}
+
+# car_telemetry.surface_type, per wheel
+SURFACE_TYPES = {
+    0: "tarmac", 1: "rumble_strip", 2: "concrete", 3: "rock", 4: "gravel", 5: "mud",
+    6: "sand", 7: "grass", 8: "water", 9: "cobblestone", 10: "metal", 11: "ridged",
+}
+# Surfaces that mean the car ran wide off the racing line.
+OFF_TRACK_SURFACES = frozenset({"grass", "gravel", "sand", "mud"})
+
 ERS_DEPLOY_MODES = {0: "None", 1: "Medium", 2: "Hotlap", 3: "Overtake"}
 
 FUEL_MIX = {0: "Lean", 1: "Standard", 2: "Rich", 3: "Max"}

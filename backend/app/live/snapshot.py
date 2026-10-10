@@ -125,6 +125,7 @@ def build(live: LiveSession) -> dict[str, Any]:
             "tyres_surface_temperature_c": _wheels(t["tyres_surface_temperature"]),
             "tyres_inner_temperature_c": _wheels(t["tyres_inner_temperature"]),
             "tyres_pressure_psi": _wheels(t["tyres_pressure"]),
+            "surface": {w: c.SURFACE_TYPES.get(int(v)) for w, v in zip(WHEELS, t["surface_type"])},
         }
 
     if (p := live.last.get("car_status")) is not None:
@@ -143,6 +144,7 @@ def build(live: LiveSession) -> dict[str, Any]:
             "drs_allowed": bool(s["drs_allowed"]),
             "brake_bias": int(s["front_brake_bias"]),
             "max_rpm": int(s["max_rpm"]),
+            "fia_flag": c.FIA_FLAGS.get(int(s["vehicle_fia_flags"])),
         }
 
     if (p := live.last.get("car_damage")) is not None:

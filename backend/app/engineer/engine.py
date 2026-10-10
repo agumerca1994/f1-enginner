@@ -32,6 +32,7 @@ TRIGGER_TEXT = {
     "damage": "El auto sufrió daño nuevo: {parts}.",
     "penalty": "Nueva penalización o advertencia: {penalties_s}s de penalización, {warnings} advertencias.",
     "sector_completed": "Cerró el sector {sector} en {tiempo_s}s (delta {delta_s}s vs su mejor). Comentario corto, sin frenar la vuelta.",
+    "blue_flag": "Bandera azul: viene un auto más rápido a doblarlo, avisale que lo deje pasar.",
     "pitted": "El piloto acaba de parar en boxes (parada {stops}).",
     "session_end": "Terminó la sesión: hacé un resumen breve para el piloto.",
 }

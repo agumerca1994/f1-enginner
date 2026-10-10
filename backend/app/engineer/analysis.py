@@ -98,6 +98,8 @@ def _player(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dict[
         "penalizacion_s": lap.get("penalties_s"),
         "advertencias": lap.get("warnings"),
         "vuelta_invalida": lap.get("lap_invalid"),
+        "bandera_fia": st.get("fia_flag"),
+        "fuera_de_pista_ult_vuelta_pct": laps[-1].off_track_pct if laps else None,
         "compuestos_usados": history.compounds_used,
         "ers": {"bateria_pct": st.get("ers_percent"), "modo": ERS_MODE_ES.get(st.get("ers_mode"), st.get("ers_mode")),
                 "desplegado_ultima_vuelta_mj": laps[-1].ers_deployed_mj if laps else None},

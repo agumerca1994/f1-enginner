@@ -56,6 +56,7 @@ class PlayerLap:
     surface_temp_avg: list[float] | None = None  # RL, RR, FL, FR, averaged over the lap
     inner_temp_avg: list[float] | None = None
     sectors_ms: list[int | None] | None = None  # [S1, S2, S3] of this lap
+    off_track_pct: float | None = None  # share of the lap with a wheel off the track
 
 
 @dataclass
@@ -81,6 +82,9 @@ class SessionHistory:
         self._lap_invalid = False
         self._lap_ers_deployed = 0.0
         self._temp_samples: list[tuple[list[int], list[int]]] = []
+        self._offtrack_samples = 0  # telemetry samples with a wheel off track this lap
+        self._track_samples = 0
+        self._fia_flag: str | None = None
         # Sector tracking for the player.
         self._sector = 0
         self._cur_s1: int | None = None  # this lap's S1/S2 as they are crossed
@@ -124,6 +128,10 @@ class SessionHistory:
             self._note_compound(live)
             st = packet.body["car_status_data"][packet.player_car_index]
             self._lap_ers_deployed = max(self._lap_ers_deployed, float(st["ers_deployed_this_lap"]))
+            flag = c.FIA_FLAGS.get(int(st["vehicle_fia_flags"]))
+            if flag == "blue" and self._fia_flag != "blue":
+                new.append(Trigger("blue_flag", t, self._player_lap(live)))
+            self._fia_flag = flag
         elif packet.name == "tyre_sets":
             if int(packet.body["car_idx"]) == packet.player_car_index:
                 self.tyre_sets = packet.body
@@ -131,6 +139,9 @@ class SessionHistory:
             tel = packet.body["car_telemetry_data"][packet.player_car_index]
             self._temp_samples.append(([int(x) for x in tel["tyres_surface_temperature"]],
                                        [int(x) for x in tel["tyres_inner_temperature"]]))
+            self._track_samples += 1
+            if any(c.SURFACE_TYPES.get(int(x)) in c.OFF_TRACK_SURFACES for x in tel["surface_type"]):
+                self._offtrack_samples += 1
         elif packet.name == "car_damage":
             new += self._damage_changes(packet, live)
         elif packet.name == "lap_data":
@@ -311,8 +322,10 @@ class SessionHistory:
             surface_temp_avg=_average([sample[0] for sample in self._temp_samples]),
             inner_temp_avg=_average([sample[1] for sample in self._temp_samples]),
             sectors_ms=sectors,
+            off_track_pct=round(100 * self._offtrack_samples / self._track_samples, 1) if self._track_samples else None,
         )
         self._temp_samples = []
+        self._offtrack_samples = self._track_samples = 0
         self._lap_sc = self._sc_status in ("Full safety car", "Virtual safety car")
         self._lap_pit = self._lap_invalid = False
         self._lap_ers_deployed = 0.0

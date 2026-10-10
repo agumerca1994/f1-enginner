@@ -195,6 +195,8 @@ def rules_response(request: EngineerRequest) -> dict:
     elif "penalty" in kinds:
         radio = f"Ojo con los límites de pista: vas {pl.get('advertencias')} advertencias." if not pl.get("penalizacion_s") else f"Tenemos {pl['penalizacion_s']} segundos de penalización."
         priority = "importante"
+    elif "blue_flag" in kinds:
+        radio, priority = "Bandera azul: viene el líder a doblarte, dejalo pasar en la próxima recta.", "importante"
     elif "sector_completed" in kinds:
         d = next((t.detail for t in request.triggers if t.kind == "sector_completed"), {})
         if d.get("mejor_personal"):
