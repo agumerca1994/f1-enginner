@@ -62,6 +62,10 @@ def build(live: LiveSession) -> dict[str, Any]:
             "paused": bool(s["game_paused"]),
             "pit_window_ideal_lap": int(s["pit_stop_window_ideal_lap"]) or None,
             "pit_window_latest_lap": int(s["pit_stop_window_latest_lap"]) or None,
+            "marshal_zones": [
+                {"inicio_pct": round(float(z["zone_start"]) * 100, 1), "bandera": c.FIA_FLAGS.get(int(z["zone_flag"]))}
+                for z in s["marshal_zones"][: int(s["num_marshal_zones"])]
+            ],
             "forecast": [
                 {
                     "in_minutes": int(f["time_offset"]),
@@ -162,6 +166,18 @@ def build(live: LiveSession) -> dict[str, Any]:
             "engine": int(d["engine_damage"]),
             "drs_fault": bool(d["drs_fault"]),
             "ers_fault": bool(d["ers_fault"]),
+        }
+
+    if (p := live.last.get("motion")) is not None and player is not None:
+        m = p.body["car_motion_data"][player]
+        out["motion"] = {
+            "age_s": _age(live, "motion"),
+            "g_lateral": round(float(m["g_force_lateral"]), 2),
+            "g_longitudinal": round(float(m["g_force_longitudinal"]), 2),
+            "g_vertical": round(float(m["g_force_vertical"]), 2),
+            "yaw": round(float(m["yaw"]), 3),
+            "pitch": round(float(m["pitch"]), 3),
+            "roll": round(float(m["roll"]), 3),
         }
 
     return _common(out, live, player)

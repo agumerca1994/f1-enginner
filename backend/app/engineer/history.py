@@ -57,6 +57,11 @@ class PlayerLap:
     inner_temp_avg: list[float] | None = None
     sectors_ms: list[int | None] | None = None  # [S1, S2, S3] of this lap
     off_track_pct: float | None = None  # share of the lap with a wheel off the track
+    peak_lat_g: float | None = None  # peak cornering / braking load this lap
+    peak_brake_g: float | None = None
+    peak_slip_ratio: float | None = None  # traction/lockup indicator from motion_ex
+    peak_front_slip: float | None = None  # front slip angle peak (understeer when high)
+    peak_rear_slip: float | None = None   # rear slip angle peak (oversteer when high)
 
 
 @dataclass
@@ -85,6 +90,11 @@ class SessionHistory:
         self._offtrack_samples = 0  # telemetry samples with a wheel off track this lap
         self._track_samples = 0
         self._fia_flag: str | None = None
+        self._peak_lat_g = 0.0  # peak cornering and braking load this lap
+        self._peak_brake_g = 0.0
+        self._peak_slip_ratio = 0.0  # from motion_ex: traction/lockup and slide indicators
+        self._peak_front_slip = 0.0
+        self._peak_rear_slip = 0.0
         # Sector tracking for the player.
         self._sector = 0
         self._cur_s1: int | None = None  # this lap's S1/S2 as they are crossed
@@ -142,6 +152,18 @@ class SessionHistory:
             self._track_samples += 1
             if any(c.SURFACE_TYPES.get(int(x)) in c.OFF_TRACK_SURFACES for x in tel["surface_type"]):
                 self._offtrack_samples += 1
+        elif packet.name == "motion":
+            m = packet.body["car_motion_data"][packet.player_car_index]
+            self._peak_lat_g = max(self._peak_lat_g, abs(float(m["g_force_lateral"])))
+            lon = float(m["g_force_longitudinal"])
+            if lon < 0:  # negative is deceleration: the braking load
+                self._peak_brake_g = max(self._peak_brake_g, -lon)
+        elif packet.name == "motion_ex":
+            mx = packet.body
+            self._peak_slip_ratio = max(self._peak_slip_ratio, max(abs(float(x)) for x in mx["wheel_slip_ratio"]))
+            sa = [abs(float(x)) for x in mx["wheel_slip_angle"]]  # order RL, RR, FL, FR
+            self._peak_front_slip = max(self._peak_front_slip, sa[2], sa[3])
+            self._peak_rear_slip = max(self._peak_rear_slip, sa[0], sa[1])
         elif packet.name == "car_damage":
             new += self._damage_changes(packet, live)
         elif packet.name == "lap_data":
@@ -323,9 +345,16 @@ class SessionHistory:
             inner_temp_avg=_average([sample[1] for sample in self._temp_samples]),
             sectors_ms=sectors,
             off_track_pct=round(100 * self._offtrack_samples / self._track_samples, 1) if self._track_samples else None,
+            peak_lat_g=round(self._peak_lat_g, 2) or None,
+            peak_brake_g=round(self._peak_brake_g, 2) or None,
+            peak_slip_ratio=round(self._peak_slip_ratio, 3) or None,
+            peak_front_slip=round(self._peak_front_slip, 3) or None,
+            peak_rear_slip=round(self._peak_rear_slip, 3) or None,
         )
         self._temp_samples = []
         self._offtrack_samples = self._track_samples = 0
+        self._peak_lat_g = self._peak_brake_g = 0.0
+        self._peak_slip_ratio = self._peak_front_slip = self._peak_rear_slip = 0.0
         self._lap_sc = self._sc_status in ("Full safety car", "Virtual safety car")
         self._lap_pit = self._lap_invalid = False
         self._lap_ers_deployed = 0.0

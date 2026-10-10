@@ -47,6 +47,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
             "temp_aire": session.get("air_temperature_c"),
             "pronostico": session.get("forecast"),
             "ventana_box_juego": [session.get("pit_window_ideal_lap"), session.get("pit_window_latest_lap")],
+            "zonas_con_bandera": [z for z in session.get("marshal_zones") or [] if z.get("bandera") in ("yellow", "red")],
             "online": session.get("online"),
         },
         "piloto": _player(snap, history, laps),
@@ -100,6 +101,12 @@ def _player(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dict[
         "vuelta_invalida": lap.get("lap_invalid"),
         "bandera_fia": st.get("fia_flag"),
         "fuera_de_pista_ult_vuelta_pct": laps[-1].off_track_pct if laps else None,
+        "fuerzas_g_ult_vuelta": {"lateral_max": laps[-1].peak_lat_g, "frenada_max": laps[-1].peak_brake_g} if laps else None,
+        "deslizamiento_ult_vuelta": {
+            "patinaje_max": laps[-1].peak_slip_ratio,  # alto en frenada = bloqueo; en aceleración = patinada
+            "angulo_delantero_max": laps[-1].peak_front_slip,  # más alto que el trasero = subviraje
+            "angulo_trasero_max": laps[-1].peak_rear_slip,     # más alto que el delantero = sobreviraje
+        } if laps else None,
         "compuestos_usados": history.compounds_used,
         "ers": {"bateria_pct": st.get("ers_percent"), "modo": ERS_MODE_ES.get(st.get("ers_mode"), st.get("ers_mode")),
                 "desplegado_ultima_vuelta_mj": laps[-1].ers_deployed_mj if laps else None},
