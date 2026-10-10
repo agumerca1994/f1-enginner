@@ -26,7 +26,7 @@ Decisiones tomadas por el usuario:
 | P2 Dashboard PWA | ✅ En producción | Login con Google, dashboard en vivo apaisado, mapa del circuito, monoplaza, posiciones, `/pair`, `/settings` |
 | Extra: app de la Mac | ✅ Hecha (uso local) | `Ingeniero Bridge.app`: barra de menú y ventana, vincular/desvincular, enviar, abrir al iniciar sesión |
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
-| P3 Procesamiento e ingeniero | 🟡 En producción (modo reglas) | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude (niveles estándar y pro). Falta cargar la key y comparar los niveles con costo real |
+| P3 Procesamiento e ingeniero | 🟡 En producción | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude. Al largar una carrera baja el plan de paradas desde la grilla (trigger `race_start`) usando clima, vueltas y vida de gomas, y lo calibra con lo aprendido en prácticas del mismo GP (`track_knowledge`). Falta cargar la key y comparar niveles con costo real |
 | P4 Agente y voz | ⏳ Pendiente | — |
 | P5 MCP público | 🟡 En producción | `/mcp` con OAuth 2.1 (registro dinámico, PKCE, rotación de refresh) y tokens personales `rbm_pat_`, scope `telemetry:read`. Tools: `list_sessions`, `get_session_review`, `compare_laps`, `get_engineer_radio`, `get_live_session`. Consentimiento en `/oauth/authorize` y sección en Ajustes. Discovery, registro y redirección al consentimiento verificados en producción; falta conectarlo desde claude.ai |
 | P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
@@ -49,6 +49,7 @@ Decisiones tomadas por el usuario:
 - **Repeticiones con el mismo motor del vivo.** Leen las capturas crudas del servidor; los silencios de más de 10 s entre grabaciones se acortan a 1 s.
 - **Desvincular** lo puede hacer el propio bridge (`DELETE /api/devices/self`) o el usuario desde Ajustes.
 - **Login de Google desde el propio dominio** (2026-10-05). `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=f1.imanzanastore.com.ar` y la web reenvía `/__/auth/*` a `f1-engineer.firebaseapp.com` (`next.config.ts`). Con el dominio de firebaseapp.com el login fallaba con "missing initial state" en navegadores que aíslan el almacenamiento de terceros, como la ventana del conector de Claude. El cliente OAuth de Google Cloud tiene `https://f1.imanzanastore.com.ar/__/auth/handler` como URI de redirección.
+- **Estrategia desde la grilla y memoria del circuito** (2026-10-10). Al largar una carrera, el ingeniero recibe un trigger `race_start` que le pide el plan de paradas completo con los datos que ya llegan antes de largar (pronóstico, vueltas, `juegos_de_neumaticos`, regla de dos compuestos). Además `app/engineer/knowledge.py` resume cada sesión (ritmo y degradación por compuesto, consumo, pérdida en boxes) en la tabla `track_knowledge` por (tenant, pista), y la carrera lo levanta como `conocimiento_previo`. Una sesión más pobre no pisa una más rica.
 - **MCP público portado de registrapp** (2026-10-05). Es sólo lectura. La sesión grabada se analiza re-jugando sus capturas con el mismo `RaceEngineer` (`app/engineer/review.py`, con caché de 8 sesiones), así las cifras coinciden con las del ingeniero. Los prefijos de token son `rbm_at_`, `rbm_rt_` y `rbm_pat_`. Cada lifespan crea su propio session manager de MCP, porque sólo se puede arrancar una vez y los tests abren uno por cliente. `mcp` 1.29.0 obliga a fijar `sse-starlette==2.1.3` para mantener starlette 0.41.
 
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
@@ -158,7 +159,7 @@ backend/app/
                      engineer (/api/engineer/*), oauth (/.well-known/*, /oauth/*)
   models/, core/ (config, auth, security, database, logging_config)
   services/          pairing, mcp_tokens, oauth_provider, rate_limit
-backend/alembic/     05fd98fa34e0 esquema inicial · a7b184d54fc9 track_layouts · de9c03b6f9cf engineer_messages · c50f98e2c6fb tablas del MCP
+backend/alembic/     05fd98fa34e0 inicial · a7b184d54fc9 track_layouts · de9c03b6f9cf engineer_messages · c50f98e2c6fb MCP · 92cc84e4b207 track_knowledge
 frontend/            Next.js 15 + Tailwind 4: / (dashboard), /sessions, /replay/[id], /pair, /settings, /usage, /oauth/authorize
   components/dashboard/  Dashboard, Cards, TrackMap, CarTopView, Panel
   lib/               auth (Firebase), api, live, replay, types, format, teams
