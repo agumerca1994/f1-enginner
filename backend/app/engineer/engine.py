@@ -96,6 +96,8 @@ def merge(older: "EngineerRequest", newer: "EngineerRequest") -> "EngineerReques
 class RaceEngineer:
     history: SessionHistory = field(default_factory=SessionHistory)
     recent_radio: list[dict] = field(default_factory=list)
+    # What the player learned at this track before (loaded when a race opens).
+    prior_knowledge: dict | None = None
     _last_call: dict[str, float] = field(default_factory=dict)
 
     def observe(self, packet: Packet, live: LiveSession) -> EngineerRequest | None:
@@ -113,7 +115,7 @@ class RaceEngineer:
         return last is None or t.session_time - last >= DEBOUNCE_S
 
     def build_request(self, triggers: list[Trigger], live: LiveSession) -> EngineerRequest:
-        facts = analysis.build(live, self.history)
+        facts = analysis.build(live, self.history, prior=self.prior_knowledge)
         return EngineerRequest(
             triggers=triggers,
             session_time=triggers[-1].session_time,

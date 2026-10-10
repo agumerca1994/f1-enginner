@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import utcnow
 from app.core.config import settings
+from app.engineer import knowledge
 from app.engineer.runner import engineer_hub
 from app.ingest.protocol import ProtocolError, decode_batch
 from app.live.state import LiveStore
@@ -25,6 +26,7 @@ from app.telemetry import capture, registry
 logger = logging.getLogger(__name__)
 
 FLUSH_EVERY_S = 5.0
+RACE_TYPES = (15, 16, 17)
 
 
 class _OpenSession:
@@ -50,6 +52,7 @@ class IngestConnection:
         self.heartbeat: dict = {}
         self._last_flush = time.monotonic()
         self._logged_rejections: set[str] = set()
+        self._knowledge_uid: int | None = None  # session we already tried to prime with prior knowledge
 
     # --- messages -----------------------------------------------------------
 
@@ -125,9 +128,27 @@ class IngestConnection:
             engineer.observe(packet, live)
             open_session.last_packet_at = datetime.fromtimestamp(received_ns / 1e9, timezone.utc)
             self._apply_metadata(open_session, packet)
+            await self._maybe_prime_knowledge(db, live)
 
         engineer_hub.runner(self.device.tenant_id).dispatch()
         await self.maybe_flush(db)
+
+    async def _maybe_prime_knowledge(self, db: AsyncSession, live) -> None:
+        """At the start of a race, feed the engineer what the player learned at this track."""
+        if self._knowledge_uid == live.session_uid:
+            return
+        session = live.last.get("session")
+        if session is None or live.track_id is None:
+            return
+        if int(session.body["session_type"]) not in RACE_TYPES:
+            self._knowledge_uid = live.session_uid  # not a race: nothing to prime, don't re-check
+            return
+        self._knowledge_uid = live.session_uid
+        prior = await knowledge.load(db, self.device.tenant_id, live.track_id)
+        if prior:
+            engineer_hub.runner(self.device.tenant_id).engineer.prior_knowledge = prior
+            logger.info("primed engineer with track knowledge",
+                        extra={"tenant_id": self.device.tenant_id, "track_id": live.track_id})
 
     # --- sessions -----------------------------------------------------------
 
@@ -230,8 +251,17 @@ class IngestConnection:
                 gs.ended_at = now
             s.received = 0
         self.rejected.clear()
+        await self._save_knowledge(db)
         await self._save_layout(db)
         await db.commit()
+
+    async def _save_knowledge(self, db: AsyncSession) -> None:
+        """Persist what this session taught about its track, for future races there."""
+        runner = engineer_hub.runner(self.device.tenant_id)
+        for s in self.sessions.values():
+            gs = s.game_session
+            if gs.id == runner.game_session_id and gs.track_id is not None:
+                await knowledge.save(db, self.device.tenant_id, gs.track_id, runner.engineer.history)
 
     async def close(self, db: AsyncSession) -> None:
         for s in self.sessions.values():

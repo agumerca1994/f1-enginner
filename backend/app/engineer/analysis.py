@@ -25,7 +25,7 @@ SAFETY_CAR_PIT_FACTOR = 0.5
 VSC_PIT_FACTOR = 0.65
 
 
-def build(live: LiveSession, history: SessionHistory) -> dict[str, Any]:
+def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | None = None) -> dict[str, Any]:
     snap = snapshot.build(live)
     session = snap.get("session") or {}
     lap = snap.get("lap") or {}
@@ -63,6 +63,12 @@ def build(live: LiveSession, history: SessionHistory) -> dict[str, Any]:
             "nota": "Con recepción baja algunos valores pueden tener segundos de antigüedad y faltar vueltas.",
         },
     }
+    if prior:
+        facts["conocimiento_previo"] = {
+            **prior,
+            "nota": "Ritmo y degradación aprendidos en sesiones anteriores en esta pista. Son una referencia "
+                    "para planificar; validá con el ritmo real de esta carrera.",
+        }
     return facts
 
 

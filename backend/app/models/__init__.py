@@ -4,6 +4,7 @@ from app.models.device import Device, PairingRequest
 from app.models.engineer_message import EngineerMessage
 from app.models.game_session import GameSession, SessionCapture
 from app.models.mcp_auth import McpAuthCode, McpOAuthAuthorization, McpOAuthClient, McpToken
+from app.models.track_knowledge import TrackKnowledge
 from app.models.track_layout import TrackLayout
 
-__all__ = ["AppLog", "Device", "EngineerMessage", "GameSession", "McpAuthCode", "McpOAuthAuthorization", "McpOAuthClient", "McpToken", "PairingRequest", "SessionCapture", "Tenant", "TrackLayout", "User"]
+__all__ = ["AppLog", "Device", "EngineerMessage", "GameSession", "McpAuthCode", "McpOAuthAuthorization", "McpOAuthClient", "McpToken", "PairingRequest", "SessionCapture", "Tenant", "TrackKnowledge", "TrackLayout", "User"]
