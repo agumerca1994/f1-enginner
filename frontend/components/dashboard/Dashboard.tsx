@@ -71,6 +71,7 @@ function TopBar({ status, s }: { status: LiveStatus; s: Snapshot | null }) {
             <>
               {s?.driver ? `${s.driver.name} #${s.driver.race_number} · ${s.driver.team}` : sessionName(se.type)}
               {se.safety_car !== "None" && <span className="ml-2 font-semibold text-warn">{safetyCar(se.safety_car)}</span>}
+              <FlagBadge flag={s?.status?.fia_flag} zones={se.marshal_zones} />
               {se.paused && <span className="ml-2 text-warn">En pausa</span>}
             </>
           ) : (
@@ -91,6 +92,22 @@ function TopBar({ status, s }: { status: LiveStatus; s: Snapshot | null }) {
       </div>
     </header>
   );
+}
+
+const FLAGS: Record<string, [string, string]> = {
+  blue: ["Bandera azul", "text-[#3b82f6]"],
+  yellow: ["Amarilla", "text-warn"],
+  red: ["Roja", "text-danger"],
+};
+
+/** The FIA flag shown to the player, or a yellow/red marshal zone on track. */
+function FlagBadge({ flag, zones }: { flag?: string | null; zones?: { bandera: string | null }[] }) {
+  const onTrack = zones?.some((z) => z.bandera === "yellow" || z.bandera === "red");
+  const key = flag && FLAGS[flag] ? flag : onTrack ? "yellow" : null;
+  if (!key) return null;
+  const [label, cls] = FLAGS[key];
+  const suffix = !flag && onTrack ? " en pista" : "";
+  return <span className={`ml-2 font-semibold ${cls}`}>⚑ {label}{suffix}</span>;
 }
 
 function safetyCar(kind: string): string {

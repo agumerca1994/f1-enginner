@@ -2,6 +2,7 @@
 // console link means some packets may not have arrived yet.
 
 export type Wheels = { rear_left: number; rear_right: number; front_left: number; front_right: number };
+export type WheelSurfaces = { rear_left: string | null; rear_right: string | null; front_left: string | null; front_right: string | null };
 
 export type Snapshot = {
   session_uid: string;
@@ -22,6 +23,7 @@ export type Snapshot = {
     pit_window_ideal_lap: number | null;
     pit_window_latest_lap: number | null;
     forecast: { in_minutes: number; weather: string; rain_percent: number }[];
+    marshal_zones: { inicio_pct: number; bandera: string | null }[];
   };
   driver?: { name: string; team: string; race_number: number; cars_in_session: number };
   lap?: {
@@ -59,6 +61,7 @@ export type Snapshot = {
     tyres_surface_temperature_c: Wheels;
     tyres_inner_temperature_c: Wheels;
     tyres_pressure_psi: Wheels;
+    surface: WheelSurfaces;
   };
   status?: {
     age_s: number | null;
@@ -74,6 +77,16 @@ export type Snapshot = {
     drs_allowed: boolean;
     brake_bias: number;
     max_rpm: number;
+    fia_flag: string | null;
+  };
+  motion?: {
+    age_s: number | null;
+    g_lateral: number;
+    g_longitudinal: number;
+    g_vertical: number;
+    yaw: number;
+    pitch: number;
+    roll: number;
   };
   damage?: {
     age_s: number | null;

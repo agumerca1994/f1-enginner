@@ -211,6 +211,13 @@ export function TelemetryCard({ s }: { s: Snapshot }) {
             {" · "}Reparto de frenada <span className="num text-fg">{st.brake_bias}%</span>
           </>
         )}
+        {s.motion && (
+          <>
+            {" · "}G <span className="num text-fg">{Math.abs(s.motion.g_lateral).toFixed(1)}</span> lat
+            {" · "}<span className="num text-fg">{Math.abs(s.motion.g_longitudinal).toFixed(1)}</span>{" "}
+            {s.motion.g_longitudinal < 0 ? "fren" : "acel"}
+          </>
+        )}
       </div>
     </Panel>
   );

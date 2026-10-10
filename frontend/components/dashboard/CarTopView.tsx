@@ -20,6 +20,8 @@ const TYRES: Record<Wheel, { x: number; y: number; side: "left" | "right" }> = {
   rear_right: { x: 150, y: 272, side: "right" },
 };
 const TYRE_W = 36;
+const OFF_TRACK = new Set(["grass", "gravel", "sand", "mud"]);
+const SURFACE_ES: Record<string, string> = { grass: "pasto", gravel: "grava", sand: "arena", mud: "barro" };
 
 /** The car seen from above: tyres coloured by temperature with their wear, brakes, wings, floor and bodywork by damage. */
 export function CarTopView({ s }: { s: Snapshot }) {
@@ -79,11 +81,18 @@ export function CarTopView({ s }: { s: Snapshot }) {
             const t = TYRES[w];
             const temp = car?.tyres_surface_temperature_c[w];
             const brake = car?.brakes_temperature_c[w];
+            const offTrack = car?.surface ? OFF_TRACK.has(car.surface[w] ?? "") : false;
             const h = w.startsWith("front") ? 56 : 64;
             const bx = t.side === "left" ? t.x + TYRE_W + 6 : t.x - 6;
             return (
               <g key={w}>
-                <rect x={t.x} y={t.y} width={TYRE_W} height={h} rx={9} fill={temp != null ? tyreTempColor(temp) : "#2a3441"} stroke="#07090c" strokeWidth={3} />
+                <rect
+                  x={t.x} y={t.y} width={TYRE_W} height={h} rx={9}
+                  fill={temp != null ? tyreTempColor(temp) : "#2a3441"}
+                  stroke={offTrack ? "#fb923c" : "#07090c"} strokeWidth={offTrack ? 4 : 3}
+                >
+                  {offTrack && <title>Fuera de pista</title>}
+                </rect>
                 {brake != null && <circle cx={bx} cy={t.y + h / 2} r={6} fill={brakeTempColor(brake)} />}
               </g>
             );
@@ -113,8 +122,11 @@ export function CarTopView({ s }: { s: Snapshot }) {
 function WheelStats({ s, wheel }: { s: Snapshot; wheel: Wheel }) {
   const wear = s.damage?.tyres_wear_percent[wheel];
   const car = s.car;
+  const surface = car?.surface?.[wheel];
+  const off = surface ? SURFACE_ES[surface] : null;
   return (
     <div className="space-y-0.5">
+      {off && <div className="text-[0.65rem] font-semibold uppercase tracking-wider text-[#fb923c]">{off}</div>}
       {wear != null && (
         <div className={`num text-2xl font-semibold leading-none ${levelClass(wearLevel(wear))}`}>
           {wear.toFixed(0)}
