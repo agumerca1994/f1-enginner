@@ -26,7 +26,10 @@ const (
 	BatchInterval     = 100 * time.Millisecond
 	HeartbeatInterval = 5 * time.Second
 	MaxQueuedBatches  = 300 // about 30 s of telemetry while offline
-	maxBackoff        = 30 * time.Second
+	// Capped low on purpose: home links blip for a second or two, and a longer
+	// backoff turns each blip into a visible gap at the server. 5 s still backs
+	// off a truly down server, and MaxQueuedBatches covers the wait losslessly.
+	maxBackoff = 5 * time.Second
 )
 
 // Counters are safe to read while the client runs.
@@ -101,6 +104,7 @@ func (c *Client) Run(ctx context.Context) error {
 
 	backoff := time.Second
 	for {
+		start := time.Now()
 		err := c.session(ctx, batcherDone)
 		if err == nil {
 			return nil // clean shutdown
@@ -108,6 +112,11 @@ func (c *Client) Run(ctx context.Context) error {
 		c.Counters.Connected.Store(false)
 		if ctx.Err() != nil {
 			return nil
+		}
+		// A session that stayed up for a while and then dropped is a fresh blip,
+		// not a server that is down: retry quickly instead of at the grown cap.
+		if time.Since(start) >= HeartbeatInterval {
+			backoff = time.Second
 		}
 		c.Logf("disconnected from the server (%v); retrying in %s", err, backoff)
 		select {
