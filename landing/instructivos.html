@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Instructivos — Ingeniero de carrera</title>
+  <meta name="description" content="Cómo conectar tu PlayStation, Xbox o PC, y cómo sumar tus carreras a Claude o ChatGPT.">
+  <meta property="og:title" content="Ingeniero de carrera">
+  <meta property="og:description" content="Un ingeniero de verdad en tu radio. Telemetría en vivo, estrategia e IA.">
+  <meta property="og:image" content="/assets/dashboard.jpg">
+  <meta name="theme-color" content="#050608">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css?v=3">
+</head>
+<body>
+  <nav id="nav">
+    <div class="wrap">
+      <a class="brand" href="/"><img src="/assets/favicon.svg" alt="">Ingeniero de carrera</a>
+      <div class="links">
+        <a href="/#ingeniero">Ingeniero IA</a>
+        <a href="/#telemetria">Telemetría</a>
+        <a href="/#analisis">Análisis</a>
+        <a href="/instructivos" class="current">Instructivos</a>
+        <a class="btn" href="https://f1.imanzanastore.com.ar">Ingresar</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero page">
+    <div class="wrap">
+      <div class="status label"><span class="live"></span>Instructivos</div>
+      <h1 class="grad">Conectalo en cinco minutos.</h1>
+      <p class="lede">Elegí dónde jugás y dónde querés analizar tus carreras.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="tabs" role="tablist" aria-label="Cómo conectarlo">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="g-consola" id="t-consola"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h10a5 5 0 0 1 4.6 7l-.5 1.2a2.6 2.6 0 0 1-4.3.8L15 15H9l-1.8 2a2.6 2.6 0 0 1-4.3-.8L2.4 15A5 5 0 0 1 7 8Z"/><path d="M7 11v3M5.5 12.5h3M16 11.5h.01M18 13.5h.01"/></svg>PlayStation o Xbox</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="g-pc" id="t-pc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>PC</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="g-claude" id="t-claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></svg>Claude</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="g-chatgpt" id="t-chatgpt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>ChatGPT</button>
+      </div>
+
+      <div class="guide on" role="tabpanel" id="g-consola" aria-labelledby="t-consola">
+        <ol class="steps-list">
+          <li><b>Instalá el bridge</b><span>En una compu conectada a la misma red que la consola. Se queda abierta mientras jugás.</span><div class="dl"><span>Descargar</span><a href="https://github.com/agumerca1994/f1-enginner/releases/latest/download/ingeniero-bridge-windows.zip">Windows</a><a href="https://github.com/agumerca1994/f1-enginner/releases/latest/download/ingeniero-bridge-mac.zip">Mac</a></div></li>
+          <li><b>Vinculá tu cuenta</b><span>Tocá <span class="kbd">Vincular</span> en la app y confirmá con Google.</span></li>
+          <li><b>Apuntá el juego a la compu</b><span>En <span class="kbd">Ajustes → Telemetría</span>, poné la IP de la compu. La ves en la pestaña Ajustes del bridge.</span></li>
+          <li><b>Salí a pista</b><span>Abrí el dashboard en cualquier pantalla: se enciende solo.</span></li>
+        </ol>
+        <div class="visual">
+          <div class="panel diagram">
+            <div class="node"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h10a5 5 0 0 1 4.6 7l-.5 1.2a2.6 2.6 0 0 1-4.3.8L15 15H9l-1.8 2a2.6 2.6 0 0 1-4.3-.8L2.4 15A5 5 0 0 1 7 8Z"/><path d="M7 11v3M5.5 12.5h3M16 11.5h.01M18 13.5h.01"/></svg></div><div><b>Consola</b><small>juego</small></div></div>
+            <div class="wire"></div>
+            <div class="node hl"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg></div><div><b>Bridge</b><small>192.168.0.23</small></div></div>
+            <div class="wire slow"></div>
+            <div class="node"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M7 13l3-3 2 2 5-5"/><path d="M9 21h6"/></svg></div><div><b>Dashboard</b><small>web</small></div></div>
+          </div>
+          <div class="menu">
+              <div class="menu-head"><span class="label">Juego · Ajustes de telemetría</span><span class="label" style="color:var(--dim)">Consola</span></div>
+              <div class="row"><span>Telemetría UDP</span><b>Activada</b></div>
+              <div class="row"><span>Modo difusión UDP</span><b>Desactivado</b></div>
+              <div class="row hl"><span>Dirección IP UDP</span><b>192.168.0.23</b></div>
+              <div class="row"><span>Puerto UDP</span><b>20777</b></div>
+              <div class="row"><span>Frecuencia de envío</span><b>60 Hz</b></div>
+              <div class="row"><span>Formato UDP</span><b>2024</b></div>
+            </div>
+        </div>
+      </div>
+
+      <div class="guide" role="tabpanel" id="g-pc" aria-labelledby="t-pc" hidden>
+        <ol class="steps-list">
+          <li><b>Instalá el bridge</b><span>En la misma PC donde corre el juego.</span><div class="dl"><span>Descargar</span><a href="https://github.com/agumerca1994/f1-enginner/releases/latest/download/ingeniero-bridge-windows.zip">Windows</a><a href="https://github.com/agumerca1994/f1-enginner/releases/latest/download/ingeniero-bridge-mac.zip">Mac</a></div></li>
+          <li><b>Vinculá tu cuenta</b><span>Tocá <span class="kbd">Vincular</span> en la app y confirmá con Google.</span></li>
+          <li><b>Configurá el juego</b><span>En <span class="kbd">Ajustes → Telemetría</span>, IP <code>127.0.0.1</code> y puerto <code>20777</code>.</span></li>
+          <li><b>Salí a pista</b><span>Abrí el dashboard en un segundo monitor, la tablet o el celular.</span></li>
+        </ol>
+        <div class="visual">
+          <div class="panel diagram">
+            <div class="node hl"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div><div><b>Tu PC</b><small>juego + bridge</small></div></div>
+            <div class="wire"></div>
+            <div class="node"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M7 13l3-3 2 2 5-5"/><path d="M9 21h6"/></svg></div><div><b>Dashboard</b><small>web</small></div></div>
+          </div>
+          <div class="menu">
+              <div class="menu-head"><span class="label">Juego · Ajustes de telemetría</span><span class="label" style="color:var(--dim)">PC</span></div>
+              <div class="row"><span>Telemetría UDP</span><b>Activada</b></div>
+              <div class="row"><span>Modo difusión UDP</span><b>Desactivado</b></div>
+              <div class="row hl"><span>Dirección IP UDP</span><b>127.0.0.1</b></div>
+              <div class="row"><span>Puerto UDP</span><b>20777</b></div>
+              <div class="row"><span>Frecuencia de envío</span><b>60 Hz</b></div>
+              <div class="row"><span>Formato UDP</span><b>2024</b></div>
+            </div>
+        </div>
+      </div>
+
+      <div class="guide" role="tabpanel" id="g-claude" aria-labelledby="t-claude" hidden>
+        <div>
+          <ol class="steps-list">
+            <li><b>Abrí los conectores</b><span><span class="kbd">Ajustes → Conectores → Agregar conector personalizado</span></span></li>
+            <li><b>Pegá la URL</b><span>Nombre: Ingeniero de carrera.</span><div class="copy"><code>https://f1-api.imanzanastore.com.ar/mcp</code><button type="button" data-copy="https://f1-api.imanzanastore.com.ar/mcp">Copiar</button></div></li>
+            <li><b>Autorizá el acceso</b><span>Iniciá sesión con tu cuenta de Google. Es de sólo lectura.</span></li>
+            <li><b>Preguntá</b><span>Sobre cualquier sesión que hayas corrido, o la que estás corriendo.</span></li>
+          </ol>
+          <p class="req">Necesitás un plan de Claude que admita conectores personalizados.</p>
+        </div>
+        <div class="visual">
+          <div class="panel diagram">
+            <div class="node"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v13c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-13M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></svg></div><div><b>Tus sesiones</b><small>telemetría</small></div></div>
+            <div class="wire"></div>
+            <div class="node hl"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></svg></div><div><b>Claude</b><small>MCP</small></div></div>
+          </div>
+          <div class="panel">
+              <span class="label">Conector personalizado</span>
+              <div class="field"><span>Nombre</span><div>Ingeniero de carrera</div></div>
+              <div class="field hl"><span>URL del servidor MCP</span><div>https://f1-api.imanzanastore.com.ar/mcp</div></div>
+              
+              <div class="dialog-foot"><span class="pill-btn">Agregar</span></div>
+            </div>
+          <div class="panel chat">
+              <div class="bubble me">¿Dónde perdí tiempo en la carrera de Bakú?</div>
+              <div class="bubble ai"><small>Ingeniero de carrera</small>En el sector 3: tres décimas por vuelta contra tu mejor vuelta, casi todo en la frenada de la curva 15. El ritmo con duros fue tu punto fuerte.</div>
+            </div>
+        </div>
+      </div>
+
+      <div class="guide" role="tabpanel" id="g-chatgpt" aria-labelledby="t-chatgpt" hidden>
+        <div>
+          <ol class="steps-list">
+            <li><b>Activá el modo desarrollador</b><span><span class="kbd">Ajustes → Apps y conectores → Avanzado</span></span></li>
+            <li><b>Creá el conector</b><span>Tocá <span class="kbd">Crear</span>, pegá la URL y elegí autenticación OAuth.</span><div class="copy"><code>https://f1-api.imanzanastore.com.ar/mcp</code><button type="button" data-copy="https://f1-api.imanzanastore.com.ar/mcp">Copiar</button></div></li>
+            <li><b>Autorizá el acceso</b><span>Iniciá sesión con tu cuenta de Google. Es de sólo lectura.</span></li>
+            <li><b>Usalo en el chat</b><span><span class="kbd">+ → Modo desarrollador → Ingeniero de carrera</span></span></li>
+          </ol>
+          <p class="req">Necesitás un plan de ChatGPT con modo desarrollador.</p>
+        </div>
+        <div class="visual">
+          <div class="panel diagram">
+            <div class="node"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v13c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-13M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></svg></div><div><b>Tus sesiones</b><small>telemetría</small></div></div>
+            <div class="wire"></div>
+            <div class="node hl"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg></div><div><b>ChatGPT</b><small>MCP</small></div></div>
+          </div>
+          <div class="panel">
+              <span class="label">Conector personalizado</span>
+              <div class="field"><span>Nombre</span><div>Ingeniero de carrera</div></div>
+              <div class="field hl"><span>URL del servidor MCP</span><div>https://f1-api.imanzanastore.com.ar/mcp</div></div>
+              <div class="field"><span>Autenticación</span><div>OAuth</div></div>
+              <div class="dialog-foot"><span class="pill-btn">Agregar</span></div>
+            </div>
+          <div class="panel chat">
+              <div class="bubble me">¿Dónde perdí tiempo en la carrera de Bakú?</div>
+              <div class="bubble ai"><small>Ingeniero de carrera</small>En el sector 3: tres décimas por vuelta contra tu mejor vuelta, casi todo en la frenada de la curva 15. El ritmo con duros fue tu punto fuerte.</div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 Ingeniero de carrera</span>
+      <span>Compatible con la telemetría de EA SPORTS F1® 24. Sin afiliación con Electronic Arts.</span>
+    </div>
+  </footer>
+
+  <script src="/assets/site.js?v=1"></script>
+</body>
+</html>

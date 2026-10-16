@@ -23,7 +23,7 @@ Current state:
   - `app/replay/` plays stored captures back through the same live state.
   - `app/mcp_server/` is the MCP connector; its OAuth endpoints are in `routers/oauth.py`.
 - **`frontend/`** (Next.js 15 + Tailwind 4 PWA): `/`, `/sessions`, `/replay/[id]`, `/pair`, `/settings`.
-- **`landing/`**: the public landing page (static HTML + nginx), served as `f1eng-landing` at `web-f1.imanzanastore.com.ar`. Its download buttons point to the latest GitHub release assets `ingeniero-bridge-windows.zip` and `ingeniero-bridge-mac.zip`; binaries never go in git.
+- **`landing/`**: the public landing (static HTML + nginx), served as `f1eng-landing` at `web-f1.imanzanastore.com.ar`: the home (`index.html`) and `/instructivos` (`instructivos.html`, deep links `#consola`, `#pc`, `#claude`, `#chatgpt`). Shared styles and script are `assets/site.css` and `assets/site.js`; bump their `?v=` when they change, since `/assets/` is cached for 7 days. Its download buttons point to the latest GitHub release assets `ingeniero-bridge-windows.zip` and `ingeniero-bridge-mac.zip`; binaries never go in git.
 - **`fixtures/captures/`**: real `.f1cap.zst` captures, stored in git-lfs. They are the golden test data; `baku-carrera-wifi` was recorded over a lossy link at ~19% reception.
 
 ## Principles
