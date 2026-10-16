@@ -20,6 +20,16 @@ rm -rf "Ingeniero Bridge.app" "$APP"
 mkdir -p "$ROOT/bridge/bin"
 mv "Ingeniero Bridge.app" "$APP"
 
+# Universal binary: add an Intel build next to the native arm64 one.
+BIN="$APP/Contents/MacOS/bridge-app"
+if [ "$(uname -m)" = "arm64" ]; then
+  INTEL="$(mktemp -d)/bridge-app-amd64"
+  (cd "$ROOT/bridge" && CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 CGO_CFLAGS="-arch x86_64" CGO_LDFLAGS="-arch x86_64" \
+    go build -ldflags "-s -w" -o "$INTEL" ./cmd/bridge-app)
+  lipo -create "$BIN" "$INTEL" -output "$BIN.universal"
+  mv "$BIN.universal" "$BIN"
+fi
+
 # Menu bar app: no Dock icon.
 /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" "$APP/Contents/Info.plist" 2>/dev/null ||
   /usr/libexec/PlistBuddy -c "Set :LSUIElement true" "$APP/Contents/Info.plist"
@@ -27,4 +37,8 @@ mv "Ingeniero Bridge.app" "$APP"
 # Ad-hoc signature (the plist changed after packaging). Distribution to other
 # players needs a Developer ID signature and notarization (P7).
 codesign --force --deep -s - "$APP"
-echo "Built: $APP"
+
+# Zip for download (ditto keeps the bundle's symlinks and metadata).
+rm -f "$ROOT/bridge/bin/ingeniero-bridge-mac.zip"
+ditto -c -k --keepParent "$APP" "$ROOT/bridge/bin/ingeniero-bridge-mac.zip"
+echo "Built: $APP and bridge/bin/ingeniero-bridge-mac.zip"

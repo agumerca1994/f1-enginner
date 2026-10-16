@@ -23,6 +23,7 @@ Current state:
   - `app/replay/` plays stored captures back through the same live state.
   - `app/mcp_server/` is the MCP connector; its OAuth endpoints are in `routers/oauth.py`.
 - **`frontend/`** (Next.js 15 + Tailwind 4 PWA): `/`, `/sessions`, `/replay/[id]`, `/pair`, `/settings`.
+- **`landing/`**: the public landing page (static HTML + nginx), served as `f1eng-landing` at `web-f1.imanzanastore.com.ar`. Its download buttons point to the latest GitHub release assets `ingeniero-bridge-windows.zip` and `ingeniero-bridge-mac.zip`; binaries never go in git.
 - **`fixtures/captures/`**: real `.f1cap.zst` captures, stored in git-lfs. They are the golden test data; `baku-carrera-wifi` was recorded over a lossy link at ~19% reception.
 
 ## Principles
@@ -45,7 +46,7 @@ cd frontend && npm run dev                                # uses .env.local; NEX
 cd bridge && go test ./... && go build -o bin/bridge ./cmd/bridge
 BRIDGE_CONFIG=/tmp/bridge.json bridge/bin/bridge pair --server http://localhost:8000
 bridge/bin/bridge replay --in fixtures/captures/baku-carrera-wifi.f1cap.zst --to 127.0.0.1:20777   # feed a running bridge
-./scripts/build-mac-app.sh                                # builds bridge/bin/Ingeniero Bridge.app
+./scripts/build-mac-app.sh [version]                      # universal bridge/bin/Ingeniero Bridge.app + ingeniero-bridge-mac.zip
 ./scripts/build-windows-app.sh [version]                  # bridge/bin/windows/*.zip (needs brew mingw-w64)
 ```
 
@@ -67,6 +68,7 @@ Before every commit, check the staged files for secrets.
 
 Easypanel builds `docker-compose.prod.yml` from GitHub `main`: services `f1eng-db`, `f1eng-api` and `f1eng-web`. They carry the `f1eng-` prefix because the `easypanel` Docker network is shared with other projects.
 - Run `scripts/deploy.sh` to deploy. It checks git state, then calls the webhook.
+- Bridge downloads: build both apps, then `gh release create vX.Y.Z bridge/bin/ingeniero-bridge-mac.zip bridge/bin/ingeniero-bridge-windows.zip` (fixed asset names; the landing links to `releases/latest/download/...`).
 - A new required env var must be added in Easypanel **before** deploying. The compose fails fast with `:?` when one is missing.
 
 Production diagnostics use `GET /internal/{devices,sessions,live,logs,logs/summary}` with the header `x-internal-key` (the value is in `.env.production`).
