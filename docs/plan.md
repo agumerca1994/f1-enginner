@@ -88,6 +88,7 @@ Decisiones tomadas por el usuario:
 - Las mejoras de la prueba en seco ya están hechas: pérdida en boxes medida con las paradas en verde, escenario "si paran todos" bajo safety car, juegos de neumáticos y tabla por pista en el manual. Falta persistir la pérdida en boxes por pista cuando el ingeniero corra en vivo.
 - El estado en vivo está en memoria y se pierde en cada deploy; pasa a Redis en P7.
 - La imagen de la API pesa unos 800 MB (numpy y firebase-admin); se puede optimizar.
+- Mejora futura del bridge: mostrar la IP de la compu en grande en la pestaña Estado, con botón para copiarla, y avisar si cambió desde la última sesión (el router puede reasignarla y la consola deja de llegar). Hoy la IP se ve en Ajustes → Configurar el juego y hay que cargarla a mano en el juego.
 
 ## Arquitectura
 ```
