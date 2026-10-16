@@ -17,7 +17,7 @@ Decisiones tomadas por el usuario:
 - el proveedor de LLM es configurable;
 - el producto es comercial y multiusuario.
 
-## Estado actual (actualizado 2026-10-05)
+## Estado actual (actualizado 2026-10-16)
 
 | Fase | Estado | Qué hay |
 |---|---|---|
@@ -25,6 +25,7 @@ Decisiones tomadas por el usuario:
 | P1 Ingest y parser | ✅ En producción | Parser de los 15 paquetes, WSS `/ingest/v1`, vinculación por código, captura cruda por sesión, probado con una carrera real desde el PS4 |
 | P2 Dashboard PWA | ✅ En producción | Login con Google, dashboard en vivo apaisado, mapa del circuito, monoplaza, posiciones, `/pair`, `/settings` |
 | Extra: app de la Mac | ✅ Hecha (uso local) | `Ingeniero Bridge.app`: barra de menú y ventana, vincular/desvincular, enviar, abrir al iniciar sesión |
+| Extra: app de Windows | 🟡 Compilada, sin probar en Windows | `scripts/build-windows-app.sh` arma `Ingeniero Bridge.exe` (bandeja del sistema) + `bridge.exe` + `LEEME.txt` en un zip, cross-compilado desde la Mac con mingw-w64. Inicio automático por la clave `Run` del registro. Se le pasa a un tester con PS4 + Windows y F1 25 en PC |
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
 | P3 Procesamiento e ingeniero | 🟡 En producción | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude. **Producción corre `claude (pro)`** (Sonnet por vuelta, Opus en eventos), verificado en `GET /internal/engineer`. Al largar una carrera baja el plan de paradas desde la grilla (trigger `race_start`) usando clima, vueltas y vida de gomas, y lo calibra con lo aprendido en prácticas del mismo GP (`track_knowledge`) |
 | P4 Agente y voz | ⏳ Pendiente | — |
@@ -53,6 +54,8 @@ Decisiones tomadas por el usuario:
 - **Más telemetría para el ingeniero** (2026-10-10). Tiempos por sector en vivo con mejores parciales y vuelta teórica (trigger `sector_completed` guardado por costo); bandera FIA (trigger `blue_flag`) y superficie/fuera de pista por rueda; fuerzas G y orientación con picos por vuelta; zonas de marshal con bandera; y uso de `motion_ex` (patinaje y ángulo de deslizamiento) que antes se mandaba y se tiraba. Todo en el snapshot, en los facts del ingeniero y en el review de sesiones grabadas.
 - **Estrategia desde la grilla y memoria del circuito** (2026-10-10). Al largar una carrera, el ingeniero recibe un trigger `race_start` que le pide el plan de paradas completo con los datos que ya llegan antes de largar (pronóstico, vueltas, `juegos_de_neumaticos`, regla de dos compuestos). Además `app/engineer/knowledge.py` resume cada sesión (ritmo y degradación por compuesto, consumo, pérdida en boxes) en la tabla `track_knowledge` por (tenant, pista), y la carrera lo levanta como `conocimiento_previo`. Una sesión más pobre no pisa una más rica.
 - **MCP público portado de registrapp** (2026-10-05). Es sólo lectura. La sesión grabada se analiza re-jugando sus capturas con el mismo `RaceEngineer` (`app/engineer/review.py`, con caché de 8 sesiones), así las cifras coinciden con las del ingeniero. Los prefijos de token son `rbm_at_`, `rbm_rt_` y `rbm_pat_`. Cada lifespan crea su propio session manager de MCP, porque sólo se puede arrancar una vez y los tests abren uno por cliente. `mcp` 1.29.0 obliga a fijar `sse-starlette==2.1.3` para mantener starlette 0.41.
+
+- **Muestras de formatos nuevos con "Modo desarrollo"** (2026-10-16). El backend sólo parsea el formato 2024 y descarta el resto antes de abrir la sesión; el DLC 2026 de F1 25 cambia casi todos los tamaños (24 autos, paquete 16 nuevo). Sin PC propia para el juego, un tester graba muestras: el "Modo desarrollo" de la app (menú del ícono u Opciones) muestra "Grabar muestra" y "Abrir carpeta de muestras". Graba todo lo que llega, sin throttle y en cualquier formato, a `<config>/race-engineer/muestras/` (`.f1cap.zst` + resumen `.txt` con formatos, año del juego y tamaños por paquete). Mientras se envía se engancha al receptor del agente (`Agent.SetTap`); si no, escucha por su cuenta. Las muestras llegan por fuera (Drive/WhatsApp): no hay endpoint de subida a propósito. Siguiente paso con las muestras: `formats/f2026.py` y pasar de 22 a 24 autos.
 
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
 - **La IA es el ingeniero de pista, no un locutor.** Pone el conocimiento de F1 que el jugador no tiene y toma las decisiones:

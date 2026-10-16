@@ -4,7 +4,7 @@ The plan, the phase status and the decisions made so far are in `docs/plan.md`, 
 
 Current state:
 - P0, P1 and P2 are in production.
-- The Mac menu-bar app is built.
+- The Mac menu-bar app is built; the Windows build compiles but is untested on Windows.
 - Session replays are in production.
 - P3 is in production: the engineer runs in production on `claude (pro)` (Sonnet per lap, Opus on events) — the key is set in Easypanel, verified via `GET /internal/engineer`. Without a key it falls back to rules. The dashboard shows per-sector times, FIA flags, off-track surface and G-forces.
 - P5 is in production: a public, read-only MCP at `/mcp` (OAuth 2.1 plus personal tokens, ported from registrapp). The tools live in `backend/app/mcp_server/tools.py`; recorded sessions are analysed by `app/engineer/review.py`.
@@ -14,7 +14,7 @@ Current state:
 ## Layout
 - **`bridge/`** (Go) runs on the player's computer. It reads only the 29-byte packet header; all body parsing happens on the server.
   - `cmd/bridge` is the CLI.
-  - `cmd/bridge-app` is the Mac menu-bar app (Fyne).
+  - `cmd/bridge-app` is the tray app (Fyne) for macOS and Windows. Its "Modo desarrollo" records raw samples of any packet format to `<config>/race-engineer/muestras/`.
   - Both drive `internal/agent`.
 - **`backend/`** (FastAPI):
   - `app/telemetry/` is the parser. Each format has its own file, e.g. `formats/f2024.py`, and is registered in `registry.FORMATS`.
@@ -46,6 +46,7 @@ cd bridge && go test ./... && go build -o bin/bridge ./cmd/bridge
 BRIDGE_CONFIG=/tmp/bridge.json bridge/bin/bridge pair --server http://localhost:8000
 bridge/bin/bridge replay --in fixtures/captures/baku-carrera-wifi.f1cap.zst --to 127.0.0.1:20777   # feed a running bridge
 ./scripts/build-mac-app.sh                                # builds bridge/bin/Ingeniero Bridge.app
+./scripts/build-windows-app.sh [version]                  # bridge/bin/windows/*.zip (needs brew mingw-w64)
 ```
 
 `MCP_AUTH_DISABLED=true` opens `/mcp` without a token, acting as the first player (local only; forced off in production).
@@ -54,7 +55,7 @@ bridge/bin/bridge replay --in fixtures/captures/baku-carrera-wifi.f1cap.zst --to
 
 The frontend ignores `NEXT_PUBLIC_DEV_USER` in production builds.
 
-A bridge's config lives in `~/Library/Application Support/race-engineer/config.json`; set `BRIDGE_CONFIG` to use another file. The Mac app logs to `~/Library/Logs/RaceEngineer/bridge-app.log`.
+A bridge's config lives in `~/Library/Application Support/race-engineer/config.json`; set `BRIDGE_CONFIG` to use another file. The app logs to `~/Library/Logs/RaceEngineer/bridge-app.log` (macOS) or `%LocalAppData%\RaceEngineer\Logs\bridge-app.log` (Windows).
 
 ## Deploy
 The repository is **public** (Easypanel could not read it as private), so secrets never go in git. They live in:

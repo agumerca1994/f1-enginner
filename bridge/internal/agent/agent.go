@@ -55,6 +55,7 @@ type Agent struct {
 	last      time.Time
 	window    *doctor.ReceptionWindow
 	client    *uplink.Client
+	tap       func(at time.Time, data []byte)
 }
 
 // New returns an idle agent.
@@ -84,6 +85,14 @@ func (a *Agent) Status() Status {
 		s.Reception, s.HasReception = a.window.Estimate()
 	}
 	return s
+}
+
+// SetTap passes every received datagram, before filtering, to fn; nil removes it.
+// The app uses it to record samples while sending.
+func (a *Agent) SetTap(fn func(at time.Time, data []byte)) {
+	a.mu.Lock()
+	a.tap = fn
+	a.mu.Unlock()
 }
 
 // Run listens and uploads until ctx ends, then flushes the last data to the
@@ -164,7 +173,11 @@ func (a *Agent) Run(ctx context.Context) error {
 				a.forwarded++
 			}
 		}
+		tap := a.tap
 		a.mu.Unlock()
+		if tap != nil {
+			tap(d.At, d.Data)
+		}
 		if allow {
 			client.Enqueue(d.At, d.Data)
 		}

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,6 +32,7 @@ const (
 	listenAddr   = ":20777"
 	dashboardURL = "https://f1.imanzanastore.com.ar"
 	prefAutoSend = "autoSend"
+	prefDevMode  = "devMode"
 )
 
 func main() {
@@ -43,7 +45,11 @@ func main() {
 
 	if desk, ok := a.(desktop.App); ok {
 		c.tray = desk
-		desk.SetSystemTrayIcon(trayIcon)
+		if runtime.GOOS == "darwin" {
+			desk.SetSystemTrayIcon(trayIcon)
+		} else {
+			desk.SetSystemTrayIcon(appIcon) // the monochrome template would be unreadable on a dark taskbar
+		}
 		c.refreshMenu()
 	}
 
@@ -56,6 +62,9 @@ func main() {
 	go c.ticker()
 	a.Run()
 	c.stop()
+	if _, err := c.sampler.stop(); err != nil {
+		logger.Printf("closing the sample: %v", err)
+	}
 }
 
 // controller owns the agent, the saved link and the UI state.
@@ -74,6 +83,7 @@ type controller struct {
 	lastErr  string
 	pairing  *pairing.Start
 	pairStop context.CancelFunc
+	sampler  sampler
 
 	menu       *fyne.Menu
 	menuStatus *fyne.MenuItem
@@ -143,11 +153,13 @@ func (c *controller) start() {
 	done := make(chan struct{})
 	c.running, c.cancel, c.done, c.lastErr = ag, cancel, done, ""
 	c.mu.Unlock()
+	c.sampler.handOver(ag) // free the port for the agent, keep recording
 
 	c.log.Printf("sending started")
 	go func() {
 		defer close(done)
 		err := ag.Run(ctx)
+		c.sampler.release(ag)
 		c.mu.Lock()
 		if err != nil {
 			c.lastErr = err.Error()
@@ -270,6 +282,70 @@ func (c *controller) clearLink() {
 	}
 }
 
+// quit ends the app; main then stops sending and closes any sample.
+func (c *controller) quit() {
+	c.log.Printf("quit requested")
+	c.app.Quit()
+}
+
+func (c *controller) devMode() bool {
+	return c.app.Preferences().BoolWithFallback(prefDevMode, false)
+}
+
+// setDevMode turns development mode on (showing its tab) or off (finishing
+// any recording, since its controls disappear). Called on the UI thread.
+func (c *controller) setDevMode(on bool) {
+	c.app.Preferences().SetBool(prefDevMode, on)
+	if !on && c.sampler.recording() {
+		go c.stopSample()
+	}
+	if c.window != nil {
+		c.window.refreshDev()
+		if on {
+			c.window.tabs.Select(c.window.devTab)
+			c.window.Show()
+		}
+	}
+	c.changed()
+}
+
+// startSample records everything the game sends into a new sample file.
+func (c *controller) startSample(note string) {
+	c.mu.Lock()
+	ag := c.running
+	c.mu.Unlock()
+	if err := c.sampler.start(ag, note); err != nil {
+		c.setError(fmt.Sprintf("No se pudo empezar la grabación: %v", err))
+		return
+	}
+	c.log.Printf("sample recording started")
+	c.changed()
+}
+
+func (c *controller) stopSample() {
+	path, err := c.sampler.stop()
+	if err != nil {
+		c.setError(fmt.Sprintf("La muestra se guardó con errores: %v", err))
+	}
+	if path != "" {
+		c.log.Printf("sample saved to %s", path)
+	}
+	c.changed()
+}
+
+func (c *controller) openSamples() {
+	dir, err := samplesDir()
+	if err == nil {
+		err = os.MkdirAll(dir, 0o755)
+	}
+	if err == nil {
+		err = openFolder(dir)
+	}
+	if err != nil {
+		c.setError(fmt.Sprintf("No se pudo abrir la carpeta de muestras: %v", err))
+	}
+}
+
 func (c *controller) setError(msg string) {
 	c.mu.Lock()
 	c.lastErr = msg
@@ -317,7 +393,7 @@ func (c *controller) headline() (text string, level int) {
 	case pairingNow:
 		return "Esperando que confirmes el código", 1
 	case !linked:
-		return "Esta Mac no está vinculada", 1
+		return strings.ToUpper(thisComputer()[:1]) + thisComputer()[1:] + " no está vinculada", 1
 	case !running && lastErr != "":
 		return "Detenido por un error", 2
 	case !running:
@@ -343,7 +419,8 @@ func (c *controller) refreshMenu() {
 
 	// Rebuilding the menu while it is open makes it flicker, so only rebuild
 	// when its items change; otherwise just update the status line.
-	shape := fmt.Sprintf("%v/%v", linked, running)
+	dev, recording := c.devMode(), c.sampler.recording()
+	shape := fmt.Sprintf("%v/%v/%v/%v", linked, running, dev, recording)
 	if shape == c.menuShape && c.menu != nil {
 		if c.menuStatus.Label != head {
 			c.menuStatus.Label = head
@@ -362,7 +439,7 @@ func (c *controller) refreshMenu() {
 	case linked:
 		items = append(items, fyne.NewMenuItem("Empezar a enviar", c.start))
 	default:
-		items = append(items, fyne.NewMenuItem("Vincular esta Mac…", func() {
+		items = append(items, fyne.NewMenuItem("Vincular "+thisComputer()+"…", func() {
 			c.window.Show()
 			c.beginPairing()
 		}))
@@ -370,16 +447,30 @@ func (c *controller) refreshMenu() {
 	items = append(items,
 		fyne.NewMenuItem("Abrir dashboard", func() { c.openURL(dashboardURL) }),
 		fyne.NewMenuItem("Mostrar ventana", func() { c.window.Show() }),
+		fyne.NewMenuItemSeparator(),
 	)
+	devItem := fyne.NewMenuItem("Modo desarrollo", func() { c.setDevMode(!c.devMode()) })
+	devItem.Checked = dev
+	items = append(items, devItem)
+	if dev {
+		if recording {
+			items = append(items, fyne.NewMenuItem("Detener grabación", func() { go c.stopSample() }))
+		} else {
+			items = append(items, fyne.NewMenuItem("Grabar muestra", func() { c.startSample(c.window.note.Text) }))
+		}
+		items = append(items, fyne.NewMenuItem("Abrir carpeta de muestras", c.openSamples))
+	}
+	quit := fyne.NewMenuItem("Cerrar Ingeniero Bridge", c.quit)
+	quit.IsQuit = true // replaces the "Quit" item Fyne would add
+	items = append(items, fyne.NewMenuItemSeparator(), quit)
 	c.menu = fyne.NewMenu("Ingeniero", items...)
 	c.tray.SetSystemTrayMenu(c.menu)
 }
 
-// openLog writes to ~/Library/Logs/RaceEngineer/bridge-app.log (and stderr).
+// openLog writes bridge-app.log in logDir() (and to stderr).
 func openLog() *log.Logger {
 	var w io.Writer = os.Stderr
-	if home, err := os.UserHomeDir(); err == nil {
-		dir := filepath.Join(home, "Library", "Logs", "RaceEngineer")
+	if dir, err := logDir(); err == nil {
 		if os.MkdirAll(dir, 0o755) == nil {
 			if f, err := os.OpenFile(filepath.Join(dir, "bridge-app.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err == nil {
 				w = io.MultiWriter(os.Stderr, f)

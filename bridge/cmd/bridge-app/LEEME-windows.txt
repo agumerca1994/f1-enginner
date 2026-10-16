@@ -1,0 +1,54 @@
+INGENIERO BRIDGE PARA WINDOWS
+=============================
+
+ANTES DE DESCOMPRIMIR: clic derecho en el .zip → Propiedades → abajo de todo
+tildá "Desbloquear" → Aceptar. Recién ahí descomprimí. Si no, Windows muestra
+"Windows protegió su PC" y puede no dejar abrirla (la app todavía no está
+firmada). Si ya lo descomprimiste, en PowerShell dentro de la carpeta:
+    Get-ChildItem -Recurse | Unblock-File
+
+Abrí "Ingeniero Bridge.exe".
+Cuando aparezca el aviso del Firewall, permití el acceso en redes PRIVADAS.
+Tu red tiene que estar como "Privada" (Configuración → Red e Internet →
+tu conexión → Tipo de perfil de red: Privada).
+
+La app queda en la bandeja del sistema, junto al reloj (puede estar dentro de
+la flechita ^). Clic derecho en el ícono para ver el menú.
+
+
+A) JUGAR CON LA PS4 (F1 24) Y MANDAR LA TELEMETRÍA
+--------------------------------------------------
+1. En la app: "Vincular esta PC". Se abre el navegador con un código:
+   iniciá sesión y confirmá.
+2. Anotá la IP de esta PC: está en la pestaña Ajustes de la app.
+3. En el juego de la PS4: Configuración → Telemetría:
+   - Telemetría UDP: Activada
+   - Modo difusión (broadcast): Desactivado
+   - Dirección IP: la IP de esta PC
+   - Puerto: 20777
+   - Formato UDP: 2024
+   - Frecuencia: 20 Hz o más
+4. Corré. En la app tiene que decir "Enviando" y se ve en el dashboard.
+
+
+B) GRABAR MUESTRAS CON EL JUEGO EN ESTA PC (F1 25 / temporada 2026)
+-------------------------------------------------------------------
+No hace falta vincular nada.
+1. En la app: pestaña Ajustes → tildá "Modo desarrollo" (o clic derecho
+   en el ícono → Modo desarrollo). Aparece la pestaña "Desarrollo".
+2. En el juego: Telemetría UDP Activada, broadcast Desactivado,
+   IP 127.0.0.1, puerto 20777, frecuencia 60 Hz.
+3. Antes de cada sesión escribí en "Nota" qué estás grabando, por ejemplo
+   "formato 2026, Monza, carrera 5 vueltas", y tocá "Grabar muestra".
+   Cuando termina la sesión, "Detener grabación".
+4. Grabaciones que necesitamos (cortas alcanzan):
+   - Formato UDP 2026: práctica (5 min), clasificación y una carrera corta.
+   - Formato UDP 2024: lo mismo.
+   - Formato UDP 2025 (si el menú lo ofrece): una práctica corta.
+   Cambiá el formato en el menú del juego entre una grabación y otra.
+5. "Abrir carpeta" y mandanos todos los archivos
+   (.f1cap.zst y .txt) por Drive o WhatsApp.
+
+
+Si algo falla, mandanos también el log:
+%LocalAppData%\RaceEngineer\Logs\bridge-app.log

@@ -19,7 +19,8 @@ type Stats struct {
 	First      time.Time
 	Last       time.Time
 	PerPacket  map[uint8]int
-	WrongSize  map[uint8]int // datagrams whose size differs from the 2024 spec
+	WrongSize  map[uint8]int         // datagrams whose size differs from the 2024 spec
+	SizesSeen  map[uint8]map[int]int // datagram sizes per packet ID, to map unknown formats
 	Formats    map[uint16]int
 	Versions   map[string]int // "24 v1.17"
 	Sessions   map[uint64]int
@@ -39,6 +40,7 @@ func NewStats() *Stats {
 	return &Stats{
 		PerPacket:  map[uint8]int{},
 		WrongSize:  map[uint8]int{},
+		SizesSeen:  map[uint8]map[int]int{},
 		Formats:    map[uint16]int{},
 		Versions:   map[string]int{},
 		Sessions:   map[uint64]int{},
@@ -63,6 +65,10 @@ func (s *Stats) Add(at time.Time, source string, data []byte) {
 		return
 	}
 	s.PerPacket[h.PacketID]++
+	if s.SizesSeen[h.PacketID] == nil {
+		s.SizesSeen[h.PacketID] = map[int]int{}
+	}
+	s.SizesSeen[h.PacketID][len(data)]++
 	s.Formats[h.PacketFormat]++
 	s.Versions[fmt.Sprintf("%d v%d.%02d", h.GameYear, h.GameMajorVersion, h.GameMinorVersion)]++
 	s.Sessions[h.SessionUID]++
@@ -128,12 +134,27 @@ func (s *Stats) Print(w io.Writer) {
 		if secs > 0 {
 			line += fmt.Sprintf("  %6.1f/s", float64(s.PerPacket[id])/secs)
 		}
+		line += "  " + sizesText(s.SizesSeen[id])
 		if n := s.WrongSize[id]; n > 0 {
 			line += fmt.Sprintf("  (%d with unexpected size)", n)
 		}
 		fmt.Fprintln(w, line)
 	}
 	s.printDiagnosis(w)
+}
+
+// sizesText lists the datagram sizes seen, for example "1349B" or "1285B/1301B".
+func sizesText(sizes map[int]int) string {
+	keys := make([]int, 0, len(sizes))
+	for k := range sizes {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	parts := make([]string, len(keys))
+	for i, k := range keys {
+		parts[i] = fmt.Sprintf("%dB", k)
+	}
+	return strings.Join(parts, "/")
 }
 
 func (s *Stats) printDiagnosis(w io.Writer) {

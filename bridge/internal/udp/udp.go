@@ -7,8 +7,9 @@ import (
 	"time"
 )
 
-// MaxDatagram is larger than any F1 24 packet (the biggest is 1460 bytes).
-const MaxDatagram = 2048
+// MaxDatagram is the largest UDP payload, so packets of newer game formats
+// (bigger than the 1460 bytes of the largest 2024 packet) are never truncated.
+const MaxDatagram = 65535
 
 // Datagram is one received packet and when it arrived.
 type Datagram struct {
