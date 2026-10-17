@@ -6,20 +6,27 @@ import numpy as np
 import pytest
 
 from app.telemetry import capture, registry
+from app.telemetry.constants import TEAMS
 from app.telemetry.formats import f2024
 
 CAPTURES = Path(__file__).resolve().parents[2] / "fixtures" / "captures"
 BAKU_RACE = CAPTURES / "baku-carrera-wifi.f1cap.zst"
+TEXAS_2026 = CAPTURES / "texas-carrera-temporada2026-formato2024.f1cap.zst"
 
 
 def _is_lfs_pointer(path: Path) -> bool:
     return path.stat().st_size < 200 and path.read_bytes().startswith(b"version https://git-lfs")
 
 
-needs_baku = pytest.mark.skipif(
-    not BAKU_RACE.exists() or _is_lfs_pointer(BAKU_RACE),
-    reason="capture fixture not available (run git lfs pull)",
-)
+def _needs(path: Path):
+    return pytest.mark.skipif(
+        not path.exists() or _is_lfs_pointer(path),
+        reason="capture fixture not available (run git lfs pull)",
+    )
+
+
+needs_baku = _needs(BAKU_RACE)
+needs_texas_2026 = _needs(TEXAS_2026)
 
 
 @pytest.mark.parametrize("packet_id", sorted(f2024.PACKETS))
@@ -118,3 +125,47 @@ def test_real_capture_baku_race():
     assert int(status["visual_tyre_compound"]) in (7, 8, 16, 17, 18)
 
     assert {"OVTK", "COLL", "SCAR", "PENA"} <= set(events)
+
+
+@needs_texas_2026
+def test_real_capture_2026_season_in_2024_format():
+    """F1 25 with the 2026 season pack, sent in the 2024 format: a 5-lap race at
+    Texas on a Windows PC (game and bridge on the same machine), player driving Russell."""
+    meta, records = capture.read(TEXAS_2026)
+    assert meta["host"] == "EDG"
+
+    counts = Counter()
+    last = {}
+    events = Counter()
+    years = set()
+    for rec in records:
+        packet = registry.parse(rec.data)  # the 2024 layout holds every datagram
+        counts[packet.name] += 1
+        last[packet.name] = packet
+        years.add(int(packet.header["game_year"]))
+        if packet.name == "event":
+            events[registry.event_details(packet)[0]] += 1
+
+    assert sum(counts.values()) == 59490
+    assert {p.packet_format for p in last.values()} == {2024}
+    assert years == {25}
+
+    session = last["session"].body
+    assert int(session["track_id"]) == 15  # Texas
+    assert int(session["session_type"]) == 15  # race
+    assert int(session["total_laps"]) == 5
+
+    # The 2026 grid (11 teams) fits the 22 slots, with team ids from 220.
+    participants = last["participants"].body
+    assert int(participants["num_active_cars"]) == 22
+    teams = {int(p["team_id"]) for p in participants["participants"][:22]}
+    assert teams == set(range(220, 231))
+    assert all(t in TEAMS for t in teams)
+
+    player = last["car_telemetry"].player_car_index
+    me = participants["participants"][player]
+    assert me["name"].decode() == "RUSSELL"
+    assert TEAMS[int(me["team_id"])] == "Mercedes"
+
+    assert {"OVTK", "COLL", "PENA", "FTLP"} <= set(events)
+
