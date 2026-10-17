@@ -52,6 +52,12 @@ func Begin(ctx context.Context, server string, dev Device) (Start, error) {
 
 // Wait polls until the player confirms the code, the code expires or ctx ends.
 func Wait(ctx context.Context, server string, s Start) (Result, error) {
+	return WaitWith(ctx, server, s, nil)
+}
+
+// WaitWith is Wait, reporting each poll's status (or error) to onPoll when set,
+// so an app can log a link that never completes.
+func WaitWith(ctx context.Context, server string, s Start, onPoll func(status string, err error)) (Result, error) {
 	interval := time.Duration(s.Interval) * time.Second
 	if interval <= 0 {
 		interval = 3 * time.Second
@@ -62,7 +68,11 @@ func Wait(ctx context.Context, server string, s Start) (Result, error) {
 			Token    string `json:"token"`
 			DeviceID int    `json:"device_id"`
 		}
-		if err := post(ctx, server, "/api/devices/pair/poll", map[string]string{"device_code": s.DeviceCode}, &out); err != nil {
+		err := post(ctx, server, "/api/devices/pair/poll", map[string]string{"device_code": s.DeviceCode}, &out)
+		if onPoll != nil {
+			onPoll(out.Status, err)
+		}
+		if err != nil {
 			return Result{}, err
 		}
 		switch out.Status {

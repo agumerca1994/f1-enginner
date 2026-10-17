@@ -154,7 +154,7 @@ func (w *statusWindow) buildStatus() fyne.CanvasObject {
 	w.pairBox = container.NewVBox(
 		widget.NewLabelWithStyle("Tu código", fyne.TextAlignCenter, fyne.TextStyle{}),
 		w.pairCode,
-		hint("Se abrió el navegador con el código cargado: iniciá sesión y tocá Vincular. También podés escribirlo a mano en la web, en Ajustes → Vincular otro."),
+		hint("Se abrió el navegador con el código cargado: iniciá sesión y tocá Vincular. Si usás otro navegador, entrá a f1.imanzanastore.com.ar/pair y escribí este código."),
 		container.NewGridWithColumns(2, pairOpen, widget.NewButton("Cancelar", c.cancelPairing)),
 	)
 

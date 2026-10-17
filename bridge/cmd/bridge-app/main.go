@@ -222,9 +222,19 @@ func (c *controller) beginPairing() {
 		c.pairing = &start
 		c.mu.Unlock()
 		c.changed()
+		c.log.Printf("pairing: showing code %s, waiting for confirmation", start.UserCode)
 		c.openURL(start.VerificationURLComplete)
 
-		res, err := pairing.Wait(ctx, server, start)
+		last := ""
+		res, err := pairing.WaitWith(ctx, server, start, func(status string, err error) {
+			switch {
+			case err != nil:
+				c.log.Printf("pairing: poll failed: %v", err)
+			case status != last:
+				c.log.Printf("pairing: status %s", status)
+				last = status
+			}
+		})
 		c.mu.Lock()
 		c.pairing = nil
 		c.mu.Unlock()
@@ -354,10 +364,16 @@ func (c *controller) setError(msg string) {
 	c.changed()
 }
 
+// openURL opens raw in the default browser without waiting for it: Fyne's
+// OpenURL waits for rundll32 on Windows, which can hang and used to block
+// pairing before it started polling.
 func (c *controller) openURL(raw string) {
 	u, err := url.Parse(raw)
+	if err == nil && u.Scheme != "https" && u.Scheme != "http" {
+		err = fmt.Errorf("not a web address")
+	}
 	if err == nil {
-		err = c.app.OpenURL(u)
+		err = openBrowser(u.String())
 	}
 	if err != nil {
 		c.log.Printf("opening %s: %v", raw, err)

@@ -51,3 +51,21 @@ func openFolder(dir string) error {
 		return exec.Command("xdg-open", dir).Start()
 	}
 }
+
+// openBrowser starts the default browser on raw and returns without waiting.
+func openBrowser(raw string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", raw)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", raw)
+	default:
+		cmd = exec.Command("xdg-open", raw)
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go cmd.Wait() // reap it; never block the caller
+	return nil
+}
