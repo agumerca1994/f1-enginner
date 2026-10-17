@@ -49,6 +49,10 @@ FUEL_MIX = {0: "Lean", 1: "Standard", 2: "Rich", 3: "Max"}
 TEAMS = {
     0: "Mercedes", 1: "Ferrari", 2: "Red Bull Racing", 3: "Williams", 4: "Aston Martin",
     5: "Alpine", 6: "RB", 7: "Haas", 8: "McLaren", 9: "Sauber",
+    # The 2026 season (F1 25 with the season pack) numbers its teams from 220,
+    # also in the 2024 packet format; mapped from a real capture's line-ups.
+    220: "Mercedes", 221: "Ferrari", 222: "Red Bull Racing", 223: "Williams", 224: "Aston Martin",
+    225: "Alpine", 226: "Racing Bulls", 227: "Haas", 228: "McLaren", 229: "Audi", 230: "Cadillac",
 }
 
 # Joules the ERS store holds when full.

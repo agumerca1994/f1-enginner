@@ -1,4 +1,4 @@
-// Team colours as shown in the game (F1 24 season).
+// Team colours as shown in the game (F1 24 season, plus the 2026 season).
 export const TEAM_COLORS: Record<number, string> = {
   0: "#27f4d2", // Mercedes
   1: "#e8002d", // Ferrari
@@ -10,6 +10,18 @@ export const TEAM_COLORS: Record<number, string> = {
   7: "#b6babd", // Haas
   8: "#ff8000", // McLaren
   9: "#52e252", // Sauber
+  // 2026 season (F1 25 with the season pack): same teams numbered from 220.
+  220: "#27f4d2", // Mercedes
+  221: "#e8002d", // Ferrari
+  222: "#3671c6", // Red Bull Racing
+  223: "#64c4ff", // Williams
+  224: "#229971", // Aston Martin
+  225: "#ff87bc", // Alpine
+  226: "#6692ff", // Racing Bulls
+  227: "#b6babd", // Haas
+  228: "#ff8000", // McLaren
+  229: "#f50537", // Audi
+  230: "#c9a54a", // Cadillac
 };
 
 export function teamColor(teamId: number | null | undefined): string {
