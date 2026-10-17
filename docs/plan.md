@@ -58,6 +58,8 @@ Decisiones tomadas por el usuario:
 
 - **Muestras de formatos nuevos con "Modo desarrollo"** (2026-10-16). El backend sólo parsea el formato 2024 y descarta el resto antes de abrir la sesión; el DLC 2026 de F1 25 cambia casi todos los tamaños (24 autos, paquete 16 nuevo). Sin PC propia para el juego, un tester graba muestras: el "Modo desarrollo" de la app (menú del ícono u Opciones) muestra "Grabar muestra" y "Abrir carpeta de muestras". Graba todo lo que llega, sin throttle y en cualquier formato, a `<config>/race-engineer/muestras/` (`.f1cap.zst` + resumen `.txt` con formatos, año del juego y tamaños por paquete). Mientras se envía se engancha al receptor del agente (`Agent.SetTap`); si no, escucha por su cuenta. Las muestras llegan por fuera (Drive/WhatsApp): no hay endpoint de subida a propósito. Siguiente paso con las muestras: `formats/f2026.py` y pasar de 22 a 24 autos.
 
+- **Primera prueba real en Windows** (2026-10-16). Un tester con F1 25 + temporada 2026 en PC, con el juego configurado en formato UDP 2024: el bridge de Windows (v0.2.3) vincula y manda datos al dashboard con 100% de recepción (juego y bridge en la misma PC). La v0.2.3 corrige un cuelgue de la vinculación en Windows (abrir el navegador bloqueaba la consulta del código). Quedan pendientes las muestras en formatos 2024, 2025 y 2026 grabadas con el modo desarrollo, para armar `f2025.py`/`f2026.py`.
+
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
 - **La IA es el ingeniero de pista, no un locutor.** Pone el conocimiento de F1 que el jugador no tiene y toma las decisiones:
   - reglaje, solo en práctica y clasificación;
