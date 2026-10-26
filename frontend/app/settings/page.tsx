@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { McpConnectorSection } from "@/components/McpConnectorSection";
+import { OverlaySection } from "@/components/OverlaySection";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -111,6 +112,7 @@ function Settings() {
         </ul>
       </section>
 
+      <OverlaySection />
       <McpConnectorSection />
     </main>
   );

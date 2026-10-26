@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import DEVICE_TOKEN_PREFIX, hash_token
-from app.models import Device, Tenant, User
+from app.core.security import DEVICE_TOKEN_PREFIX, OVERLAY_TOKEN_PREFIX, hash_token
+from app.models import Device, OverlayToken, Tenant, User
 
 logger = logging.getLogger(__name__)
 _bearer = HTTPBearer(auto_error=False)
@@ -86,6 +86,18 @@ async def device_from_token(db: AsyncSession, token: str | None) -> Device | Non
     if device is None or device.revoked_at is not None:
         return None
     return device
+
+
+async def overlay_from_token(db: AsyncSession, token: str | None) -> OverlayToken | None:
+    """Resolve a read-only overlay link to its token row, or None if unknown or revoked."""
+    if not token or not token.startswith(OVERLAY_TOKEN_PREFIX):
+        return None
+    row = await db.scalar(select(OverlayToken).where(OverlayToken.token_hash == hash_token(token)))
+    if row is None or row.revoked_at is not None:
+        return None
+    row.last_used_at = utcnow()  # once per connection, not per frame
+    await db.commit()
+    return row
 
 
 def utcnow() -> datetime:

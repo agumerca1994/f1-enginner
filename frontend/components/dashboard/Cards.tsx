@@ -307,7 +307,7 @@ function signed(ms: number): string {
 }
 
 /** Green and negative: gaining on the best lap at this same point; red and positive: losing. */
-function LiveDelta({ ms, refLap }: { ms: number | null | undefined; refLap: number | null | undefined }) {
+export function LiveDelta({ ms, refLap }: { ms: number | null | undefined; refLap: number | null | undefined }) {
   if (ms == null) {
     return (
       <div className="text-right" title="Hace falta una vuelta limpia completa, vista de punta a punta, para comparar">
@@ -325,7 +325,7 @@ function LiveDelta({ ms, refLap }: { ms: number | null | undefined; refLap: numb
 }
 
 /** The last two laps sector by sector against the best clean lap before each one. */
-function SectorReview({ rows }: { rows: Snapshot["sector_review"] }) {
+export function SectorReview({ rows }: { rows: Snapshot["sector_review"] }) {
   const shown = (rows ?? []).filter((r) => r.sector_deltas_ms);
   if (!shown.length) return null;
   return (
@@ -357,9 +357,18 @@ function SectorReview({ rows }: { rows: Snapshot["sector_review"] }) {
 /** The cars physically around the player on track, lapped traffic included, plus whether
  * the fight ahead and behind closes before the flag. */
 export function RelativesCard({ s }: { s: Snapshot }) {
+  const ready = s.relatives && s.cars?.some((c) => c.is_player);
+  return (
+    <Panel title="Relativos" age={s.lap?.age_s}>
+      {ready ? <RelativesList s={s} /> : <Empty />}
+    </Panel>
+  );
+}
+
+export function RelativesList({ s, rows = 3 }: { s: Snapshot; rows?: number }) {
   const rel = s.relatives;
   const me = s.cars?.find((c) => c.is_player);
-  if (!rel || !me) return <Panel title="Relativos"><Empty /></Panel>;
+  if (!rel || !me) return null;
   const byIndex = new Map((s.cars ?? []).map((c) => [c.index, c]));
   const row = (r: NonNullable<Snapshot["relatives"]>["ahead"][number], ahead: boolean) => {
     const c = byIndex.get(r.index);
@@ -380,16 +389,16 @@ export function RelativesCard({ s }: { s: Snapshot }) {
     );
   };
   return (
-    <Panel title="Relativos" age={s.lap?.age_s}>
+    <>
       <ol className="-mx-1">
-        {[...rel.ahead].reverse().map((r) => row(r, true))}
+        {rel.ahead.slice(0, rows).reverse().map((r) => row(r, true))}
         <li className="grid grid-cols-[1.6rem_0.25rem_minmax(0,1fr)_4.2rem] items-center gap-2 rounded-md bg-accent/15 px-1 py-0.5 text-sm ring-1 ring-accent/40">
           <span className="num text-right text-muted">{me.position}</span>
           <span className="h-4 rounded-full" style={{ background: me.color ?? teamColor(me.team_id) }} />
           <span className="truncate font-semibold">{shortName(me)}</span>
           <span />
         </li>
-        {rel.behind.map((r) => row(r, false))}
+        {rel.behind.slice(0, rows).map((r) => row(r, false))}
       </ol>
       {s.pace && (
         <div className="mt-3 space-y-1 border-t border-line pt-2 text-xs">
@@ -397,7 +406,7 @@ export function RelativesCard({ s }: { s: Snapshot }) {
           <PaceLine label="Atrás" side={s.pace.behind} chasing={false} />
         </div>
       )}
-    </Panel>
+    </>
   );
 }
 

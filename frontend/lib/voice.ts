@@ -21,7 +21,7 @@ function pickVoice(): SpeechSynthesisVoice | null {
  * Browsers only allow speech after a user gesture, so it starts off and is turned
  * on with a tap; the choice is remembered.
  */
-export function useEngineerVoice(messages: EngineerMessage[]) {
+export function useEngineerVoice(messages: EngineerMessage[], { alwaysOn = false }: { alwaysOn?: boolean } = {}) {
   const [supported, setSupported] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const spoken = useRef<number>(0);
@@ -30,12 +30,15 @@ export function useEngineerVoice(messages: EngineerMessage[]) {
     const ok = typeof window !== "undefined" && "speechSynthesis" in window;
     setSupported(ok);
     if (ok) {
-      try {
-        setEnabled(localStorage.getItem(STORAGE_KEY) === "on");
-      } catch {}
+      // An overlay in OBS has nobody to tap it: it can ask to start on.
+      if (alwaysOn) setEnabled(true);
+      else
+        try {
+          setEnabled(localStorage.getItem(STORAGE_KEY) === "on");
+        } catch {}
       window.speechSynthesis.getVoices(); // some browsers load voices lazily
     }
-  }, []);
+  }, [alwaysOn]);
 
   const say = useCallback((text: string, urgent: boolean) => {
     const synth = window.speechSynthesis;

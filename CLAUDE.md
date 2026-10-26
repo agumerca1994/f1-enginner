@@ -24,7 +24,7 @@ Current state:
   - `app/live/` holds the in-memory state, the snapshot and the track-outline builder.
   - `app/replay/` plays stored captures back through the same live state.
   - `app/mcp_server/` is the MCP connector; its OAuth endpoints are in `routers/oauth.py`.
-- **`frontend/`** (Next.js 15 + Tailwind 4 PWA): `/`, `/sessions`, `/replay/[id]`, `/pair`, `/settings`.
+- **`frontend/`** (Next.js 15 + Tailwind 4 PWA): `/`, `/sessions`, `/replay/[id]`, `/pair`, `/settings`, and `/overlay/[panel]` (single transparent panels for OBS or floating windows: `delta`, `relativos`, `tiempos`, `posiciones`, `pedales`, `radio`; options `escala`, `opacidad`, `filas`, `voz`).
 - **`landing/`**: the public landing (static HTML + nginx), served as `f1eng-landing` at `web-f1.imanzanastore.com.ar`: the home (`index.html`) and `/instructivos` (`instructivos.html`, deep links `#consola`, `#pc`, `#claude`, `#chatgpt`). Shared styles and script are `assets/site.css` and `assets/site.js`; bump their `?v=` when they change, since `/assets/` is cached for 7 days. Its download buttons point to the latest GitHub release assets `ingeniero-bridge-windows.zip` and `ingeniero-bridge-mac.zip`; binaries never go in git.
 - **`fixtures/captures/`**: real `.f1cap.zst` captures, stored in git-lfs. They are the golden test data; `baku-carrera-wifi` was recorded over a lossy link at ~19% reception, and three F1 25 + 2026 season pack races cover each packet format: `texas-carrera-temporada2026-formato2024` (team ids 220–230, 22 cars), `madrid-carrera-temporada2026-formato2025` and `suzuka-carrera-temporada2026-formato2026` (24 slots, team ids 476–486).
 
@@ -35,7 +35,7 @@ Current state:
   - Rules derive facts from state packets as well as from one-shot Event packets.
   - Fields that a restricted online player does not share are `None`, never `0`.
 - **Nothing per packet touches the database.** Live state lives in memory; the DB is written only on session changes and in periodic flushes.
-- **Bridge tokens (`rbd_`), pairing codes (`rbp_`) and MCP tokens (`rbm_`) are stored only as sha256 hashes.**
+- **Bridge tokens (`rbd_`), pairing codes (`rbp_`), MCP tokens (`rbm_`) and overlay links (`rbo_`) are stored only as sha256 hashes.** An overlay link goes in a URL, so it only opens the live WebSocket read-only (`{"type": "auth", "overlay_token": ...}`); it is created and revoked in Settings (`/api/overlay/tokens`) and a revoked link drops within 30 s.
 - **Track outlines are built from telemetry** and shared across all players, in the `track_layouts` table. Undriven stretches stay open rather than being drawn as a straight line.
 
 ## Commands

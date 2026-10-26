@@ -9,6 +9,7 @@ import secrets
 
 DEVICE_TOKEN_PREFIX = "rbd_"  # race-engineer bridge device
 DEVICE_CODE_PREFIX = "rbp_"  # pairing request, held by the bridge while it polls
+OVERLAY_TOKEN_PREFIX = "rbo_"  # read-only overlay link (OBS, floating panels)
 
 # No 0/O, 1/I/L or U: the code is read off a terminal and typed on a phone.
 _USER_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789"

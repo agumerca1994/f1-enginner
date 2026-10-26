@@ -70,6 +70,8 @@ Decisiones tomadas por el usuario:
   - **Alcance:** en carrera, si el de adelante o el de atrás descuenta, con la mediana de las últimas vueltas limpias (mínimo 3), y si llega antes del final.
   - **Últimas vueltas vs. mejor limpia:** las dos últimas vueltas por sector contra la mejor limpia anterior, desde el SessionHistory del jugador (que el juego reenvía todo el tiempo).
 
+- **Paneles sueltos para OBS y ventanas flotantes** (2026-10-26). `/overlay/<panel>?t=rbo_...` muestra un solo panel con fondo transparente: delta, relativos, tiempos y sectores, posiciones, pedales y la radio del ingeniero (con `&voz=1` la lee en voz alta). El link es de sólo lectura, se crea y se revoca en Ajustes → Paneles flotantes, y sirve tanto en OBS ("Navegador", también para quien transmite desde la consola) como para las futuras ventanas flotantes del bridge de Windows. Sin datos el panel queda vacío, para no tapar el juego. Los pedales se actualizan a 5 por segundo (lo que empuja el WebSocket); si se notan lentos, el bridge podría leerlos en la PC. Siguiente paso: ventanas flotantes con WebView2 en el bridge de Windows (siempre arriba, dejan pasar los clics al bloquearlas, atajos globales, aparecen al entrar en sesión).
+
 ### Assetto Corsa Competizione (pendiente, después de las mejoras de F1)
 Decidido el 2026-10-26: sumar **ACC en PC**. En PS4/PS5 ni ACC ni AC exportan telemetría.
 - **Fuentes:** la memoria compartida de Windows (`Local\acpmf_physics`, `acpmf_graphics`, `acpmf_static`) sólo para el auto propio, y el protocolo de broadcasting UDP de ACC (puerto 9000, hay que habilitarlo en `Documentos\Assetto Corsa Competizione\Config\broadcasting.json`) para todos los autos. El bridge tiene que correr en la misma PC que el juego.
