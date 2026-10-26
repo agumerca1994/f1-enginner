@@ -12,6 +12,8 @@ from app.telemetry.formats import f2024, f2025, f2026
 CAPTURES = Path(__file__).resolve().parents[2] / "fixtures" / "captures"
 BAKU_RACE = CAPTURES / "baku-carrera-wifi.f1cap.zst"
 TEXAS_2026 = CAPTURES / "texas-carrera-temporada2026-formato2024.f1cap.zst"
+MADRID_2025 = CAPTURES / "madrid-carrera-temporada2026-formato2025.f1cap.zst"
+SUZUKA_2026 = CAPTURES / "suzuka-carrera-temporada2026-formato2026.f1cap.zst"
 
 
 def _is_lfs_pointer(path: Path) -> bool:
@@ -27,6 +29,23 @@ def _needs(path: Path):
 
 needs_baku = _needs(BAKU_RACE)
 needs_texas_2026 = _needs(TEXAS_2026)
+needs_madrid_2025 = _needs(MADRID_2025)
+needs_suzuka_2026 = _needs(SUZUKA_2026)
+
+
+def _read_all(path: Path):
+    """Parse every datagram of a capture; return counts, last packet per name and events."""
+    counts, last, events, years = Counter(), {}, Counter(), set()
+    _, records = capture.read(path)
+    for rec in records:
+        packet = registry.parse(rec.data)  # every datagram in a real capture must decode
+        counts[packet.name] += 1
+        if packet.session_uid:
+            last[packet.name] = packet
+        years.add(int(packet.header["game_year"]))
+        if packet.name == "event":
+            events[registry.event_details(packet)[0]] += 1
+    return counts, last, events, years
 
 
 @pytest.mark.parametrize(
@@ -229,4 +248,54 @@ def test_2026_format_layouts():
     live.update(registry.parse(bytes(laps)))
     assert live.slots() == 24
     assert live.active_cars() == [23]
+
+
+@needs_madrid_2025
+def test_real_capture_2026_season_in_2025_format():
+    """F1 25 with the 2026 season pack in the 2025 format: a 5-lap race at Madrid, player Verstappen."""
+    counts, last, events, years = _read_all(MADRID_2025)
+    assert sum(counts.values()) == 93396
+    assert {p.packet_format for p in last.values()} == {2025} and years == {25}
+    assert counts["lap_positions"] > 0
+
+    session = last["session"].body
+    assert int(session["track_id"]) == 42 and int(session["track_length"]) == 5411  # Madrid
+
+    participants = last["participants"].body
+    assert int(participants["num_active_cars"]) == 22
+    player = last["car_telemetry"].player_car_index
+    me = participants["participants"][player]
+    assert me["name"] == b"VERSTAPPEN" and TEAMS[int(me["team_id"])] == "Red Bull Racing"
+    assert me["livery_colours"][0].tolist() == (54, 113, 198)  # the game's Red Bull blue
+
+    damage = last["car_damage"].body["car_damage_data"][player]
+    assert all(0 <= int(b) <= 100 for b in damage["tyre_blisters"])
+    assert 0 < float(damage["tyres_wear"][0]) < 100
+    assert {"OVTK", "COLL", "CHQF"} <= set(events)
+
+
+@needs_suzuka_2026
+def test_real_capture_2026_format():
+    """The 2026 format: a 5-lap race at Suzuka in 24-slot arrays, player Antonelli."""
+    counts, last, events, years = _read_all(SUZUKA_2026)
+    assert sum(counts.values()) == 39693
+    assert {p.packet_format for p in last.values()} == {2026} and years == {25}
+    assert counts["car_telemetry_2"] > 0
+
+    session = last["session"].body
+    assert int(session["track_id"]) == 13  # Suzuka
+    assert int(session["num_active_aero_zones_full"]) > 0
+
+    participants = last["participants"].body
+    assert len(participants["participants"]) == 24
+    teams = {int(p["team_id"]) for p in participants["participants"]}
+    assert teams == set(range(476, 487)) | {65535}  # 65535 marks the two empty slots
+    player = last["car_telemetry"].player_car_index
+    assert participants["participants"][player]["name"] == b"ANTONELLI"
+
+    g = float(last["motion"].body["car_motion_data"][player]["g_force_lateral"])
+    assert -8 < g < 8  # decoded from thousandths of a g
+    assert 60 < int(last["car_telemetry"].body["car_telemetry_data"][player]["engine_temperature"]) < 150
+    assert float(last["car_status"].body["car_status_data"][player]["ers_harvest_limit_per_lap"]) > 0
+    assert {"OVTK", "COLL"} <= set(events)
 
