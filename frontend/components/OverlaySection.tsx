@@ -71,7 +71,7 @@ export function OverlaySection() {
       </div>
       <p className="mt-1 text-sm text-muted">
         Paneles sueltos con fondo transparente: delta, relativos, tiempos, posiciones, pedales y la radio del ingeniero.
-        En OBS se agregan como “Navegador”. El link sólo deja mirar tu sesión en vivo.
+        En OBS se agregan como “Navegador”; en una pestaña común sumá <code>&amp;fondo=oscuro</code>. El link sólo deja mirar tu sesión en vivo.
       </p>
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 
@@ -97,7 +97,8 @@ export function OverlaySection() {
           </ul>
           <p className="mt-2 text-xs text-muted">
             Opciones al final del link: <code>&amp;escala=1.5</code> agranda, <code>&amp;opacidad=60</code> aclara el fondo,{" "}
-            <code>&amp;filas=5</code> cambia cuántos autos se ven y en la radio <code>&amp;voz=1</code> la lee en voz alta.
+            <code>&amp;filas=5</code> cambia cuántos autos se ven, en la radio <code>&amp;voz=1</code> la lee en voz alta y{" "}
+            <code>&amp;fondo=oscuro</code> pone fondo oscuro para verlo en una pestaña, en otra pantalla.
           </p>
         </div>
       )}

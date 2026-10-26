@@ -6,7 +6,8 @@ import { Suspense } from "react";
 import { Overlay } from "@/components/overlay/Overlay";
 
 // /overlay/<panel>?t=rbo_...&escala=1&opacidad=80 — a single transparent panel for
-// OBS (browser source) or the bridge's floating windows on Windows.
+// OBS (browser source) or the bridge's floating windows on Windows. `fondo=oscuro`
+// keeps the app's dark page instead, for a browser tab on a second screen.
 export default function OverlayPage() {
   return (
     <Suspense>
@@ -30,6 +31,7 @@ function OverlayFromUrl() {
       opacity={number("opacidad", 80, 0, 100) / 100}
       rows={number("filas", 0, 0, 24)}
       voice={q.get("voz") === "1"}
+      dark={q.get("fondo") === "oscuro"}
     />
   );
 }

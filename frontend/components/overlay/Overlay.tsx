@@ -24,10 +24,10 @@ const RADIO_SHOWN_MS = 20_000;
 // Right after opening, an empty panel looks broken: say it is connected, then get out of the way.
 const WAITING_HINT_MS = 15_000;
 
-type Props = { panel: string; token: string; scale: number; opacity: number; rows: number; voice: boolean };
+type Props = { panel: string; token: string; scale: number; opacity: number; rows: number; voice: boolean; dark: boolean };
 
 /** One panel over a transparent page. Without data it stays empty, so nothing covers the game. */
-export function Overlay({ panel, token, scale, opacity, rows, voice }: Props) {
+export function Overlay({ panel, token, scale, opacity, rows, voice, dark }: Props) {
   const { status, snapshot: s, engineer } = useLive({ overlayToken: token || undefined });
   const [justOpened, setJustOpened] = useState(true);
 
@@ -37,9 +37,10 @@ export function Overlay({ panel, token, scale, opacity, rows, voice }: Props) {
   }, []);
 
   useEffect(() => {
-    // The app's dark background would paint over the game.
+    // The app's dark background would paint over the game; a tab on a second screen keeps it.
+    if (dark) return;
     for (const el of [document.documentElement, document.body]) el.style.background = "transparent";
-  }, []);
+  }, [dark]);
 
   let body: React.ReactNode = null;
   if (!token) body = <Notice>Falta el link del panel. Crealo en Ajustes → Paneles flotantes.</Notice>;
