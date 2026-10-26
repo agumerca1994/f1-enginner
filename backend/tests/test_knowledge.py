@@ -68,3 +68,36 @@ async def test_save_and_load_roundtrip(database):
         for i in range(4):
             poor.player_laps.append(_lap(2 + i, 96_000, 90.0 - i, 3 + i))
         assert await knowledge.save(db, t.id, 20, poor) is False
+
+
+async def test_pit_loss_is_kept_per_track_and_used_next_time(database):
+    from app.core.database import AsyncSessionLocal
+    from app.engineer.history import CarLap
+    from app.models import Tenant
+
+    def stops(n: int) -> SessionHistory:
+        """A race too short to teach pace, where n rivals pitted under green."""
+        h = SessionHistory()
+        for car in range(n):
+            laps = [CarLap(lap=i, time_ms=95_000, position=car + 1, gap_ahead_ms=1_000, gap_leader_ms=5_000, pit_stops=0,
+                           compound="Medium", tyre_age=i) for i in range(2, 9)]
+            laps[3].time_ms, laps[3].pit_stops = 113_000, 1  # in-lap, the stop counted here
+            laps[4].time_ms, laps[4].pit_stops = 99_000, 1
+            for later in laps[5:]:
+                later.pit_stops = 1
+            h.car_laps[car] = laps
+        return h
+
+    async with AsyncSessionLocal() as db:
+        t = Tenant(name="pit-test")
+        db.add(t)
+        await db.flush()
+        assert await knowledge.save(db, t.id, 7, stops(3)) is True  # no clean laps of its own, still worth keeping
+        await db.commit()
+        got = await knowledge.load(db, t.id, 7)
+        assert got["perdida_box_s"] == 22.0 and got["perdida_box_paradas"] == 3
+        assert await knowledge.save(db, t.id, 7, stops(1)) is False  # backed by fewer stops: kept the old one
+
+    live = LiveSession(0, 0, 9, 2024, build_layout=False)
+    strategy = analysis.build(live, SessionHistory(), prior=got)["estrategia_calculos"]
+    assert strategy["perdida_box_s"] == 22.0 and "sesiones anteriores" in strategy["perdida_box_origen"]

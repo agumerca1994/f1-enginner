@@ -57,7 +57,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
         "combustible": _fuel(snap, laps, total, current),
         "rivales": {**_rivals(snap, history), "alcance": _reach(snap)},
         "reglamento_2026": _regulations_2026(snap, laps),
-        "estrategia_calculos": _strategy(snap, history, laps, session),
+        "estrategia_calculos": _strategy(snap, history, laps, session, prior),
         "reglaje_actual": _setup(live),
         "eventos_recientes": _events(history, snap.get("cars") or []),
         "calidad_datos": {
@@ -373,19 +373,22 @@ def _gap_trend(history: SessionHistory, me: dict, other: dict) -> str | None:
     return f"{direction} {abs(per_lap):.2f} s/vuelta (vueltas {first}-{last})"
 
 
-def _strategy(snap: dict, history: SessionHistory, laps: list[PlayerLap], session: dict) -> dict[str, Any]:
+def _strategy(snap: dict, history: SessionHistory, laps: list[PlayerLap], session: dict,
+              prior: dict[str, Any] | None = None) -> dict[str, Any]:
     cars = snap.get("cars") or []
     me = next((car for car in cars if car["is_player"]), None)
     sc = session.get("safety_car")
     samples = pit_loss_samples(history.car_laps)
-    green_loss = statistics.median(samples) if samples else DEFAULT_PIT_LOSS_S
+    stored = (prior or {}).get("perdida_box_s")
+    green_loss = statistics.median(samples) if samples else stored or DEFAULT_PIT_LOSS_S
     factor = SAFETY_CAR_PIT_FACTOR if sc == "Full safety car" else VSC_PIT_FACTOR if sc == "Virtual safety car" else 1.0
     pit_loss = round(green_loss * factor, 1)
     dry = [x for x in history.compounds_used if x in ("Soft", "Medium", "Hard")]
     out = {
         "perdida_box_s": pit_loss,
         "perdida_box_origen": (f"medida en esta sesión ({len(samples)} paradas en verde)" if samples
-                               else "estimación genérica, sin paradas medidas todavía")
+                               else f"medida en sesiones anteriores en esta pista ({prior.get('perdida_box_paradas')} paradas)"
+                               if stored else "estimación genérica, sin paradas medidas todavía")
                               + (" y reducida por el safety car" if factor < 1 else ""),
         "si_para_ahora": _rejoin(cars, me, pit_loss, laps, session),
         "regla_dos_compuestos": {

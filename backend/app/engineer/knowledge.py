@@ -49,13 +49,20 @@ def summarize(history: SessionHistory) -> dict[str, Any] | None:
     if not compounds:
         return None
 
-    samples = pit_loss_samples(history.car_laps)
     return {
         "compuestos": compounds,
         "consumo_kg_por_vuelta": _fuel_per_lap(clean),
-        "perdida_box_s": round(statistics.median(samples), 1) if samples else None,
+        **_pit_loss(history),
         "vueltas_limpias": len(clean),
     }
+
+
+def _pit_loss(history: SessionHistory) -> dict[str, Any]:
+    """The green-flag pit loss this session measured, with how many stops back it."""
+    samples = pit_loss_samples(history.car_laps)
+    if not samples:
+        return {"perdida_box_s": None, "perdida_box_paradas": 0}
+    return {"perdida_box_s": round(statistics.median(samples), 1), "perdida_box_paradas": len(samples)}
 
 
 def _fuel_per_lap(clean: list[PlayerLap]) -> float | None:
@@ -80,22 +87,36 @@ async def load(db: AsyncSession, tenant_id: int, track_id: int) -> dict[str, Any
 
 
 async def save(db: AsyncSession, tenant_id: int, track_id: int, history: SessionHistory) -> bool:
-    """Upsert the summary for this track when the session has enough clean laps.
+    """Upsert what this session taught about the track.
 
-    A session only overwrites the stored one when it is at least as rich (clean
-    laps), so a long practice run is not clobbered by a three-lap qualifying out-lap.
+    Pace and degradation replace the stored ones only when the session is at least
+    as rich (clean laps), so a long practice run is not clobbered by a three-lap
+    qualifying out-lap. The pit loss is kept apart: any session can measure it
+    (other cars' stops count too, even a race the player did not finish), and the
+    measurement backed by more stops wins.
     """
     summary = summarize(history)
-    if summary is None:
+    pit = _pit_loss(history)
+    if summary is None and not pit["perdida_box_paradas"]:
         return False
     row = await db.scalar(
         select(TrackKnowledge).where(TrackKnowledge.tenant_id == tenant_id, TrackKnowledge.track_id == track_id)
     )
-    clean = summary["vueltas_limpias"]
-    if row is None:
-        db.add(TrackKnowledge(tenant_id=tenant_id, track_id=track_id, clean_laps=clean, summary=summary))
-    elif clean >= row.clean_laps:
-        row.summary, row.clean_laps = summary, clean
+    stored = dict(row.summary) if row is not None else {}
+    changed = False
+    if summary is not None and (row is None or summary["vueltas_limpias"] >= row.clean_laps):
+        stored = {**summary, "perdida_box_s": stored.get("perdida_box_s"),
+                  "perdida_box_paradas": stored.get("perdida_box_paradas") or 0}
+        clean, changed = summary["vueltas_limpias"], True
     else:
-        return False
-    return True
+        clean = row.clean_laps if row is not None else 0
+    if pit["perdida_box_paradas"] >= (stored.get("perdida_box_paradas") or 0) and pit["perdida_box_paradas"]:
+        changed = changed or stored.get("perdida_box_s") != pit["perdida_box_s"]
+        stored.update(pit)
+    elif summary is None or not changed:
+        return changed
+    if row is None:
+        db.add(TrackKnowledge(tenant_id=tenant_id, track_id=track_id, clean_laps=clean, summary=stored))
+    else:
+        row.summary, row.clean_laps = stored, clean  # a new dict, so the JSONB change is saved
+    return changed
