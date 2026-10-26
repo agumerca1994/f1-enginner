@@ -58,6 +58,8 @@ type statusWindow struct {
 	unlinkBtn *widget.Button
 	devCheck  *widget.Check
 	ipLabel   *widget.Label
+	demoBtn   *widget.Button
+	diagInfo  *widget.Label
 
 	// Paneles (Windows only)
 	panels *panelsTab
@@ -228,6 +230,17 @@ func (w *statusWindow) buildSettings() fyne.CanvasObject {
 	w.ipLabel.Wrapping = fyne.TextWrapWord
 	w.ipLabel.TextStyle = fyne.TextStyle{Monospace: true}
 
+	w.demoBtn = widget.NewButtonWithIcon("Reproducir carrera de demostración", theme.MediaPlayIcon(), func() {
+		if c.demoRunning() {
+			c.stopDemo()
+		} else {
+			c.startDemo()
+		}
+	})
+	w.diagInfo = hint("")
+	w.diagInfo.Hide()
+	diagBtn := widget.NewButtonWithIcon("Generar diagnóstico", theme.DocumentSaveIcon(), func() { go c.diagnoseAndShow() })
+
 	return container.NewVBox(
 		section("Cuenta", w.account, container.NewHBox(w.unlinkBtn)),
 		widget.NewSeparator(),
@@ -237,6 +250,18 @@ func (w *statusWindow) buildSettings() fyne.CanvasObject {
 		section("Configurar el juego",
 			hint("Telemetría UDP activada, broadcast desactivado, puerto 20777, formato 2024. En la IP poné la de esta computadora (o 127.0.0.1 si el juego corre acá mismo):"),
 			w.ipLabel,
+		),
+		widget.NewSeparator(),
+		section("Probar sin jugar",
+			hint("Manda una carrera grabada (Madrid, unos 9 minutos) como si estuvieras corriendo: sirve para ver el dashboard "+
+				"y acomodar los paneles. Usala con el juego cerrado. Queda como una sesión más en tu cuenta."),
+			container.NewHBox(w.demoBtn),
+		),
+		widget.NewSeparator(),
+		section("Si algo falla",
+			hint("Arma un .zip en Descargas con el estado de la app y su registro, sin tu token ni tu nombre de usuario. Mandalo por WhatsApp o mail."),
+			container.NewHBox(diagBtn),
+			w.diagInfo,
 		),
 		widget.NewSeparator(),
 		section("Cerrar la app",
@@ -293,6 +318,17 @@ func lanText() string {
 // refresh copies the controller state into the widgets. Called on the UI thread.
 func (w *statusWindow) refresh() {
 	c := w.c
+	if c.demoRunning() {
+		w.demoBtn.SetText("Detener la demostración")
+		w.demoBtn.SetIcon(theme.MediaStopIcon())
+	} else {
+		w.demoBtn.SetText("Reproducir carrera de demostración")
+		w.demoBtn.SetIcon(theme.MediaPlayIcon())
+	}
+	w.demoBtn.Disable()
+	if c.linked() {
+		w.demoBtn.Enable()
+	}
 	if w.panels != nil {
 		w.panels.refresh()
 	}
@@ -420,4 +456,9 @@ func (w *statusWindow) refreshDev() {
 		w.stopRecBtn.Hide()
 		w.note.Enable()
 	}
+}
+
+func (w *statusWindow) showDiagnosis(path string) {
+	w.diagInfo.SetText("Listo: " + scrub(path))
+	w.diagInfo.Show()
 }

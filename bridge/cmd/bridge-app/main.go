@@ -65,6 +65,7 @@ func main() {
 	c.loadAccount()
 	go c.ticker()
 	a.Run()
+	c.stopDemo()
 	c.stopPanels()
 	c.stop()
 	if _, err := c.sampler.stop(); err != nil {
@@ -100,6 +101,7 @@ type controller struct {
 	panels     *overlay.Manager
 	panelsStop context.CancelFunc
 	liveStop   context.CancelFunc
+	demoStop   context.CancelFunc
 }
 
 func newController(a fyne.App, logger *log.Logger) *controller {
@@ -288,6 +290,7 @@ func (c *controller) cancelPairing() {
 }
 
 func (c *controller) unlink() {
+	c.stopDemo()
 	c.stop()
 	c.mu.Lock()
 	server, token := c.cfg.Server, c.cfg.Token
@@ -456,7 +459,7 @@ func (c *controller) refreshMenu() {
 	// Rebuilding the menu while it is open makes it flicker, so only rebuild
 	// when its items change; otherwise just update the status line.
 	dev, recording := c.devMode(), c.sampler.recording()
-	shape := fmt.Sprintf("%v/%v/%v/%v/%s", linked, running, dev, recording, c.panelsShape())
+	shape := fmt.Sprintf("%v/%v/%v/%v/%v/%s", linked, running, dev, recording, c.demoRunning(), c.panelsShape())
 	if shape == c.menuShape && c.menu != nil {
 		if c.menuStatus.Label != head {
 			c.menuStatus.Label = head
@@ -487,6 +490,14 @@ func (c *controller) refreshMenu() {
 	if item := c.panelsMenu(); item != nil {
 		items = append(items, item)
 	}
+	if linked {
+		if c.demoRunning() {
+			items = append(items, fyne.NewMenuItem("Detener carrera de demostración", c.stopDemo))
+		} else {
+			items = append(items, fyne.NewMenuItem("Carrera de demostración", c.startDemo))
+		}
+	}
+	items = append(items, fyne.NewMenuItem("Generar diagnóstico", c.diagnoseAndShow))
 	items = append(items, fyne.NewMenuItemSeparator())
 	devItem := fyne.NewMenuItem("Modo desarrollo", func() { c.setDevMode(!c.devMode()) })
 	devItem.Checked = dev
@@ -610,4 +621,19 @@ func (c *controller) panelsMenu() *fyne.MenuItem {
 	menu := fyne.NewMenuItem("Paneles flotantes", nil)
 	menu.ChildMenu = fyne.NewMenu("", items...)
 	return menu
+}
+
+// diagnoseAndShow writes the diagnostics zip and opens the folder that holds it.
+func (c *controller) diagnoseAndShow() {
+	path, err := c.diagnose()
+	if err != nil {
+		c.setError(fmt.Sprintf("No se pudo generar el diagnóstico: %v", err))
+		return
+	}
+	if err := openFolder(filepath.Dir(path)); err != nil {
+		c.log.Printf("opening %s: %v", filepath.Dir(path), err)
+	}
+	if c.window != nil {
+		fyne.Do(func() { c.window.showDiagnosis(path) })
+	}
 }

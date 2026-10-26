@@ -66,5 +66,18 @@ esta misma PC.
    Ctrl+Alt+F11 los oculta o muestra.
 
 
-Si algo falla, mandanos también el log:
+D) PROBAR SIN JUGAR
+-------------------
+Pestaña Ajustes → "Reproducir carrera de demostración" (o clic derecho en el
+ícono → Carrera de demostración). Manda una carrera grabada de 9 minutos como
+si estuvieras corriendo: sirve para ver el dashboard y acomodar los paneles.
+Usala con el juego cerrado. Queda como una sesión más en tu cuenta.
+
+
+SI ALGO FALLA
+-------------
+Pestaña Ajustes → "Generar diagnóstico" (o clic derecho en el ícono →
+Generar diagnóstico). Deja un .zip en Descargas con el estado de la app y su
+registro, sin tu token ni tu nombre de usuario. Mandanos ese archivo.
+El registro completo está en:
 %LocalAppData%\RaceEngineer\Logs\bridge-app.log

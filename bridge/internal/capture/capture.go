@@ -132,14 +132,25 @@ func Open(path string) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := &Reader{f: f}
-	var src io.Reader = f
-	if strings.HasSuffix(path, ".zst") {
-		if r.zr, err = zstd.NewReader(f); err != nil {
-			f.Close()
+	r, err := NewReader(f, strings.HasSuffix(path, ".zst"))
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	r.f = f
+	return r, nil
+}
+
+// NewReader reads a capture from src, for example one embedded in the app.
+// compressed says whether it is zstd-compressed (.zst).
+func NewReader(src io.Reader, compressed bool) (*Reader, error) {
+	r := &Reader{}
+	if compressed {
+		zr, err := zstd.NewReader(src)
+		if err != nil {
 			return nil, err
 		}
-		src = r.zr
+		r.zr, src = zr, zr
 	}
 	r.br = bufio.NewReaderSize(src, 64<<10)
 
@@ -184,10 +195,13 @@ func (r *Reader) Next() (Record, error) {
 	return Record{Offset: time.Duration(binary.LittleEndian.Uint64(hdr[0:8])), Data: data}, nil
 }
 
-// Close releases the file.
+// Close releases the file, if the capture came from one.
 func (r *Reader) Close() error {
 	if r.zr != nil {
 		r.zr.Close()
+	}
+	if r.f == nil {
+		return nil
 	}
 	return r.f.Close()
 }
