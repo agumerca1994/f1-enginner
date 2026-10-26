@@ -8,9 +8,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from app.telemetry.formats import f2024
+from app.telemetry.formats import f2024, f2025
 
-FORMATS = {2024: f2024}
+FORMATS = {2024: f2024, 2025: f2025}
 
 HEADER_SIZE = f2024.HEADER.itemsize
 

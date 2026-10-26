@@ -7,7 +7,7 @@ import pytest
 
 from app.telemetry import capture, registry
 from app.telemetry.constants import TEAMS
-from app.telemetry.formats import f2024
+from app.telemetry.formats import f2024, f2025
 
 CAPTURES = Path(__file__).resolve().parents[2] / "fixtures" / "captures"
 BAKU_RACE = CAPTURES / "baku-carrera-wifi.f1cap.zst"
@@ -29,10 +29,12 @@ needs_baku = _needs(BAKU_RACE)
 needs_texas_2026 = _needs(TEXAS_2026)
 
 
-@pytest.mark.parametrize("packet_id", sorted(f2024.PACKETS))
-def test_sizes_match_spec(packet_id):
-    _, dtype = f2024.PACKETS[packet_id]
-    assert f2024.HEADER.itemsize + dtype.itemsize == f2024.SIZES[packet_id]
+@pytest.mark.parametrize(
+    "fmt, packet_id", [(fmt, pid) for fmt in (f2024, f2025) for pid in sorted(fmt.PACKETS)]
+)
+def test_sizes_match_spec(fmt, packet_id):
+    _, dtype = fmt.PACKETS[packet_id]
+    assert fmt.HEADER.itemsize + dtype.itemsize == fmt.SIZES[packet_id]
 
 
 def test_event_details_fit_union():
@@ -40,7 +42,8 @@ def test_event_details_fit_union():
 
 
 def _datagram(packet_id: int, size: int | None = None, packet_format: int = 2024) -> bytes:
-    size = f2024.SIZES.get(packet_id, 100) if size is None else size
+    sizes = registry.FORMATS.get(packet_format, f2024).SIZES
+    size = sizes.get(packet_id, 100) if size is None else size
     buf = bytearray(size)
     header = np.zeros(1, dtype=f2024.HEADER)
     header["packet_format"] = packet_format
@@ -56,7 +59,7 @@ def _datagram(packet_id: int, size: int | None = None, packet_format: int = 2024
     [
         (b"", "shorter than the header"),
         (_datagram(6)[:28], "shorter than the header"),
-        (_datagram(6, packet_format=2025), "unsupported packet format"),
+        (_datagram(6, packet_format=2026), "unsupported packet format"),
         (_datagram(99, size=50), "unknown packet id"),
         (_datagram(6, size=1351), "expected 1352 bytes"),
     ],
@@ -168,4 +171,30 @@ def test_real_capture_2026_season_in_2024_format():
     assert TEAMS[int(me["team_id"])] == "Mercedes"
 
     assert {"OVTK", "COLL", "PENA", "FTLP"} <= set(events)
+
+
+def test_2025_format_layouts():
+    """2025 keeps the 2024 layouts except where the F1 25 spec changed them."""
+    assert registry.parse(_datagram(6, packet_format=2025)).name == "car_telemetry"
+    assert registry.parse(_datagram(15, packet_format=2025)).name == "lap_positions"
+    with pytest.raises(registry.PacketError, match="expected 1284 bytes"):
+        registry.parse(_datagram(4, size=1350, packet_format=2025))  # a 2024-sized Participants
+
+    data = bytearray(_datagram(4, packet_format=2025))
+    first = f2024.HEADER.itemsize + 1  # after num_active_cars
+    data[first + 7 : first + 7 + 10] = b"VERSTAPPEN"  # name follows seven one-byte fields
+    data[first + 44] = 1  # num_colours: name (32) + 5 bytes of settings after it
+    data[first + 45 : first + 48] = bytes([54, 113, 198])
+    me = registry.parse(bytes(data)).body["participants"][0]
+    assert me["name"] == b"VERSTAPPEN"
+    assert int(me["num_colours"]) == 1
+    assert me["livery_colours"][0].tolist() == (54, 113, 198)
+
+    # Blisters sit between brake damage and wing damage, not at the end.
+    data = bytearray(_datagram(10, packet_format=2025))
+    first = f2024.HEADER.itemsize
+    data[first + 24 : first + 29] = bytes([1, 2, 3, 4, 77])
+    car = registry.parse(bytes(data)).body["car_damage_data"][0]
+    assert car["tyre_blisters"].tolist() == [1, 2, 3, 4]
+    assert int(car["front_left_wing_damage"]) == 77
 

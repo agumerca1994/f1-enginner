@@ -60,6 +60,8 @@ Decisiones tomadas por el usuario:
 
 - **Primera prueba real en Windows** (2026-10-16). Un tester con F1 25 + temporada 2026 en PC, con el juego configurado en formato UDP 2024: el bridge de Windows (v0.2.3) vincula y manda datos al dashboard con 100% de recepción (juego y bridge en la misma PC). La v0.2.3 corrige un cuelgue de la vinculación en Windows (abrir el navegador bloqueaba la consulta del código). Quedan pendientes las muestras en formatos 2024, 2025 y 2026 grabadas con el modo desarrollo, para armar `f2025.py`/`f2026.py`.
 
+- **Formato 2025 soportado** (2026-10-25). Con una muestra real de F1 25 en formato 2025 (Madrid, 5 vueltas), `formats/f2025.py` reusa el 2024 y redefine sólo los paquetes que cambian según la especificación: Participants (nombre de 32 bytes y colores de librea), FinalClassification (`result_reason`), LobbyInfo, CarDamage (ampollas de neumáticos, en el medio del registro), MotionEx (cabeceo y camber) y el nuevo LapPositions. La muestra pasa entera por el parser, el snapshot y el análisis del ingeniero. Track ids nuevos del F1 25: 39–41 (trazados invertidos) y 42 (Madrid, deducido de la muestra). Falta el formato 2026.
+
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
 - **La IA es el ingeniero de pista, no un locutor.** Pone el conocimiento de F1 que el jugador no tiene y toma las decisiones:
   - reglaje, solo en práctica y clasificación;

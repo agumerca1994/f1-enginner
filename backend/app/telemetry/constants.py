@@ -8,6 +8,9 @@ TRACKS = {
     21: "Sakhir Short", 22: "Silverstone Short", 23: "Texas Short", 24: "Suzuka Short",
     25: "Hanoi", 26: "Zandvoort", 27: "Imola", 28: "Portimão", 29: "Jeddah", 30: "Miami",
     31: "Las Vegas", 32: "Losail",
+    # Added by F1 25: reverse layouts, and Madrid with the 2026 season pack
+    # (42 is inferred from a real capture: a 5,411 m track).
+    39: "Silverstone (Reverse)", 40: "Austria (Reverse)", 41: "Zandvoort (Reverse)", 42: "Madrid",
 }
 
 SESSION_TYPES = {

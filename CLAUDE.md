@@ -17,7 +17,7 @@ Current state:
   - `cmd/bridge-app` is the tray app (Fyne) for macOS and Windows. Its "Modo desarrollo" records raw samples of any packet format to `<config>/race-engineer/muestras/`.
   - Both drive `internal/agent`.
 - **`backend/`** (FastAPI):
-  - `app/telemetry/` is the parser. Each format has its own file, e.g. `formats/f2024.py`, and is registered in `registry.FORMATS`.
+  - `app/telemetry/` is the parser. Each format has its own file and is registered in `registry.FORMATS`: `formats/f2024.py`, and `formats/f2025.py`, which reuses the 2024 layouts and redefines only Participants, FinalClassification, LobbyInfo, CarDamage, MotionEx and the new LapPositions (id 15). Format 2026 is not supported yet.
   - `app/ingest/` handles the uplink.
   - `app/live/` holds the in-memory state, the snapshot and the track-outline builder.
   - `app/replay/` plays stored captures back through the same live state.
