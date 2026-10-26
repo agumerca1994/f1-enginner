@@ -9,7 +9,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.live import snapshot
 from app.live.state import live_store
-from app.models import GameSession, SessionCapture, TrackLayout, User
+from app.models import GameSession, SessionCapture, TrackLayout, User, meaningful_session
 from app.telemetry import constants as c
 
 router = APIRouter(prefix="/api", tags=["live"])
@@ -45,13 +45,12 @@ class GameSessionOut(BaseModel):
 
 
 @router.get("/sessions", response_model=list[GameSessionOut])
-async def sessions(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    rows = list(await db.scalars(
-        select(GameSession)
-        .where(GameSession.tenant_id == user.tenant_id)
-        .order_by(GameSession.started_at.desc())
-        .limit(50)
-    ))
+async def sessions(all: bool = False, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The player's sessions, newest first. Menus and instant restarts are left out unless `all`."""
+    q = select(GameSession).where(GameSession.tenant_id == user.tenant_id)
+    if not all:
+        q = q.where(meaningful_session())
+    rows = list(await db.scalars(q.order_by(GameSession.started_at.desc()).limit(50)))
     recorded = set(await db.scalars(
         select(SessionCapture.game_session_id).where(SessionCapture.game_session_id.in_([g.id for g in rows]))
     ))

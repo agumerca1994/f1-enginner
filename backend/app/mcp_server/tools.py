@@ -21,7 +21,7 @@ from app.engineer.runner import engineer_hub
 from app.live.state import live_store
 from app.mcp_server.context import current_caller
 from app.mcp_server.instance import READ_ONLY, mcp
-from app.models import EngineerMessage, GameSession, SessionCapture
+from app.models import EngineerMessage, GameSession, SessionCapture, meaningful_session
 from app.telemetry import constants as c
 
 SESSION_KINDS = {
@@ -85,7 +85,7 @@ async def list_sessions(
 ) -> dict[str, Any]:
     """Lista las sesiones del jugador (práctica, clasificación, carrera…) con su id, pista, fecha y si tienen grabación."""
     caller = await current_caller()
-    q = select(GameSession).where(GameSession.tenant_id == caller.tenant_id)
+    q = select(GameSession).where(GameSession.tenant_id == caller.tenant_id, meaningful_session())
     if track:
         ids = [tid for tid, name in c.TRACKS.items() if _fold(track) in _fold(name)]
         if not ids:

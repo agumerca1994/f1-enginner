@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, SmallInteger, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, SmallInteger, String, UniqueConstraint, and_, func, or_
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -29,6 +30,22 @@ class GameSession(Base):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     packets_received: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
     packets_rejected: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+
+
+# Below both, a session is a menu or an instant restart: hidden from lists, never deleted.
+MIN_SESSION_PACKETS = 500
+MIN_SESSION_LENGTH = timedelta(seconds=90)
+
+
+def meaningful_session() -> ColumnElement[bool]:
+    """SQL condition for sessions worth listing: a known track and some real driving."""
+    return and_(
+        GameSession.track_id.is_not(None),
+        or_(
+            GameSession.packets_received >= MIN_SESSION_PACKETS,
+            GameSession.last_packet_at - GameSession.started_at >= MIN_SESSION_LENGTH,
+        ),
+    )
 
 
 class SessionCapture(Base):

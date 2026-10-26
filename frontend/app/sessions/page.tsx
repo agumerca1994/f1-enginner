@@ -35,16 +35,18 @@ function Sessions() {
   const { credentials } = useAuth();
   const [sessions, setSessions] = useState<GameSession[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Menus and instant restarts are hidden unless asked for.
+  const [all, setAll] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        setSessions(await api<GameSession[]>("/api/sessions", await credentials()));
+        setSessions(await api<GameSession[]>(`/api/sessions${all ? "?all=true" : ""}`, await credentials()));
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error");
       }
     })();
-  }, [credentials]);
+  }, [credentials, all]);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
@@ -55,6 +57,10 @@ function Sessions() {
         </Link>
       </div>
       <p className="mt-1 text-sm text-muted">Cada sesión que corriste con el bridge queda grabada: podés volver a verla con todos los datos.</p>
+      <label className="mt-2 flex items-center gap-2 text-xs text-muted">
+        <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
+        Mostrar también las sesiones cortas (menús y reinicios de menos de un minuto y medio)
+      </label>
 
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {sessions?.length === 0 && (

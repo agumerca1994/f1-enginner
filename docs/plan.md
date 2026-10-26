@@ -109,7 +109,7 @@ Decidido el 2026-10-26: sumar **ACC en PC**. En PS4/PS5 ni ACC ni AC exportan te
 ### Pendientes conocidos
 - Confirmar la orientación del mapa con una vuelta completa. En Bakú parece correcta: rotada, no espejada.
 - Ver la ventana de la app de la Mac, que no se pudo capturar por falta de permiso de grabación de pantalla.
-- Borrar o filtrar sesiones vacías (sesiones de menú con muy pocos datos).
+- ~~Borrar o filtrar sesiones vacías~~ Hecho (2026-10-26): la lista de Sesiones y el MCP ocultan las sesiones sin pista o con menos de 500 paquetes y menos de 90 s (menús y reinicios instantáneos); no se borran y "Mostrar también las sesiones cortas" las trae.
 - Las mejoras de la prueba en seco ya están hechas: pérdida en boxes medida con las paradas en verde, escenario "si paran todos" bajo safety car, juegos de neumáticos y tabla por pista en el manual. Falta persistir la pérdida en boxes por pista cuando el ingeniero corra en vivo.
 - El estado en vivo está en memoria y se pierde en cada deploy; pasa a Redis en P7.
 - La imagen de la API pesa unos 800 MB (numpy y firebase-admin); se puede optimizar.
