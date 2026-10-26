@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -65,6 +66,7 @@ type statusWindow struct {
 	panels *panelsTab
 
 	// Desarrollo
+	accDev     *accDevSection
 	devTab     *container.TabItem
 	note       *widget.Entry
 	sampleInfo *widget.Label
@@ -283,7 +285,7 @@ func (w *statusWindow) buildDev() fyne.CanvasObject {
 	w.stopRecBtn.Importance = widget.DangerImportance
 	openSamples := widget.NewButtonWithIcon("Abrir carpeta", theme.FolderOpenIcon(), c.openSamples)
 
-	return container.NewVBox(
+	box := container.NewVBox(
 		section("Grabar muestra",
 			hint("Graba todo lo que manda el juego, sin filtrar y en cualquier formato, en un archivo .f1cap.zst con un resumen .txt al lado. Funciona aunque no estés enviando."),
 			widget.NewLabel("Nota"),
@@ -292,6 +294,13 @@ func (w *statusWindow) buildDev() fyne.CanvasObject {
 			container.NewHBox(w.recordBtn, w.stopRecBtn, layout.NewSpacer(), openSamples),
 		),
 	)
+	if runtime.GOOS == "windows" { // ACC runs, and shares its memory, only on Windows
+		var accBox fyne.CanvasObject
+		w.accDev, accBox = newAccDevSection(c, w.note)
+		box.Add(widget.NewSeparator())
+		box.Add(accBox)
+	}
+	return box
 }
 
 func (w *statusWindow) Show() {
@@ -447,6 +456,9 @@ func (w *statusWindow) refreshDev() {
 		return
 	}
 	w.sampleInfo.SetText(w.c.sampler.progress())
+	if w.accDev != nil {
+		w.accDev.refresh()
+	}
 	if w.c.sampler.recording() {
 		w.recordBtn.Hide()
 		w.stopRecBtn.Show()

@@ -50,6 +50,19 @@ No hace falta vincular nada.
    (.f1cap.zst y .txt) por Drive o WhatsApp.
 
 
+B2) GRABAR MUESTRAS DE ASSETTO CORSA COMPETIZIONE (ACC EN ESTA PC)
+-----------------------------------------------------------------
+Con el Modo desarrollo activado (ver B), la pestaña Desarrollo tiene una
+sección "Assetto Corsa Competizione".
+1. La primera vez, con ACC CERRADO, tocá "Preparar ACC": activa el
+   broadcasting de ACC (el archivo Documentos\Assetto Corsa Competizione\
+   Config\broadcasting.json). Si ACC estaba abierto, reinicialo.
+2. Abrí ACC y entrá a pista (práctica, clasificación o carrera con autos).
+3. Escribí la Nota (pista, sesión, online u offline) y tocá
+   "Grabar muestra de ACC". Andá unas vueltas y tocá "Detener".
+4. "Abrir carpeta" y mandanos los archivos acc-*.f1cap.zst y acc-*.txt.
+
+
 C) PANELES FLOTANTES (CON EL JUEGO EN ESTA PC)
 ---------------------------------------------
 Paneles sobre el juego: delta, relativos, tiempos, posiciones, pedales y la

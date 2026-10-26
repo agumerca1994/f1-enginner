@@ -65,6 +65,7 @@ func main() {
 	c.loadAccount()
 	go c.ticker()
 	a.Run()
+	c.accSampler.stop()
 	c.stopDemo()
 	c.stopPanels()
 	c.stop()
@@ -90,6 +91,8 @@ type controller struct {
 	pairing  *pairing.Start
 	pairStop context.CancelFunc
 	sampler  sampler
+	// Assetto Corsa Competizione samples (Windows, development mode).
+	accSampler accSampler
 
 	menu       *fyne.Menu
 	menuStatus *fyne.MenuItem
