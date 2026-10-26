@@ -31,7 +31,7 @@ def build(live: LiveSession) -> dict[str, Any]:
         if name in live.last:
             player = live.last[name].player_car_index
             break
-    if player is not None and not 0 <= player < 22:
+    if player is not None and not 0 <= player < live.slots():
         player = None  # 255 while spectating or in menus: there is no player car to show
 
     out: dict[str, Any] = {

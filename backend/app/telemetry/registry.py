@@ -8,9 +8,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from app.telemetry.formats import f2024, f2025
+from app.telemetry.formats import f2024, f2025, f2026
 
-FORMATS = {2024: f2024, 2025: f2025}
+FORMATS = {2024: f2024, 2025: f2025, 2026: f2026}
 
 HEADER_SIZE = f2024.HEADER.itemsize
 
@@ -62,6 +62,9 @@ def parse(datagram: bytes) -> Packet:
     if len(datagram) != expected:
         raise PacketError(f"{name}: expected {expected} bytes, got {len(datagram)}")
     body = np.frombuffer(datagram, dtype=dtype, count=1, offset=HEADER_SIZE)[0]
+    decode = getattr(fmt, "DECODE", {}).get(packet_id)
+    if decode is not None:  # a format can repack a record into the layout readers expect
+        body = decode(body)
     return Packet(packet_format, packet_id, name, header, body)
 
 

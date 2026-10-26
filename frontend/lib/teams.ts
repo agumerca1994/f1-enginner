@@ -24,6 +24,9 @@ export const TEAM_COLORS: Record<number, string> = {
   230: "#c9a54a", // Cadillac
 };
 
+// The 2026 packet format numbers the same teams from 476 (16-bit ids).
+for (let i = 0; i <= 10; i++) TEAM_COLORS[476 + i] = TEAM_COLORS[220 + i];
+
 export function teamColor(teamId: number | null | undefined): string {
   return (teamId != null && TEAM_COLORS[teamId]) || "#7d8996";
 }

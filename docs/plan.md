@@ -62,6 +62,8 @@ Decisiones tomadas por el usuario:
 
 - **Formato 2025 soportado** (2026-10-25). Con una muestra real de F1 25 en formato 2025 (Madrid, 5 vueltas), `formats/f2025.py` reusa el 2024 y redefine sólo los paquetes que cambian según la especificación: Participants (nombre de 32 bytes y colores de librea), FinalClassification (`result_reason`), LobbyInfo, CarDamage (ampollas de neumáticos, en el medio del registro), MotionEx (cabeceo y camber) y el nuevo LapPositions. La muestra pasa entera por el parser, el snapshot y el análisis del ingeniero. Track ids nuevos del F1 25: 39–41 (trazados invertidos) y 42 (Madrid, deducido de la muestra). Falta el formato 2026.
 
+- **Formato 2026 soportado** (2026-10-25). Con una muestra real (Suzuka, 5 vueltas) `formats/f2026.py` cubre los 17 paquetes: arreglos de 24 autos, IDs de 16 bits (equipos 476–486; 65535 en los lugares vacíos), temperatura de motor de 8 bits, Session con zonas de aero activo y DRS, límite de cosecha de ERS por vuelta y el nuevo CarTelemetry2 (aero activo, modo adelantamiento, reglamento 2026). Las fuerzas G llegan cuantizadas en milésimas de G (escala deducida de la muestra) y se convierten a float al leer, así el resto del código no cambia. Se sacaron los 22 autos fijos del estado en vivo, el snapshot y las repeticiones. Las tres muestras (2024, 2025 y 2026) pasan de punta a punta por parser, snapshot y análisis. Pendiente: mostrar en el dashboard y darle al ingeniero los datos nuevos del 2026 (aero activo, modo adelantamiento, ampollas).
+
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
 - **La IA es el ingeniero de pista, no un locutor.** Pone el conocimiento de F1 que el jugador no tiene y toma las decisiones:
   - reglaje, solo en práctica y clasificación;

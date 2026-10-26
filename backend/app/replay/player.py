@@ -63,7 +63,6 @@ class ReplaySource:
         duration, count = 0.0, 0
         builder: LayoutBuilder | None = None
         last_lap = None
-        active = list(range(22))  # filtered per car inside add_frame
         for t, data in self.records():
             duration, count = t, count + 1
             if len(data) < 7 or data[6] not in _LAYOUT_PACKETS:
@@ -77,6 +76,8 @@ class ReplaySource:
             elif p.name == "lap_data":
                 last_lap = p
             elif p.name == "motion" and builder is not None and last_lap is not None:
+                # Every slot (22, or 24 in the 2026 format); add_frame skips the unused ones.
+                active = range(len(last_lap.body["lap_data"]))
                 builder.add_frame(p.body, last_lap.body, p.session_time, last_lap.session_time, active)
         return duration, count, builder
 

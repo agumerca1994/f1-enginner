@@ -7,7 +7,7 @@ import pytest
 
 from app.telemetry import capture, registry
 from app.telemetry.constants import TEAMS
-from app.telemetry.formats import f2024, f2025
+from app.telemetry.formats import f2024, f2025, f2026
 
 CAPTURES = Path(__file__).resolve().parents[2] / "fixtures" / "captures"
 BAKU_RACE = CAPTURES / "baku-carrera-wifi.f1cap.zst"
@@ -30,7 +30,7 @@ needs_texas_2026 = _needs(TEXAS_2026)
 
 
 @pytest.mark.parametrize(
-    "fmt, packet_id", [(fmt, pid) for fmt in (f2024, f2025) for pid in sorted(fmt.PACKETS)]
+    "fmt, packet_id", [(fmt, pid) for fmt in (f2024, f2025, f2026) for pid in sorted(fmt.PACKETS)]
 )
 def test_sizes_match_spec(fmt, packet_id):
     _, dtype = fmt.PACKETS[packet_id]
@@ -59,7 +59,7 @@ def _datagram(packet_id: int, size: int | None = None, packet_format: int = 2024
     [
         (b"", "shorter than the header"),
         (_datagram(6)[:28], "shorter than the header"),
-        (_datagram(6, packet_format=2026), "unsupported packet format"),
+        (_datagram(6, packet_format=2027), "unsupported packet format"),
         (_datagram(99, size=50), "unknown packet id"),
         (_datagram(6, size=1351), "expected 1352 bytes"),
     ],
@@ -197,4 +197,36 @@ def test_2025_format_layouts():
     car = registry.parse(bytes(data)).body["car_damage_data"][0]
     assert car["tyre_blisters"].tolist() == [1, 2, 3, 4]
     assert int(car["front_left_wing_damage"]) == 77
+
+
+def test_2026_format_layouts():
+    """2026: 24 car slots, 16-bit team ids, quantised g-forces and the new CarTelemetry2."""
+    from app.live.state import LiveSession
+
+    data = bytearray(_datagram(0, packet_format=2026))
+    car = f2026.CAR_MOTION_RAW
+    g = f2024.HEADER.itemsize + 23 * car.itemsize + car.fields["g_force_lateral"][1]  # the 24th slot
+    data[g : g + 2] = (-2040).to_bytes(2, "little", signed=True)
+    motion = registry.parse(bytes(data)).body["car_motion_data"]
+    assert len(motion) == 24
+    assert float(motion[23]["g_force_lateral"]) == pytest.approx(-2.04)  # thousandths of a g, as floats
+
+    data = bytearray(_datagram(4, packet_format=2026))
+    first = f2024.HEADER.itemsize + 1
+    data[first + 5 : first + 7] = (476).to_bytes(2, "little")  # team_id after ai (1) + driver (2) + network (2)
+    me = registry.parse(bytes(data)).body["participants"][0]
+    assert int(me["team_id"]) == 476 and TEAMS[476] == "Mercedes"
+
+    data = bytearray(_datagram(16, packet_format=2026))
+    data[f2024.HEADER.itemsize + 4] = 1  # overtake_available of car 0
+    assert int(registry.parse(bytes(data)).body["car_telemetry_2_data"][0]["overtake_available"]) == 1
+
+    # The live state reads the slot count off the packets: slot 23 counts as a car.
+    laps = bytearray(_datagram(2, packet_format=2026))
+    lap = f2024.LAP_DATA
+    laps[f2024.HEADER.itemsize + 23 * lap.itemsize + lap.fields["result_status"][1]] = 2
+    live = LiveSession(tenant_id=1, device_id=1, session_uid=42, packet_format=2026)
+    live.update(registry.parse(bytes(laps)))
+    assert live.slots() == 24
+    assert live.active_cars() == [23]
 

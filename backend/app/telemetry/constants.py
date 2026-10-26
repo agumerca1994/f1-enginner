@@ -56,6 +56,9 @@ TEAMS = {
     # also in the 2024 packet format; mapped from a real capture's line-ups.
     220: "Mercedes", 221: "Ferrari", 222: "Red Bull Racing", 223: "Williams", 224: "Aston Martin",
     225: "Alpine", 226: "Racing Bulls", 227: "Haas", 228: "McLaren", 229: "Audi", 230: "Cadillac",
+    # The 2026 packet format widens team ids to 16 bits and numbers the same teams from 476.
+    476: "Mercedes", 477: "Ferrari", 478: "Red Bull Racing", 479: "Williams", 480: "Aston Martin",
+    481: "Alpine", 482: "Racing Bulls", 483: "Haas", 484: "McLaren", 485: "Audi", 486: "Cadillac",
 }
 
 # Joules the ERS store holds when full.

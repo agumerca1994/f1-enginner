@@ -78,9 +78,14 @@ class LiveSession:
         """
         laps = self.last.get("lap_data")
         if laps is None:
-            return list(range(22))
+            return list(range(self.slots()))
         # result_status 0 = invalid, 1 = inactive (an unused slot).
-        return [i for i in range(22) if int(laps.body["lap_data"][i]["result_status"]) >= 2]
+        return [i for i in range(self.slots()) if int(laps.body["lap_data"][i]["result_status"]) >= 2]
+
+    def slots(self) -> int:
+        """How many car slots the packets carry: 22, or 24 in the 2026 format."""
+        laps = self.last.get("lap_data")
+        return len(laps.body["lap_data"]) if laps is not None else 22
 
     def _feed_layout(self, motion: Packet | None, lap: Packet | None) -> None:
         # Pair each new Motion or LapData packet with the latest of the other kind;
