@@ -252,9 +252,12 @@ export function TimingCard({ s }: { s: Snapshot }) {
       right={lap.lap_invalid ? <span className="rounded bg-danger/20 px-2 py-0.5 text-xs text-danger">Vuelta inválida</span> : null}
     >
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="col-span-2">
-          <div className="label">Vuelta actual</div>
-          <div className="num text-4xl font-semibold">{lapTime(lap.current_lap_ms)}</div>
+        <div className="col-span-2 flex items-end justify-between gap-3">
+          <div>
+            <div className="label">Vuelta actual</div>
+            <div className="num text-4xl font-semibold">{lapTime(lap.current_lap_ms)}</div>
+          </div>
+          <LiveDelta ms={lap.delta_best_ms} refLap={lap.delta_reference_lap} />
         </div>
         <div>
           <div className="label">Última</div>
@@ -280,6 +283,7 @@ export function TimingCard({ s }: { s: Snapshot }) {
           </div>
         ))}
       </div>
+      <SectorReview rows={s.sector_review} />
       <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs text-muted">
         <span>
           Al de adelante <span className="num text-fg">{gap(lap.gap_ahead_ms)}</span>
@@ -295,6 +299,126 @@ export function TimingCard({ s }: { s: Snapshot }) {
         )}
       </div>
     </Panel>
+  );
+}
+
+function signed(ms: number): string {
+  return `${ms > 0 ? "+" : ms < 0 ? "−" : "±"}${(Math.abs(ms) / 1000).toFixed(3)}`;
+}
+
+/** Green and negative: gaining on the best lap at this same point; red and positive: losing. */
+function LiveDelta({ ms, refLap }: { ms: number | null | undefined; refLap: number | null | undefined }) {
+  if (ms == null) {
+    return (
+      <div className="text-right" title="Hace falta una vuelta limpia completa, vista de punta a punta, para comparar">
+        <div className="label">Δ mejor</div>
+        <div className="text-sm font-semibold text-muted">SIN REF.</div>
+      </div>
+    );
+  }
+  return (
+    <div className="text-right" title={refLap ? `Contra tu vuelta ${refLap}, en el mismo punto de la pista` : undefined}>
+      <div className="label">Δ mejor{refLap ? ` · V${refLap}` : ""}</div>
+      <div className={`num text-3xl font-semibold ${ms < 0 ? "text-ok" : ms > 0 ? "text-danger" : ""}`}>{signed(ms)}</div>
+    </div>
+  );
+}
+
+/** The last two laps sector by sector against the best clean lap before each one. */
+function SectorReview({ rows }: { rows: Snapshot["sector_review"] }) {
+  const shown = (rows ?? []).filter((r) => r.sector_deltas_ms);
+  if (!shown.length) return null;
+  return (
+    <div className="mt-3 space-y-1">
+      <div className="label">Últimas vueltas vs. mejor limpia</div>
+      {shown.map((r) => (
+        <div key={r.lap} className="grid grid-cols-[2.5rem_minmax(0,1fr)_repeat(3,minmax(0,1fr))] items-center gap-2 text-xs">
+          <span className="text-muted">V{r.lap}</span>
+          <span className={`num ${r.valid ? "" : "text-danger line-through"}`} title={r.valid ? undefined : "Vuelta inválida"}>
+            {lapTime(r.time_ms)}
+          </span>
+          {r.sector_deltas_ms!.map((d, i) => (
+            <span
+              key={i}
+              className={`num text-right ${d == null ? "text-muted" : d < 0 ? "text-ok" : d > 0 ? "text-danger" : ""}`}
+              title={`S${i + 1} contra la vuelta ${r.reference_lap}`}
+            >
+              {d == null ? "—" : signed(d)}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Relatives ---------------------------------------------------------------
+
+/** The cars physically around the player on track, lapped traffic included, plus whether
+ * the fight ahead and behind closes before the flag. */
+export function RelativesCard({ s }: { s: Snapshot }) {
+  const rel = s.relatives;
+  const me = s.cars?.find((c) => c.is_player);
+  if (!rel || !me) return <Panel title="Relativos"><Empty /></Panel>;
+  const byIndex = new Map((s.cars ?? []).map((c) => [c.index, c]));
+  const row = (r: NonNullable<Snapshot["relatives"]>["ahead"][number], ahead: boolean) => {
+    const c = byIndex.get(r.index);
+    const tone = r.relation === "lapped" ? "text-[#60a5fa]" : r.relation === "lapping" ? "text-warn" : "";
+    return (
+      <li key={r.index} className="grid grid-cols-[1.6rem_0.25rem_minmax(0,1fr)_4.2rem] items-center gap-2 px-1 py-0.5 text-sm">
+        <span className="num text-right text-muted">{c?.position ?? "—"}</span>
+        <span className="h-4 rounded-full" style={{ background: c?.color ?? teamColor(c?.team_id ?? null) }} />
+        <span className={`flex min-w-0 items-center gap-1.5 ${tone}`}>
+          <span className="truncate">{c ? shortName(c) : `Auto ${r.index + 1}`}</span>
+          {r.pit && <span className="rounded bg-warn px-1 text-[0.6rem] font-bold text-bg">BOX</span>}
+          {r.relation && <span className="text-[0.6rem]">{r.relation === "lapped" ? "doblado" : "te dobla"}</span>}
+        </span>
+        <span className="num text-right text-xs" title={r.estimated ? "Estimado por distancia" : undefined}>
+          {r.gap_s == null ? "—" : `${r.estimated ? "~" : ""}${ahead ? "−" : "+"}${r.gap_s.toFixed(1)}`}
+        </span>
+      </li>
+    );
+  };
+  return (
+    <Panel title="Relativos" age={s.lap?.age_s}>
+      <ol className="-mx-1">
+        {[...rel.ahead].reverse().map((r) => row(r, true))}
+        <li className="grid grid-cols-[1.6rem_0.25rem_minmax(0,1fr)_4.2rem] items-center gap-2 rounded-md bg-accent/15 px-1 py-0.5 text-sm ring-1 ring-accent/40">
+          <span className="num text-right text-muted">{me.position}</span>
+          <span className="h-4 rounded-full" style={{ background: me.color ?? teamColor(me.team_id) }} />
+          <span className="truncate font-semibold">{shortName(me)}</span>
+          <span />
+        </li>
+        {rel.behind.map((r) => row(r, false))}
+      </ol>
+      {s.pace && (
+        <div className="mt-3 space-y-1 border-t border-line pt-2 text-xs">
+          <PaceLine label="Adelante" side={s.pace.ahead} chasing />
+          <PaceLine label="Atrás" side={s.pace.behind} chasing={false} />
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function PaceLine({ label, side, chasing }: { label: string; side: NonNullable<Snapshot["pace"]>["ahead"]; chasing: boolean }) {
+  if (!side) return null;
+  const laps = side.laps_to_catch != null ? Math.ceil(side.laps_to_catch) : null;
+  const text: Record<typeof side.state, string> = {
+    waiting: "Faltan vueltas limpias para medir el ritmo",
+    stable: "Ritmo parejo",
+    opening: chasing
+      ? `Se escapa ${Math.abs(side.closing_s_per_lap ?? 0).toFixed(1)} s por vuelta`
+      : `Le sacás ${Math.abs(side.closing_s_per_lap ?? 0).toFixed(1)} s por vuelta`,
+    catching: chasing ? `Lo alcanzás en ~${laps} vueltas` : `Te alcanza en ~${laps} vueltas`,
+    after_finish: chasing ? "Descontás, pero no llegás antes del final" : "Descuenta, pero no llega antes del final",
+  };
+  const tone = side.state === "catching" ? (chasing ? "text-ok" : "text-warn") : "text-muted";
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-muted">{label}</span>
+      <span className={tone}>{text[side.state]}</span>
+    </div>
   );
 }
 

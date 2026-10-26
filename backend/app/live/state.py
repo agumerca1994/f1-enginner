@@ -13,6 +13,7 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from app.live.timing import LiveTiming
 from app.live.track_layout import LayoutBuilder
 from app.telemetry import registry
 from app.telemetry.registry import Packet
@@ -35,6 +36,9 @@ class LiveSession:
     updated_at: float = field(default_factory=time.monotonic)
     # Best lap per car index, from SessionHistory packets (they cycle through the cars).
     best_lap_ms: dict[int, int] = field(default_factory=dict)
+    # The player's own SessionHistory body: lap and sector times with validity flags.
+    player_history: object | None = None
+    timing: LiveTiming = field(default_factory=LiveTiming)
     # Circuit outline built from every car's position; loaded and saved by the ingest service.
     track_id: int | None = None
     layout: LayoutBuilder | None = None
@@ -68,6 +72,7 @@ class LiveSession:
             self._feed_layout(motion=packet, lap=self.last.get("lap_data"))
         elif packet.name == "lap_data":
             self._feed_layout(motion=self.last.get("motion"), lap=packet)
+            self._feed_timing(packet)
 
     def active_cars(self) -> list[int]:
         """Indices of the cars taking part in the session.
@@ -94,9 +99,19 @@ class LiveSession:
             return
         self.layout.add_frame(motion.body, lap.body, motion.session_time, lap.session_time, self.active_cars())
 
+    def _feed_timing(self, packet: Packet) -> None:
+        session = self.last.get("session")
+        if session is None:
+            return  # no track length yet
+        player = packet.player_car_index if packet.player_car_index < self.slots() else None
+        self.timing.observe(packet, player, float(session.body["track_length"]),
+                            safety_car=int(session.body["safety_car_status"]) != 0)
+
     def _record_best_lap(self, packet: Packet) -> None:
         b = packet.body
         car, lap_num = int(b["car_idx"]), int(b["best_lap_time_lap_num"])
+        if car == packet.player_car_index:
+            self.player_history = b
         if 0 < lap_num <= 100:
             ms = int(b["lap_history_data"][lap_num - 1]["lap_time_in_ms"])
             if ms > 0:

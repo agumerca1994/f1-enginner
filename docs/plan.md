@@ -17,7 +17,7 @@ Decisiones tomadas por el usuario:
 - el proveedor de LLM es configurable;
 - el producto es comercial y multiusuario.
 
-## Estado actual (actualizado 2026-10-16)
+## Estado actual (actualizado 2026-10-26)
 
 | Fase | Estado | Qué hay |
 |---|---|---|
@@ -63,6 +63,19 @@ Decisiones tomadas por el usuario:
 - **Formato 2025 soportado** (2026-10-25). Con una muestra real de F1 25 en formato 2025 (Madrid, 5 vueltas), `formats/f2025.py` reusa el 2024 y redefine sólo los paquetes que cambian según la especificación: Participants (nombre de 32 bytes y colores de librea), FinalClassification (`result_reason`), LobbyInfo, CarDamage (ampollas de neumáticos, en el medio del registro), MotionEx (cabeceo y camber) y el nuevo LapPositions. La muestra pasa entera por el parser, el snapshot y el análisis del ingeniero. Track ids nuevos del F1 25: 39–41 (trazados invertidos) y 42 (Madrid, deducido de la muestra). Falta el formato 2026.
 
 - **Formato 2026 soportado** (2026-10-25). Con una muestra real (Suzuka, 5 vueltas) `formats/f2026.py` cubre los 17 paquetes: arreglos de 24 autos, IDs de 16 bits (equipos 476–486; 65535 en los lugares vacíos), temperatura de motor de 8 bits, Session con zonas de aero activo y DRS, límite de cosecha de ERS por vuelta y el nuevo CarTelemetry2 (aero activo, modo adelantamiento, reglamento 2026). Las fuerzas G llegan cuantizadas en milésimas de G (escala deducida de la muestra) y se convierten a float al leer, así el resto del código no cambia. Se sacaron los 22 autos fijos del estado en vivo, el snapshot y las repeticiones. Las tres muestras (2024, 2025 y 2026) pasan de punta a punta por parser, snapshot y análisis. Después (2026-10-26) se aprovecharon los datos nuevos: el snapshot suma aero activo (modo, disponibilidad, zonas), modo adelantamiento del jugador y de cada auto, cosecha de ERS contra el límite por vuelta, ampollas y colores de librea del juego. El ingeniero recibe `reglamento_2026` en sus hechos, una sección del manual sobre el reglamento 2026, uso del modo adelantamiento y energía cosechada por vuelta, y tres avisos nuevos: modo adelantamiento disponible cerca del de adelante, rival de atrás que lo activa, y ampollas (15/30/50%). La web muestra aero y adelantamiento en la telemetría, la cosecha en la tarjeta de ERS, el distintivo ADL en posiciones, las zonas de aero en el mapa y las ampollas por goma. El evento `OVEN`, que no está en la especificación, se rotula como "Modo adelantamiento habilitado" por deducción. También se corrigieron textos del modo reglas que salían con nombres internos o en inglés (partes dañadas, compuestos).
+
+- **Ideas tomadas de Landelta** (2026-10-26). Landelta es un overlay de telemetría para Assetto Corsa Competizione (C++, sin licencia publicada: se tomaron ideas, no código). Se sumaron al dashboard, calculadas en el server con el reloj del juego (`app/live/timing.py`), así funcionan con poca recepción y en repeticiones:
+  - **Δ mejor en vivo:** la vuelta en curso contra la mejor vuelta limpia completa de la sesión, en el mismo punto de la pista. Sólo sirve de referencia una vuelta vista de punta a punta (sin huecos de más de 300 m), válida, sin box ni safety car. Sin referencia muestra "SIN REF.", nunca 0.
+  - **Relativos:** los autos físicamente delante y detrás en pista, doblados incluidos (azul: doblado; ámbar: te dobla). El gap es el tiempo desde que el de adelante pasó por donde está el jugador, medido con la traza de cada auto; si falta, se estima por distancia y se marca con `~`.
+  - **Alcance:** en carrera, si el de adelante o el de atrás descuenta, con la mediana de las últimas vueltas limpias (mínimo 3), y si llega antes del final.
+  - **Últimas vueltas vs. mejor limpia:** las dos últimas vueltas por sector contra la mejor limpia anterior, desde el SessionHistory del jugador (que el juego reenvía todo el tiempo).
+
+### Assetto Corsa Competizione (pendiente, después de las mejoras de F1)
+Decidido el 2026-10-26: sumar **ACC en PC**. En PS4/PS5 ni ACC ni AC exportan telemetría.
+- **Fuentes:** la memoria compartida de Windows (`Local\acpmf_physics`, `acpmf_graphics`, `acpmf_static`) sólo para el auto propio, y el protocolo de broadcasting UDP de ACC (puerto 9000, hay que habilitarlo en `Documentos\Assetto Corsa Competizione\Config\broadcasting.json`) para todos los autos. El bridge tiene que correr en la misma PC que el juego.
+- **Bridge:** una fuente nueva en Go, sólo Windows: lee las páginas de memoria compartida a frecuencia fija, se registra como cliente de broadcasting y manda los bytes crudos con un sobre propio que indique el juego. El parseo sigue en el server. La app debería preparar `broadcasting.json` sola (Landelta lo hace con "Reparar conexión de pilotos", con ACC cerrado).
+- **Server:** parser de ACC en `app/telemetry/` y una capa que lo lleve a la misma forma del snapshot. Lo que ACC no tiene (ERS, DRS, aero activo) va en `None`. El ingeniero necesita un manual propio de GT3: TC/ABS/mapa de motor, ventana de presiones, combustible por vuelta, stints de pilotos, ventanas de box obligatorias.
+- **Validación:** hace falta un tester con ACC en PC que grabe muestras con el "Modo desarrollo"; sin muestras reales no se puede dar por bueno.
 
 ### Estrategia de IA del ingeniero (definida 2026-09-27)
 - **La IA es el ingeniero de pista, no un locutor.** Pone el conocimiento de F1 que el jugador no tiene y toma las decisiones:

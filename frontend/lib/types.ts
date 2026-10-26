@@ -48,7 +48,14 @@ export type Snapshot = {
     penalties_s: number;
     warnings: number;
     grid_position: number;
+    /** Against the best complete clean lap of the session at the same point; null = no reference yet. */
+    delta_best_ms: number | null;
+    delta_reference_lap: number | null;
   };
+  relatives?: { ahead: RelativeRow[]; behind: RelativeRow[] };
+  /** Race only: catch forecasts against the cars right ahead and behind in position. */
+  pace?: { my_pace_s: number | null; ahead: PaceSide | null; behind: PaceSide | null };
+  sector_review?: SectorReviewRow[];
   car?: {
     age_s: number | null;
     speed_kmh: number;
@@ -132,6 +139,36 @@ export type Snapshot = {
   } | null;
   cars?: CarRow[];
   events: ({ code: string; session_time: number } & Record<string, number | string>)[];
+};
+
+export type RelativeRow = {
+  index: number;
+  distance_m: number;
+  gap_s: number | null;
+  /** True when the gap is distance over lap pace, not measured from the car's trace. */
+  estimated: boolean;
+  /** lapped: a lap or more down on the player; lapping: a lap or more up. */
+  relation: "lapped" | "lapping" | null;
+  pit: boolean;
+};
+
+export type PaceSide = {
+  index: number;
+  gap_s: number | null;
+  pace_s: number | null;
+  state: "waiting" | "stable" | "opening" | "catching" | "after_finish";
+  closing_s_per_lap: number | null;
+  laps_to_catch: number | null;
+};
+
+export type SectorReviewRow = {
+  lap: number;
+  time_ms: number;
+  sectors_ms: number[];
+  valid: boolean;
+  clean: boolean;
+  reference_lap: number | null;
+  sector_deltas_ms: (number | null)[] | null;
 };
 
 export type CarRow = {

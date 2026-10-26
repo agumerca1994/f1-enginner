@@ -7,6 +7,7 @@ section carries `age_s`, the seconds since its source packet arrived.
 from typing import Any
 
 from app.live.state import LiveSession
+from app.live.timing import forecast
 from app.telemetry import constants as c
 
 WHEELS = ("rear_left", "rear_right", "front_left", "front_right")
@@ -112,7 +113,11 @@ def build(live: LiveSession) -> dict[str, Any]:
             "penalties_s": int(lap["penalties"]),
             "warnings": int(lap["total_warnings"]),
             "grid_position": int(lap["grid_position"]),
+            # Against the best complete clean lap seen this session, at the same lap distance.
+            "delta_best_ms": live.timing.delta.delta_ms(lap),
+            "delta_reference_lap": live.timing.delta.reference_lap,
         }
+        out.update(_timing(live, p.body["lap_data"], player))
 
     if (p := live.last.get("car_telemetry")) is not None:
         t = p.body["car_telemetry_data"][player]
@@ -240,6 +245,88 @@ def _livery(participant) -> str | None:
         return None
     r, g, b = (int(x) for x in participant["livery_colours"][0])
     return f"#{r:02x}{g:02x}{b:02x}"
+
+
+RACE_SESSIONS = frozenset({15, 16, 17})
+
+
+def _timing(live: LiveSession, laps, player: int) -> dict[str, Any]:
+    """Relatives, catch forecasts against the cars around and the sector review."""
+    session = live.last.get("session")
+    if session is None:
+        return {}
+    s = session.body
+    race = int(s["session_type"]) in RACE_SESSIONS
+    me = laps[player]
+    lap_now = int(me["current_lap_num"])
+    ref_ms = live.timing.delta.best_ms or int(me["last_lap_time_in_ms"]) or live.best_lap_ms.get(player)
+    out: dict[str, Any] = {
+        "relatives": live.timing.relatives(laps, player, float(s["track_length"]), ref_ms, race),
+        "sector_review": _sector_review(live.player_history, race),
+    }
+    if race:
+        total = int(s["total_laps"])
+        laps_left = total - lap_now + 1 if total else None
+        by_pos = {int(laps[i]["car_position"]): i for i in live.active_cars() if int(laps[i]["result_status"]) == 2}
+        position = int(me["car_position"])
+        my_pace = live.timing.pace_s(player, lap_now)
+
+        def gap_ms(lap) -> int:
+            return _ms(lap["delta_to_car_in_front_minutes_part"], lap["delta_to_car_in_front_ms_part"])
+
+        def side(idx: int | None, gap: int, me_chasing: bool) -> dict[str, Any] | None:
+            if idx is None:
+                return None
+            if abs(float(laps[idx]["total_distance"]) - float(me["total_distance"])) >= float(s["track_length"]):
+                return None  # a lap or more apart: not a fight on track
+            pace = live.timing.pace_s(idx, lap_now)
+            gap_s = gap / 1000 if gap > 0 else None
+            pursuer, target = (my_pace, pace) if me_chasing else (pace, my_pace)
+            return {"index": idx, "gap_s": gap_s, "pace_s": pace, **forecast(gap_s, pursuer, target, laps_left)}
+
+        ahead, behind = by_pos.get(position - 1), by_pos.get(position + 1)
+        out["pace"] = {
+            "my_pace_s": my_pace,
+            "ahead": side(ahead, gap_ms(me), True),
+            "behind": side(behind, gap_ms(laps[behind]) if behind is not None else 0, False),
+        }
+    return out
+
+
+def _sector_review(history, race: bool, count: int = 2) -> list[dict[str, Any]]:
+    """The last laps' sectors against the best clean lap before each of them.
+
+    Built from the player's SessionHistory, which the game resends all session, so
+    it survives lost packets. In and out laps (around a tyre change) and the race's
+    first lap never serve as the reference.
+    """
+    if history is None:
+        return []
+    stints = history["tyre_stints_history_data"][: int(history["num_tyre_stints"])]
+    pit_laps = set()
+    for st in stints[:-1]:
+        pit_laps |= {int(st["end_lap"]), int(st["end_lap"]) + 1}
+    laps = []
+    for k, h in enumerate(history["lap_history_data"][: int(history["num_laps"])]):
+        ms = int(h["lap_time_in_ms"])
+        if ms <= 0:
+            continue
+        sectors = [_ms(h[f"sector{i}_time_minutes_part"], h[f"sector{i}_time_ms_part"]) for i in (1, 2, 3)]
+        flags = int(h["lap_valid_bit_flags"])
+        number = k + 1
+        clean = bool(flags & 0x01) and number not in pit_laps and not (race and number == 1) and all(sectors)
+        laps.append({"lap": number, "time_ms": ms, "sectors_ms": sectors, "valid": bool(flags & 0x01), "clean": clean})
+    rows = []
+    for pos in range(len(laps) - 1, max(-1, len(laps) - 1 - count), -1):
+        lap = laps[pos]
+        ref = min((lp for lp in laps[:pos] if lp["clean"]), key=lambda lp: lp["time_ms"], default=None)
+        rows.append({
+            **lap,
+            "reference_lap": ref["lap"] if ref else None,
+            "sector_deltas_ms": [a - b if a and lap["valid"] else None for a, b in zip(lap["sectors_ms"], ref["sectors_ms"])]
+            if ref else None,
+        })
+    return rows
 
 
 RESULT_STATUS = {0: "invalid", 1: "inactive", 2: "active", 3: "finished", 4: "dnf", 5: "dsq", 6: "not_classified", 7: "retired"}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CarTopView } from "@/components/dashboard/CarTopView";
 import {
   EventsCard,
+  RelativesCard,
   sessionName,
   SessionCard,
   StandingsCard,
@@ -44,6 +45,7 @@ export function DashboardGrid({ s: snapshot, engineer }: { s: Snapshot; engineer
     <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.5fr)_minmax(0,1fr)]">
       <div className="order-3 flex flex-col gap-3 lg:order-1">
         <SessionCard s={snapshot} />
+        <RelativesCard s={snapshot} />
         <StandingsCard s={snapshot} />
       </div>
       <div className="order-2 flex flex-col gap-3">
