@@ -8,12 +8,14 @@ JSON schema that guarantees the answer's shape.
 
 import json
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 
 import anthropic
 
 from app.core.config import settings
+from app.engineer.analysis import REACH_STATES
 from app.engineer.engine import EngineerRequest
 from app.telemetry import constants as c
 
@@ -234,6 +236,8 @@ def rules_response(request: EngineerRequest) -> dict:
             radio, priority = "Todavía debemos la parada obligatoria: box esta vuelta.", "urgente"
         elif owes_stop and window and se.get("vuelta_actual") == window[0]:
             radio = f"Se abrió la ventana de boxes. Si paramos ahora salimos P{rejoin.get('posicion_estimada_al_salir')}."
+        elif (reach := _catch_call(f)) is not None:
+            radio, priority = reach
 
     if radio and priority != "urgente" and _said_recently(request, radio):
         radio = None  # the same advice twice in a row gets ignored; keep it for the panel
@@ -295,3 +299,24 @@ def _secs(value: float) -> str:
     """A gap as said on the radio: "0,3 segundos"."""
     return f"{value:.1f}".replace(".", ",") + " segundos"
 
+
+
+CATCH_CALL_LAPS = 3  # say it when the gap closes within this many laps
+
+
+def _catch_call(f: dict) -> tuple[str, str] | None:
+    """A routine-lap call when the car behind will catch the player soon, or the player the one ahead."""
+    reach = (f.get("rivales") or {}).get("alcance") or {}
+    behind, ahead = reach.get("atras"), reach.get("adelante")
+    for side, chasing in ((behind, False), (ahead, True)):
+        if not side or side.get("estado") != REACH_STATES["catching"]:
+            continue
+        laps = side.get("vueltas_para_alcanzar")
+        if laps is None or laps > CATCH_CALL_LAPS:
+            continue
+        closing, name = side.get("descuento_s_por_vuelta") or 0, (side.get("piloto") or "").title()
+        n = max(1, math.ceil(laps))
+        if chasing:
+            return f"Le descontás {closing:.1f} por vuelta a {name}: en {n} vueltas lo tenés.", "info"
+        return f"{name} te descuenta {closing:.1f} por vuelta: te alcanza en {n} vueltas. Cuidá las salidas.", "importante"
+    return None

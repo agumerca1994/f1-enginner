@@ -134,3 +134,45 @@ def test_madrid_race_gets_delta_pace_and_sector_review():
     review = snap["sector_review"]
     assert review and review[0]["reference_lap"] is not None and len(review[0]["sector_deltas_ms"]) == 3
     assert relatives > 1000
+
+
+def test_engineer_reads_the_catch_forecast_and_rules_call_it():
+    import json
+
+    from app.engineer.analysis import REACH_STATES
+    from app.engineer.providers import _catch_call
+
+    facts = {"rivales": {"alcance": {"atras": {"piloto": "PIASTRI", "estado": REACH_STATES["catching"],
+                                               "descuento_s_por_vuelta": 0.42, "vueltas_para_alcanzar": 2.3}}}}
+    radio, priority = _catch_call(json.loads(json.dumps(facts)))
+    assert "Piastri te descuenta 0.4" in radio and "3 vueltas" in radio and priority == "importante"
+    facts["rivales"]["alcance"]["atras"]["vueltas_para_alcanzar"] = 8
+    assert _catch_call(facts) is None  # too far off to say anything yet
+
+
+@pytest.mark.skipif(not MADRID.exists() or MADRID.stat().st_size < 1000, reason="captura no disponible (git lfs)")
+def test_madrid_facts_carry_reach_and_live_delta():
+    from app.engineer import analysis
+    from app.engineer.history import SessionHistory
+    from app.replay.player import ReplaySource
+    from app.telemetry import registry
+
+    live, history, seen = None, SessionHistory(), set()
+    for _, data in ReplaySource([str(MADRID)]).records():
+        packet = registry.parse(data)
+        if packet is None:
+            continue
+        if live is None:
+            live = LiveSession(0, 0, packet.session_uid, packet.packet_format, build_layout=False)
+        live.update(packet)
+        history.observe(packet, live)
+        if packet.name == "lap_data" and "session" in live.last and int(live.last["lap_data"].body["lap_data"][live.last["lap_data"].player_car_index]["current_lap_num"]) >= 5:
+            facts = analysis.build(live, history)
+            reach = facts["rivales"]["alcance"]
+            if reach and reach["atras"] and reach["atras"]["estado"] != "faltan vueltas limpias":
+                seen.add("alcance")
+            if facts["sectores"]["vuelta_en_curso"]["delta_vs_mejor_vuelta_s"] is not None:
+                seen.add("delta")
+            if seen == {"alcance", "delta"}:
+                break
+    assert seen == {"alcance", "delta"}

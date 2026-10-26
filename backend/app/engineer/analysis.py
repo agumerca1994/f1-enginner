@@ -55,7 +55,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
         "sectores": _sectores(snap, history, laps),
         "neumaticos": _tyres(snap, laps),
         "combustible": _fuel(snap, laps, total, current),
-        "rivales": _rivals(snap, history),
+        "rivales": {**_rivals(snap, history), "alcance": _reach(snap)},
         "reglamento_2026": _regulations_2026(snap, laps),
         "estrategia_calculos": _strategy(snap, history, laps, session),
         "reglaje_actual": _setup(live),
@@ -175,6 +175,8 @@ def _sectores(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dic
             "sector_actual": lap.get("sector"),
             "s1_s": _s(s1_now), "s2_s": _s(s2_now), "s3_s": None,
             "vs_mi_mejor": {"s1_s": delta(s1_now, best.get(1)), "s2_s": delta(s2_now, best.get(2)), "s3_s": None},
+            # Against the best complete clean lap at this same point of the track; None = no reference yet.
+            "delta_vs_mejor_vuelta_s": _s(lap.get("delta_best_ms")),
         },
         "mis_mejores_s": {f"s{i}": _s(best.get(i)) for i in (1, 2, 3)},
         "vuelta_teorica_s": teorica,
@@ -279,6 +281,41 @@ def _rivals(snap: dict, history: SessionHistory) -> dict[str, Any]:
         "lider": describe(by_pos[1]) if 1 in by_pos and me["position"] != 1 else None,
         "paradas_del_resto": {"sin_parar": sum(1 for car in cars if not car["is_player"] and car["pit_stops"] == 0),
                               "con_1_o_mas": sum(1 for car in cars if not car["is_player"] and car["pit_stops"] > 0)},
+    }
+
+
+REACH_STATES = {
+    "waiting": "faltan vueltas limpias", "stable": "ritmo parejo", "opening": "se separan",
+    "catching": "descuenta", "after_finish": "descuenta pero no llega antes del final",
+}
+
+
+def _reach(snap: dict) -> dict[str, Any] | None:
+    """Whether the fight right ahead and right behind closes before the flag (race only)."""
+    pace = snap.get("pace")
+    if not pace:
+        return None
+    by_index = {car["index"]: car for car in snap.get("cars") or []}
+
+    def side(p: dict | None, chasing: bool) -> dict[str, Any] | None:
+        if not p:
+            return None
+        car = by_index.get(p["index"]) or {}
+        return {
+            "piloto": car.get("name"),
+            "gap_s": p["gap_s"],
+            "su_ritmo_s": p["pace_s"],
+            "quien_persigue": "piloto" if chasing else "rival",
+            "estado": REACH_STATES.get(p["state"], p["state"]),
+            "descuento_s_por_vuelta": p["closing_s_per_lap"],
+            "vueltas_para_alcanzar": p["laps_to_catch"],
+        }
+
+    return {
+        "mi_ritmo_s": pace.get("my_pace_s"),
+        "adelante": side(pace.get("ahead"), True),
+        "atras": side(pace.get("behind"), False),
+        "nota": "Ritmo = mediana de las últimas vueltas limpias (mínimo 3). Descuento positivo: el que persigue es más rápido.",
     }
 
 
