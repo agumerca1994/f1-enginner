@@ -15,6 +15,10 @@ from app.telemetry.registry import Packet
 
 # How much a part's damage must grow, in points, to call the engineer.
 DAMAGE_STEP = 15
+# Tyre blister levels (percent) worth a radio call, each once per tyre set.
+BLISTER_LEVELS = (15, 30, 50)
+# 2026 overtake mode: worth a call when the gap ahead (or behind) is at most this.
+OVERTAKE_GAP_MS = 1500
 # Players often undo a crash with a flashback a few seconds later: damage is
 # reported only if no flashback follows within this many seconds.
 DAMAGE_CONFIRM_S = 8.0
@@ -62,6 +66,8 @@ class PlayerLap:
     peak_slip_ratio: float | None = None  # traction/lockup indicator from motion_ex
     peak_front_slip: float | None = None  # front slip angle peak (understeer when high)
     peak_rear_slip: float | None = None   # rear slip angle peak (oversteer when high)
+    overtake_pct: float | None = None  # 2026: share of the lap with the overtake mode on
+    ers_harvested_mj: float | None = None  # energy recovered this lap (MGU-K + MGU-H)
 
 
 @dataclass
@@ -95,6 +101,14 @@ class SessionHistory:
         self._peak_slip_ratio = 0.0  # from motion_ex: traction/lockup and slide indicators
         self._peak_front_slip = 0.0
         self._peak_rear_slip = 0.0
+        self._lap_ers_harvested = 0.0
+        # 2026 regulations: overtake-mode use this lap and what was already called out.
+        self._aero_samples = 0
+        self._overtake_samples = 0
+        self._overtake_available = False
+        self._overtake_called_lap: int | None = None
+        self._rival_overtake_called_lap: int | None = None
+        self._blister_level = 0  # highest BLISTER_LEVELS index already called on this tyre set
         # Sector tracking for the player.
         self._sector = 0
         self._cur_s1: int | None = None  # this lap's S1/S2 as they are crossed
@@ -138,6 +152,9 @@ class SessionHistory:
             self._note_compound(live)
             st = packet.body["car_status_data"][packet.player_car_index]
             self._lap_ers_deployed = max(self._lap_ers_deployed, float(st["ers_deployed_this_lap"]))
+            self._lap_ers_harvested = max(
+                self._lap_ers_harvested,
+                float(st["ers_harvested_this_lap_mguk"]) + float(st["ers_harvested_this_lap_mguh"]))
             flag = c.FIA_FLAGS.get(int(st["vehicle_fia_flags"]))
             if flag == "blue" and self._fia_flag != "blue":
                 new.append(Trigger("blue_flag", t, self._player_lap(live)))
@@ -166,6 +183,9 @@ class SessionHistory:
             self._peak_rear_slip = max(self._peak_rear_slip, sa[0], sa[1])
         elif packet.name == "car_damage":
             new += self._damage_changes(packet, live)
+            new += self._blister_changes(packet, live)
+        elif packet.name == "car_telemetry_2":
+            new += self._overtake_changes(packet, live)
         elif packet.name == "lap_data":
             new += self._lap_changes(packet, live)
         self.triggers += new
@@ -218,6 +238,61 @@ class SessionHistory:
             # Wait to see whether a flashback undoes it before calling the engineer.
             self._pending_damage = (live.clock(), packet.session_time, grown)
         return []
+
+    def _blister_changes(self, packet: Packet, live: LiveSession) -> list[Trigger]:
+        """Blisters (2025 format onwards): one call per level crossed on the current tyre set."""
+        d = packet.body["car_damage_data"][packet.player_car_index]
+        if "tyre_blisters" not in d.dtype.names:
+            return []
+        worst = max(int(b) for b in d["tyre_blisters"])
+        if worst < BLISTER_LEVELS[0]:
+            self._blister_level = 0  # a fresh set
+            return []
+        level = sum(1 for lv in BLISTER_LEVELS if worst >= lv)
+        if level <= self._blister_level:
+            return []
+        self._blister_level = level
+        wheel = c.WHEEL_NAMES_ES[[int(b) for b in d["tyre_blisters"]].index(worst)]
+        return [Trigger("blisters", packet.session_time, self._player_lap(live), {"rueda": wheel, "pct": worst})]
+
+    def _overtake_changes(self, packet: Packet, live: LiveSession) -> list[Trigger]:
+        """2026 overtake mode: track its use, and call it out once per lap when it is
+        available for the player close behind someone, or a rival close behind turns it on."""
+        me_idx = packet.player_car_index
+        cars = packet.body["car_telemetry_2_data"]
+        me = cars[me_idx]
+        self._aero_samples += 1
+        self._overtake_samples += int(me["overtake_active"])
+        out: list[Trigger] = []
+        laps = live.last.get("lap_data")
+        session = live.last.get("session")
+        race = session is not None and c.SESSION_TYPES.get(int(session.body["session_type"]), "").startswith("Race")
+        if laps is None or not race:
+            self._overtake_available = bool(me["overtake_available"])
+            return out
+        lap_data = laps.body["lap_data"]
+        my_lap = lap_data[me_idx]
+        lap_num = int(my_lap["current_lap_num"])
+        available = bool(me["overtake_available"])
+        gap_ahead = _ms(my_lap["delta_to_car_in_front_minutes_part"], my_lap["delta_to_car_in_front_ms_part"])
+        if (available and not self._overtake_available and not int(me["overtake_active"])
+                and 0 < gap_ahead <= OVERTAKE_GAP_MS and self._overtake_called_lap != lap_num):
+            self._overtake_called_lap = lap_num
+            out.append(Trigger("overtake_available", packet.session_time, lap_num, {"gap_s": round(gap_ahead / 1000, 1)}))
+        self._overtake_available = available
+
+        behind = next((i for i in live.active_cars()
+                       if int(lap_data[i]["car_position"]) == int(my_lap["car_position"]) + 1), None)
+        if behind is not None and self._rival_overtake_called_lap != lap_num and int(cars[behind]["overtake_active"]):
+            gap_behind = _ms(lap_data[behind]["delta_to_car_in_front_minutes_part"],
+                             lap_data[behind]["delta_to_car_in_front_ms_part"])
+            if 0 < gap_behind <= OVERTAKE_GAP_MS:
+                self._rival_overtake_called_lap = lap_num
+                participants = live.last.get("participants")
+                name = participants.body["participants"][behind]["name"].decode("utf-8", "replace") if participants else None
+                out.append(Trigger("rival_overtake", packet.session_time, lap_num,
+                                   {"piloto": name or "el de atrás", "gap_s": round(gap_behind / 1000, 1)}))
+        return out
 
     def _note_compound(self, live: LiveSession) -> None:
         st = live.last["car_status"].body["car_status_data"][live.last["car_status"].player_car_index]
@@ -350,6 +425,8 @@ class SessionHistory:
             peak_slip_ratio=round(self._peak_slip_ratio, 3) or None,
             peak_front_slip=round(self._peak_front_slip, 3) or None,
             peak_rear_slip=round(self._peak_rear_slip, 3) or None,
+            overtake_pct=round(100 * self._overtake_samples / self._aero_samples, 1) if self._aero_samples else None,
+            ers_harvested_mj=round(self._lap_ers_harvested / 1e6, 2) if st is not None else None,
         )
         self._temp_samples = []
         self._offtrack_samples = self._track_samples = 0
@@ -357,7 +434,8 @@ class SessionHistory:
         self._peak_slip_ratio = self._peak_front_slip = self._peak_rear_slip = 0.0
         self._lap_sc = self._sc_status in ("Full safety car", "Virtual safety car")
         self._lap_pit = self._lap_invalid = False
-        self._lap_ers_deployed = 0.0
+        self._lap_ers_deployed = self._lap_ers_harvested = 0.0
+        self._aero_samples = self._overtake_samples = 0
         return record
 
 

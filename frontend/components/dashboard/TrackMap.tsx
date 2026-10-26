@@ -71,6 +71,13 @@ export function TrackMap({ s }: { s: Snapshot }) {
   const loop = layout?.ready && layout.segments.length === 1 ? layout.segments[0] : null;
   const pointAt = (m: number) => (loop ? loop[Math.min(loop.length - 1, Math.floor(m / 10))] : null);
   const s2 = track ? pointAt(track.sector2_m) : null;
+  // 2026: the stretches where active aero can run in straight mode.
+  const aeroZones =
+    loop && track
+      ? (se?.active_aero_zones ?? [])
+          .filter((z) => z.tipo === "total")
+          .map((z) => stretch(loop, (z.inicio_pct / 100) * track.length_m, (z.fin_pct / 100) * track.length_m))
+      : [];
   const s3 = track ? pointAt(track.sector3_m) : null;
 
   return (
@@ -96,6 +103,18 @@ export function TrackMap({ s }: { s: Snapshot }) {
                 <polyline points={seg.map((p) => p.join(",")).join(" ")} fill="none" stroke="#3a4655" strokeWidth={7} strokeLinejoin="round" strokeLinecap="round" />
               </g>
             ))}
+            {aeroZones.map((pts, i) => (
+              <polyline
+                key={`aero-${i}`}
+                points={pts.map((p) => p.join(",")).join(" ")}
+                fill="none"
+                stroke="#34d399"
+                strokeOpacity={0.55}
+                strokeWidth={13}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ))}
             {loop && <Marker p={loop[0]} label="META" color="#e9eef3" />}
             {s2 && <Marker p={s2} label="S2" color="#22d3ee" />}
             {s3 && <Marker p={s3} label="S3" color="#22d3ee" />}
@@ -107,7 +126,7 @@ export function TrackMap({ s }: { s: Snapshot }) {
                   style={{ transform: `translate(${c.x}px, ${c.z}px)`, transition: "transform 250ms linear" }}
                 >
                   {c.is_player && <circle r={34} fill="none" stroke="#e9eef3" strokeWidth={5} />}
-                  <circle r={c.is_player ? 24 : 18} fill={teamColor(c.team_id)} stroke="#07090c" strokeWidth={4} />
+                  <circle r={c.is_player ? 24 : 18} fill={c.color ?? teamColor(c.team_id)} stroke="#07090c" strokeWidth={4} />
                   <text
                     y={c.is_player ? 8 : 6}
                     textAnchor="middle"
@@ -130,6 +149,11 @@ export function TrackMap({ s }: { s: Snapshot }) {
             <div className="num text-muted">
               Pista {se.track_temperature_c}° · Aire {se.air_temperature_c}°
             </div>
+            {aeroZones.length > 0 && (
+              <div className="flex items-center gap-1.5 text-muted">
+                <span className="inline-block h-1.5 w-3 rounded-full bg-ok/60" /> Aero activo
+              </div>
+            )}
             {se.forecast.some((f) => f.rain_percent >= 40) && (
               <div className="num text-wet">
                 Lluvia {Math.max(...se.forecast.map((f) => f.rain_percent))}% próximos {se.forecast.slice(-1)[0]?.in_minutes}′
@@ -145,6 +169,14 @@ export function TrackMap({ s }: { s: Snapshot }) {
       </div>
     </Panel>
   );
+}
+
+/** The outline points between two lap distances (metres), wrapping past the line. */
+function stretch(loop: [number, number][], from: number, to: number): [number, number][] {
+  const at = (m: number) => Math.min(loop.length - 1, Math.max(0, Math.floor(m / 10)));
+  const a = at(from);
+  const b = at(to);
+  return a <= b ? loop.slice(a, b + 1) : [...loop.slice(a), ...loop.slice(0, b + 1)];
 }
 
 function Marker({ p, label, color }: { p: [number, number]; label: string; color: string }) {

@@ -24,8 +24,12 @@ export type Snapshot = {
     pit_window_latest_lap: number | null;
     forecast: { in_minutes: number; weather: string; rain_percent: number }[];
     marshal_zones: { inicio_pct: number; bandera: string | null }[];
+    // 2026 format only.
+    active_aero_zones?: { inicio_pct: number; fin_pct: number; tipo: "total" | "parcial" }[];
+    drs_zones?: { inicio_pct: number; fin_pct: number }[];
+    start_reaction_s?: number | null;
   };
-  driver?: { name: string; team: string; race_number: number; cars_in_session: number };
+  driver?: { name: string; team: string; race_number: number; cars_in_session: number; livery_color: string | null };
   lap?: {
     age_s: number | null;
     position: number;
@@ -78,6 +82,9 @@ export type Snapshot = {
     brake_bias: number;
     max_rpm: number;
     fia_flag: string | null;
+    ers_deployed_lap_mj: number;
+    ers_harvested_lap_mj: number;
+    ers_harvest_limit_mj: number | null; // 2026 format only
   };
   motion?: {
     age_s: number | null;
@@ -101,6 +108,19 @@ export type Snapshot = {
     engine: number;
     drs_fault: boolean;
     ers_fault: boolean;
+    tyre_blisters_percent: Wheels | null; // 2025 format onwards
+  };
+  // 2026 regulations (CarTelemetry2), only in the 2026 packet format.
+  aero?: {
+    age_s: number | null;
+    regulations_2026: boolean;
+    active_aero_mode: "corner" | "straight";
+    active_aero_available: boolean;
+    active_aero_in_m: number | null;
+    overtake_available: boolean;
+    overtake_active: boolean;
+    overtake_in_m: number | null;
+    wrong_way: boolean;
   };
   track?: {
     id: number;
@@ -137,6 +157,9 @@ export type CarRow = {
   tyre_age_laps: number | null;
   x: number | null;
   z: number | null;
+  color: string | null; // the game's livery colour (2025 format onwards)
+  overtake_active: boolean | null; // 2026 format only
+  active_aero_mode: "corner" | "straight" | null;
 };
 
 export type TrackLayout = {

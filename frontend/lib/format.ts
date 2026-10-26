@@ -38,6 +38,8 @@ export const EVENT_LABELS: Record<string, string> = {
   RTMT: "Abandono",
   DRSE: "DRS habilitado",
   DRSD: "DRS deshabilitado",
+  // 2026 format, not in the published spec: seen once per race, like DRSE.
+  OVEN: "Modo adelantamiento habilitado",
   TMPT: "Compañero en boxes",
   CHQF: "Bandera a cuadros",
   RCWN: "Ganador",

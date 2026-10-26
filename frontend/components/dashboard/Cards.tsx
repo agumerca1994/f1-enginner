@@ -129,7 +129,9 @@ export function TelemetryCard({ s }: { s: Snapshot }) {
       title="Telemetría"
       age={car.age_s}
       right={
-        car.drs_open ? (
+        s.aero ? (
+          <AeroBadges aero={s.aero} />
+        ) : car.drs_open ? (
           <span className="rounded bg-ok px-2 py-0.5 text-xs font-bold text-bg">DRS</span>
         ) : st?.drs_allowed ? (
           <span className="rounded border border-ok/50 px-2 py-0.5 text-xs text-ok">DRS disponible</span>
@@ -189,6 +191,17 @@ export function TelemetryCard({ s }: { s: Snapshot }) {
             <div className="num text-2xl font-semibold">{st.ers_percent.toFixed(0)}%</div>
             <Bar value={st.ers_percent} className="bg-accent" />
             <div className="mt-1 text-xs text-muted">Modo {ERS_MODE_ES[st.ers_mode] ?? st.ers_mode}</div>
+            {st.ers_harvest_limit_mj != null && (
+              <div className="mt-2" title="Energía cosechada en esta vuelta contra el límite del reglamento 2026">
+                <div className="flex justify-between text-xs text-muted">
+                  <span>Cosecha</span>
+                  <span className="num">
+                    <span className="text-fg">{st.ers_harvested_lap_mj.toFixed(1)}</span> / {st.ers_harvest_limit_mj.toFixed(1)} MJ
+                  </span>
+                </div>
+                <Bar value={(100 * st.ers_harvested_lap_mj) / st.ers_harvest_limit_mj} className="bg-ok" />
+              </div>
+            )}
           </div>
           <div className="rounded-xl bg-panel-2 p-3">
             <div className="label">Combustible</div>
@@ -309,10 +322,15 @@ export function StandingsCard({ s }: { s: Snapshot }) {
             }`}
           >
             <span className="num text-right text-muted">{c.position}</span>
-            <span className="h-4 rounded-full" style={{ background: teamColor(c.team_id) }} />
+            <span className="h-4 rounded-full" style={{ background: c.color ?? teamColor(c.team_id) }} />
             <span className="flex min-w-0 items-center gap-1.5">
               <span className={`truncate ${c.is_player ? "font-semibold" : ""}`}>{shortName(c)}</span>
               {c.pit !== "On track" && <span className="rounded bg-warn px-1 text-[0.6rem] font-bold text-bg">BOX</span>}
+              {c.overtake_active && (
+                <span className="rounded bg-accent px-1 text-[0.6rem] font-bold text-bg" title="Modo adelantamiento activo">
+                  ADL
+                </span>
+              )}
               {c.penalties_s > 0 && <span className="num text-[0.65rem] text-warn">+{c.penalties_s}s</span>}
               {c.best_lap_ms && c.best_lap_ms === fastest && (
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#c084fc]" title="Vuelta más rápida" />
@@ -395,6 +413,26 @@ function sessionClock(t: number): string {
 }
 
 // --- Small pieces ------------------------------------------------------------
+
+// 2026 regulations: overtake mode (replaces DRS) and active aero, in the telemetry card header.
+function AeroBadges({ aero }: { aero: NonNullable<Snapshot["aero"]> }) {
+  return (
+    <span className="flex flex-wrap items-center justify-end gap-1.5">
+      {aero.wrong_way && <span className="rounded bg-danger px-2 py-0.5 text-xs font-bold text-bg">CONTRAMANO</span>}
+      <span
+        className={`rounded px-2 py-0.5 text-xs ${aero.active_aero_mode === "straight" ? "bg-ok/20 text-ok" : "text-muted"}`}
+        title="Aero activo: en modo recta los alerones bajan la carga para ganar velocidad punta"
+      >
+        Aero {aero.active_aero_mode === "straight" ? "recta" : "curva"}
+      </span>
+      {aero.overtake_active ? (
+        <span className="rounded bg-accent px-2 py-0.5 text-xs font-bold text-bg">ADELANTAMIENTO</span>
+      ) : aero.overtake_available ? (
+        <span className="rounded border border-accent/60 px-2 py-0.5 text-xs text-accent">Adelantamiento disponible</span>
+      ) : null}
+    </span>
+  );
+}
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (

@@ -134,6 +134,11 @@ function WheelStats({ s, wheel }: { s: Snapshot; wheel: Wheel }) {
         </div>
       )}
       <div className="text-[0.65rem] uppercase tracking-wider text-muted">desgaste</div>
+      {!!s.damage?.tyre_blisters_percent?.[wheel] && (
+        <div className={`num text-xs font-semibold ${s.damage.tyre_blisters_percent[wheel] >= 30 ? "text-danger" : "text-warn"}`}>
+          ampollas {s.damage.tyre_blisters_percent[wheel].toFixed(0)}%
+        </div>
+      )}
       {car && (
         <div className="num text-xs text-muted">
           <span className="text-fg">{car.tyres_surface_temperature_c[wheel]}°</span> / {car.tyres_inner_temperature_c[wheel]}°

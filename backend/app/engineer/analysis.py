@@ -56,6 +56,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
         "neumaticos": _tyres(snap, laps),
         "combustible": _fuel(snap, laps, total, current),
         "rivales": _rivals(snap, history),
+        "reglamento_2026": _regulations_2026(snap, laps),
         "estrategia_calculos": _strategy(snap, history, laps, session),
         "reglaje_actual": _setup(live),
         "eventos_recientes": _events(history, snap.get("cars") or []),
@@ -188,6 +189,7 @@ def _tyres(snap: dict, laps: list[PlayerLap]) -> dict[str, Any]:
     car = snap.get("car") or {}
     damage = snap.get("damage") or {}
     wear = damage.get("tyres_wear_percent") or {}
+    blisters = damage.get("tyre_blisters_percent")
     stint = [pl for pl in laps if pl.compound == st.get("tyre") and pl.wear]
     # Only the laps since the last tyre change belong to the current stint.
     for i in range(len(stint) - 1, 0, -1):
@@ -217,6 +219,8 @@ def _tyres(snap: dict, laps: list[PlayerLap]) -> dict[str, Any]:
         "presion_psi": dict(zip(WHEELS, (car.get("tyres_pressure_psi") or {}).values())) or None,
         "temp_frenos_c": dict(zip(WHEELS, (car.get("brakes_temperature_c") or {}).values())) or None,
         "muestras_del_stint": len(stint),
+        # 2025 format onwards: blisters per tyre, percent.
+        "ampollas_pct": {w: round(v, 1) for w, v in zip(WHEELS, blisters.values())} if blisters else None,
     }
 
 
@@ -266,6 +270,7 @@ def _rivals(snap: dict, history: SessionHistory) -> dict[str, Any]:
             "promedio_ult3_s": _s(statistics.mean(cl.time_ms for cl in recent)) if len(recent) == 3 else None,
             "gap_al_lider_s": _s(car["gap_leader_ms"]),
             "tendencia_gap_con_piloto": _gap_trend(history, me, car),
+            "adelantamiento_activo": car.get("overtake_active"),  # 2026 format only
         }
 
     return {
@@ -274,6 +279,46 @@ def _rivals(snap: dict, history: SessionHistory) -> dict[str, Any]:
         "lider": describe(by_pos[1]) if 1 in by_pos and me["position"] != 1 else None,
         "paradas_del_resto": {"sin_parar": sum(1 for car in cars if not car["is_player"] and car["pit_stops"] == 0),
                               "con_1_o_mas": sum(1 for car in cars if not car["is_player"] and car["pit_stops"] > 0)},
+    }
+
+
+def _regulations_2026(snap: dict, laps: list[PlayerLap]) -> dict[str, Any] | None:
+    """Active aero, overtake mode and the ERS harvest limit; only in the 2026 packet format."""
+    aero = snap.get("aero")
+    if not aero:
+        return None
+    st = snap.get("status") or {}
+    session = snap.get("session") or {}
+    cars = snap.get("cars") or []
+    me = next((car for car in cars if car["is_player"]), None)
+    near = []
+    if me is not None:
+        near = [car["name"] for car in cars if not car["is_player"] and car.get("overtake_active")
+                and abs(car["position"] - me["position"]) <= 2]
+    used = [pl.overtake_pct for pl in laps if pl.overtake_pct is not None]
+    return {
+        "reglamento_2026_activo": aero["regulations_2026"],
+        "aero_activo": {
+            "modo": "recta" if aero["active_aero_mode"] == "straight" else "curva",
+            "disponible": aero["active_aero_available"],
+            "disponible_en_m": aero["active_aero_in_m"],
+            "zonas_en_la_pista": len(session.get("active_aero_zones") or []) or None,
+        },
+        "modo_adelantamiento": {
+            "disponible": aero["overtake_available"],
+            "activo": aero["overtake_active"],
+            "disponible_en_m": aero["overtake_in_m"],
+            "uso_por_vuelta_pct": [{"vuelta": pl.lap, "pct": pl.overtake_pct} for pl in laps[-5:]
+                                   if pl.overtake_pct is not None],
+            "uso_promedio_pct": round(statistics.mean(used), 1) if used else None,
+        },
+        "ers_vuelta_actual": {
+            "desplegado_mj": st.get("ers_deployed_lap_mj"),
+            "cosechado_mj": st.get("ers_harvested_lap_mj"),
+            "limite_cosecha_mj": st.get("ers_harvest_limit_mj"),
+        },
+        "rivales_cerca_con_adelantamiento": near,
+        "contramano": aero["wrong_way"] or None,
     }
 
 

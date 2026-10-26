@@ -76,6 +76,8 @@ def build(live: LiveSession) -> dict[str, Any]:
                 if int(f["session_type"]) == int(s["session_type"])
             ],
         }
+        if "active_aero_zones_full" in s.dtype.names:  # the 2026 format
+            out["session"].update(_aero_zones(s))
 
     if player is None:
         return _common(out, live, player)
@@ -87,6 +89,7 @@ def build(live: LiveSession) -> dict[str, Any]:
             "team": c.TEAMS.get(int(me["team_id"]), f"Team {int(me['team_id'])}"),
             "race_number": int(me["race_number"]),
             "cars_in_session": int(p.body["num_active_cars"]),
+            "livery_color": _livery(me),
         }
 
     if (p := live.last.get("lap_data")) is not None:
@@ -149,6 +152,12 @@ def build(live: LiveSession) -> dict[str, Any]:
             "brake_bias": int(s["front_brake_bias"]),
             "max_rpm": int(s["max_rpm"]),
             "fia_flag": c.FIA_FLAGS.get(int(s["vehicle_fia_flags"])),
+            "ers_deployed_lap_mj": round(float(s["ers_deployed_this_lap"]) / 1e6, 2),
+            "ers_harvested_lap_mj": round(
+                (float(s["ers_harvested_this_lap_mguk"]) + float(s["ers_harvested_this_lap_mguh"])) / 1e6, 2),
+            # 2026 format only: how much energy the regulations let the car recover per lap.
+            "ers_harvest_limit_mj": round(float(s["ers_harvest_limit_per_lap"]) / 1e6, 2)
+            if "ers_harvest_limit_per_lap" in s.dtype.names else None,
         }
 
     if (p := live.last.get("car_damage")) is not None:
@@ -166,6 +175,8 @@ def build(live: LiveSession) -> dict[str, Any]:
             "engine": int(d["engine_damage"]),
             "drs_fault": bool(d["drs_fault"]),
             "ers_fault": bool(d["ers_fault"]),
+            # 2025 format onwards; None before.
+            "tyre_blisters_percent": _wheels(d["tyre_blisters"]) if "tyre_blisters" in d.dtype.names else None,
         }
 
     if (p := live.last.get("motion")) is not None and player is not None:
@@ -180,6 +191,20 @@ def build(live: LiveSession) -> dict[str, Any]:
             "roll": round(float(m["roll"]), 3),
         }
 
+    if (p := live.last.get("car_telemetry_2")) is not None:  # 2026 regulations
+        a = p.body["car_telemetry_2_data"][player]
+        out["aero"] = {
+            "age_s": _age(live, "car_telemetry_2"),
+            "regulations_2026": bool(a["regulations_2026"]),
+            "active_aero_mode": "straight" if int(a["active_aero_mode"]) else "corner",
+            "active_aero_available": bool(a["active_aero_available"]),
+            "active_aero_in_m": int(a["active_aero_activation_distance"]) or None,
+            "overtake_available": bool(a["overtake_available"]),
+            "overtake_active": bool(a["overtake_active"]),
+            "overtake_in_m": int(a["overtake_activation_distance"]) or None,
+            "wrong_way": bool(a["driving_wrong_way"]),
+        }
+
     return _common(out, live, player)
 
 
@@ -189,6 +214,32 @@ def _common(out: dict[str, Any], live: LiveSession, player: int | None) -> dict[
     out["cars"] = _cars(live, player)
     out["events"] = list(live.events)[-10:]
     return out
+
+
+def _aero_zones(s) -> dict[str, Any]:
+    """Active-aero and DRS zones of the 2026 format, as percentages of the lap."""
+    def zones(items, count, kind=None):
+        out = []
+        for z in items[:count]:
+            zone = {"inicio_pct": round(float(z["zone_start"]) * 100, 1), "fin_pct": round(float(z["zone_end"]) * 100, 1)}
+            out.append({**zone, "tipo": kind} if kind else zone)
+        return out
+
+    reaction = float(s["start_reaction_time"])
+    return {
+        "active_aero_zones": zones(s["active_aero_zones_full"], int(s["num_active_aero_zones_full"]), "total")
+        + zones(s["active_aero_zones_partial"], int(s["num_active_aero_zones_partial"]), "parcial"),
+        "drs_zones": zones(s["drs_zones"], int(s["num_drs_zones"])),
+        "start_reaction_s": round(reaction, 3) if reaction > 0 else None,
+    }
+
+
+def _livery(participant) -> str | None:
+    """The car's main livery colour as #rrggbb (2025 format onwards), else None."""
+    if "livery_colours" not in participant.dtype.names or not int(participant["num_colours"]):
+        return None
+    r, g, b = (int(x) for x in participant["livery_colours"][0])
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 RESULT_STATUS = {0: "invalid", 1: "inactive", 2: "active", 3: "finished", 4: "dnf", 5: "dsq", 6: "not_classified", 7: "retired"}
@@ -219,6 +270,7 @@ def _cars(live: LiveSession, player: int | None) -> list[dict[str, Any]]:
     participants = live.last.get("participants")
     motion = live.last.get("motion")
     status = live.last.get("car_status")
+    aero = live.last.get("car_telemetry_2")
     cars = []
     for i in live.active_cars():
         lap = laps.body["lap_data"][i]
@@ -249,6 +301,9 @@ def _cars(live: LiveSession, player: int | None) -> list[dict[str, Any]]:
             "tyre_age_laps": None,
             "x": None,
             "z": None,
+            "color": None,
+            "overtake_active": None,
+            "active_aero_mode": None,
         }
         if participants is not None:
             pp = participants.body["participants"][i]
@@ -258,12 +313,17 @@ def _cars(live: LiveSession, player: int | None) -> list[dict[str, Any]]:
                 team=c.TEAMS.get(int(pp["team_id"])),
                 race_number=int(pp["race_number"]),
                 ai=bool(pp["ai_controlled"]),
+                color=_livery(pp),
             )
         if status is not None:
             st = status.body["car_status_data"][i]
             visual = int(st["visual_tyre_compound"])
             if visual in c.VISUAL_COMPOUNDS:  # 0 when the player restricts their telemetry
                 car.update(tyre=c.VISUAL_COMPOUNDS[visual], tyre_age_laps=int(st["tyres_age_laps"]))
+        if aero is not None:
+            a = aero.body["car_telemetry_2_data"][i]
+            car.update(overtake_active=bool(a["overtake_active"]),
+                       active_aero_mode="straight" if int(a["active_aero_mode"]) else "corner")
         if motion is not None:
             m = motion.body["car_motion_data"][i]
             car.update(x=round(float(m["world_position_x"]), 1), z=round(float(m["world_position_z"]), 1))

@@ -9,6 +9,7 @@ Current state:
 - P3 is in production: the engineer runs in production on `claude (pro)` (Sonnet per lap, Opus on events) — the key is set in Easypanel, verified via `GET /internal/engineer`. Without a key it falls back to rules. The dashboard shows per-sector times, FIA flags, off-track surface and G-forces.
 - P5 is in production: a public, read-only MCP at `/mcp` (OAuth 2.1 plus personal tokens, ported from registrapp). The tools live in `backend/app/mcp_server/tools.py`; recorded sessions are analysed by `app/engineer/review.py`.
 - The engineer lays out a pit-stop plan at race start (`race_start` trigger) and carries per-track pace/degradation across sessions via `track_knowledge` (`app/engineer/knowledge.py`), fed back as `conocimiento_previo`.
+- 2026 regulations (2026 packet format) are surfaced end to end: active aero mode and zones, overtake mode (player and every car), ERS harvest vs the per-lap limit, tyre blisters (2025 format onwards) and livery colours. The snapshot carries them (`aero`, `status.ers_harvest_limit_mj`, `damage.tyre_blisters_percent`, `cars[].overtake_active`), the engineer gets `reglamento_2026` in its facts and calls `overtake_available`, `rival_overtake` and `blisters`, and the dashboard shows them; older formats leave these fields `None`.
 - Live telemetry surfaced to the engineer: per-sector times (`sector_completed`), FIA flags (`blue_flag`) and per-wheel surface/off-track, G-forces and orientation, marshal zones, and slip from `motion_ex` — in the snapshot, the facts and the recorded-session review.
 
 ## Layout

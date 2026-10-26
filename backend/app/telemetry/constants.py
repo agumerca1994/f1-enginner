@@ -63,3 +63,17 @@ TEAMS = {
 
 # Joules the ERS store holds when full.
 ERS_MAX_ENERGY = 4_000_000.0
+
+# Wheel order of every per-wheel array (RL, RR, FL, FR), in the engineer's words.
+WHEEL_NAMES_ES = ("trasera izquierda", "trasera derecha", "delantera izquierda", "delantera derecha")
+
+# Car parts in CarDamage, in the engineer's words.
+DAMAGE_PARTS_ES = {
+    "front_left_wing": "alerón delantero izquierdo", "front_right_wing": "alerón delantero derecho",
+    "rear_wing": "alerón trasero", "floor": "piso", "diffuser": "difusor", "sidepod": "pontón",
+    "gearbox": "caja de cambios", "engine": "motor",
+}
+
+# Visual compounds as the engineer says them ("ponemos medios").
+COMPOUNDS_ES = {"Soft": "blandos", "Medium": "medios", "Hard": "duros", "Intermediate": "intermedios", "Wet": "de lluvia"}
+

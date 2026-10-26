@@ -101,6 +101,8 @@ def lap_row(pl: PlayerLap) -> dict[str, Any]:
         "patinaje_max": pl.peak_slip_ratio,
         "angulo_delantero_max": pl.peak_front_slip,
         "angulo_trasero_max": pl.peak_rear_slip,
+        "adelantamiento_usado_pct": pl.overtake_pct,
+        "ers_cosechado_mj": _round(pl.ers_harvested_mj, 2),
         "safety_car": pl.safety_car,
         "box": pl.pitted,
         "invalida": pl.invalid,

@@ -15,6 +15,7 @@ import anthropic
 
 from app.core.config import settings
 from app.engineer.engine import EngineerRequest
+from app.telemetry import constants as c
 
 logger = logging.getLogger(__name__)
 
@@ -185,9 +186,11 @@ def rules_response(request: EngineerRequest) -> dict:
         radio = f"Relargada: batería al {ers:.0f}%, usá el modo adelantamiento en la recta para defenderte." if ers is not None else "Relargada, atento."
         priority = "importante"
     elif "damage" in kinds:
-        parts = request.triggers[-1].detail.get("parts", {})
+        parts = next((t.detail.get("parts", {}) for t in request.triggers if t.kind == "damage"), {})
         worst = max(parts.values(), default=0)
-        radio = f"Daño: {', '.join(parts)} al {worst}%." + (" Paramos a cambiar el alerón." if worst >= 50 and "wing" in " ".join(parts) else " Seguimos, te aviso si perdemos ritmo.")
+        names = [c.DAMAGE_PARTS_ES.get(p, p) for p in parts]
+        wing = any("wing" in p for p, v in parts.items() if v >= 50)
+        radio = f"Daño en {_y(names)}, {worst}%." + (" Paramos a cambiar el alerón." if wing else " Seguimos, te aviso si perdemos ritmo.")
         priority = "urgente" if worst >= 50 else "importante"
     elif "rain_forecast" in kinds:
         radio = "Viene lluvia en los próximos 15 minutos: preparate para intermedios."
@@ -195,6 +198,16 @@ def rules_response(request: EngineerRequest) -> dict:
     elif "penalty" in kinds:
         radio = f"Ojo con los límites de pista: vas {pl.get('advertencias')} advertencias." if not pl.get("penalizacion_s") else f"Tenemos {pl['penalizacion_s']} segundos de penalización."
         priority = "importante"
+    elif "rival_overtake" in kinds:
+        d = next(t.detail for t in request.triggers if t.kind == "rival_overtake")
+        radio, priority = f"{d['piloto'].title()} activó el modo adelantamiento a {_secs(d['gap_s'])} atrás: defendé la próxima recta.", "importante"
+    elif "overtake_available" in kinds:
+        d = next(t.detail for t in request.triggers if t.kind == "overtake_available")
+        radio, priority = f"Tenés el modo adelantamiento, estás a {_secs(d['gap_s'])} del de adelante: usalo en la recta.", "importante"
+    elif "blisters" in kinds:
+        d = next(t.detail for t in request.triggers if t.kind == "blisters")
+        radio = f"Ampollas en la goma {d['rueda']}, {d['pct']}%: bajá el deslizamiento en la salida de las curvas."
+        priority = "importante" if d["pct"] >= 30 else "info"
     elif "blue_flag" in kinds:
         radio, priority = "Bandera azul: viene el líder a doblarte, dejalo pasar en la próxima recta.", "importante"
     elif "sector_completed" in kinds:
@@ -234,7 +247,8 @@ def rules_response(request: EngineerRequest) -> dict:
         "radio": radio,
         "prioridad": priority,
         "estrategia": {
-            "plan": ("Parada obligatoria pendiente" + (f" por {next_compound}" if next_compound else "")) if owes_stop
+            "plan": ("Parada obligatoria pendiente" + (f": falta poner {c.COMPOUNDS_ES.get(next_compound, next_compound)}"
+                                                        if next_compound else "")) if owes_stop
                     else "Sin paradas pendientes: gestionar gomas hasta el final" if race else "Sesión sin estrategia de carrera",
             "vuelta_box": None,
             "ventana_box": pit_window,
@@ -267,5 +281,17 @@ def _summary(f: dict) -> str:
         parts.append(f"ritmo {ri['promedio_ultimas_3_limpias_s']:.1f} s")
     if ne.get("compuesto"):
         wear = max((ne.get("desgaste_pct") or {}).values(), default=0)
-        parts.append(f"{ne['compuesto']} de {ne.get('edad_vueltas')} vueltas con {wear:.0f}% de desgaste")
+        compound = c.COMPOUNDS_ES.get(ne["compuesto"], ne["compuesto"])
+        parts.append(f"{compound} de {ne.get('edad_vueltas')} vueltas con {wear:.0f}% de desgaste")
     return ", ".join(parts) + "."
+
+
+def _y(items: list[str]) -> str:
+    """Join with commas and a final "y": "a, b y c"."""
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " y " + items[-1]
+
+
+def _secs(value: float) -> str:
+    """A gap as said on the radio: "0,3 segundos"."""
+    return f"{value:.1f}".replace(".", ",") + " segundos"
+

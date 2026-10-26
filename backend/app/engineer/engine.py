@@ -34,6 +34,12 @@ TRIGGER_TEXT = {
     "sector_completed": "Cerró el sector {sector} en {tiempo_s}s (delta {delta_s}s vs su mejor). Comentario corto, sin frenar la vuelta.",
     "blue_flag": "Bandera azul: viene un auto más rápido a doblarlo, avisale que lo deje pasar.",
     "pitted": "El piloto acaba de parar en boxes (parada {stops}).",
+    "overtake_available": ("Reglamento 2026: el piloto tiene el modo adelantamiento disponible a {gap_s}s del de "
+                           "adelante. Decile en qué recta usarlo, corto."),
+    "rival_overtake": ("Reglamento 2026: {piloto}, a {gap_s}s atrás, activó el modo adelantamiento. "
+                       "Avisale para que defienda la próxima recta."),
+    "blisters": ("Ampollas en la goma {rueda}: {pct}%. Decile cómo cuidarla (temperatura, deslizamiento) "
+                 "y si cambia el plan de paradas."),
     "session_end": "Terminó la sesión: hacé un resumen breve para el piloto.",
 }
 
