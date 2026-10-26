@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     ALLOWED_ORIGINS: str = "http://localhost:3000"
     INTERNAL_LOG_KEY: str = ""
+    # Key that rebuilds overlay links from their stored nonce; empty = derived from
+    # INTERNAL_LOG_KEY. Changing it (or that key) invalidates every overlay link.
+    OVERLAY_LINK_SECRET: str = ""
 
     # Race engineer. Without an API key it runs on rules (no AI).
     ANTHROPIC_API_KEY: str = ""

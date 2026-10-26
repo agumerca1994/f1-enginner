@@ -15,14 +15,14 @@ def _create(client, email, name="OBS"):
     return r.json()
 
 
-def test_overlay_link_is_shown_once_and_stored_hashed(client):
-    email = next(_emails)
+def test_overlay_link_can_be_shown_again_but_is_not_stored(client):
+    email, other = next(_emails), next(_emails)
     created = _create(client, email)
     assert created["token"].startswith("rbo_") and created["token_prefix"] == created["token"][:8]
 
     listed = client.get("/api/overlay/tokens", headers={"X-Dev-User": email}).json()
-    assert [t["id"] for t in listed] == [created["id"]]
-    assert "token" not in listed[0]
+    assert [(t["id"], t["token"]) for t in listed] == [(created["id"], created["token"])]
+    assert client.get("/api/overlay/tokens", headers={"X-Dev-User": other}).json() == []
 
     import asyncio
 
@@ -31,9 +31,19 @@ def test_overlay_link_is_shown_once_and_stored_hashed(client):
 
     async def stored():
         async with AsyncSessionLocal() as db:
-            return (await db.get(OverlayToken, created["id"])).token_hash
+            row = await db.get(OverlayToken, created["id"])
+            return row.token_hash, row.nonce
 
-    assert asyncio.run(stored()) == hashlib.sha256(created["token"].encode()).hexdigest()
+    digest, nonce = asyncio.run(stored())
+    assert digest == hashlib.sha256(created["token"].encode()).hexdigest()
+    assert nonce and created["token"] not in (digest, nonce)  # the link itself is never in the database
+
+
+def test_overlay_link_depends_on_the_server_secret():
+    from app.core.security import overlay_token
+
+    assert overlay_token("a", "n1") == overlay_token("a", "n1")
+    assert overlay_token("a", "n1") != overlay_token("b", "n1") != overlay_token("a", "n2")
 
 
 def test_overlay_link_opens_the_live_socket(client):

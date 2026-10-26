@@ -4,7 +4,9 @@ Tokens are shown once and stored only as a sha256 hash, the same scheme as the
 registrapp personal access tokens: a leaked database does not leak credentials.
 """
 
+import base64
 import hashlib
+import hmac
 import secrets
 
 DEVICE_TOKEN_PREFIX = "rbd_"  # race-engineer bridge device
@@ -34,3 +36,14 @@ def normalize_user_code(code: str) -> str:
 
 def format_user_code(code: str) -> str:
     return f"{code[:4]}-{code[4:]}"
+
+
+def overlay_token(secret: str, nonce: str) -> str:
+    """The overlay link for a stored nonce: rebuilt on demand, never stored in the clear.
+
+    Settings can show the link again, while a leaked database alone (nonce + hash)
+    still does not give it away.
+    """
+    key = (secret or "").encode() or b"dev-overlay-key"
+    digest = hmac.new(key, f"overlay:{nonce}".encode(), hashlib.sha256).digest()
+    return OVERLAY_TOKEN_PREFIX + base64.urlsafe_b64encode(digest).decode().rstrip("=")
