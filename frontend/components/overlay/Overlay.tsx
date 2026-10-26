@@ -21,12 +21,20 @@ export const OVERLAY_PANELS = {
 export type OverlayPanel = keyof typeof OVERLAY_PANELS;
 
 const RADIO_SHOWN_MS = 20_000;
+// Right after opening, an empty panel looks broken: say it is connected, then get out of the way.
+const WAITING_HINT_MS = 15_000;
 
 type Props = { panel: string; token: string; scale: number; opacity: number; rows: number; voice: boolean };
 
 /** One panel over a transparent page. Without data it stays empty, so nothing covers the game. */
 export function Overlay({ panel, token, scale, opacity, rows, voice }: Props) {
   const { status, snapshot: s, engineer } = useLive({ overlayToken: token || undefined });
+  const [justOpened, setJustOpened] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setJustOpened(false), WAITING_HINT_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // The app's dark background would paint over the game.
@@ -36,6 +44,8 @@ export function Overlay({ panel, token, scale, opacity, rows, voice }: Props) {
   let body: React.ReactNode = null;
   if (!token) body = <Notice>Falta el link del panel. Crealo en Ajustes → Paneles flotantes.</Notice>;
   else if (!(panel in OVERLAY_PANELS)) body = <Notice>Panel desconocido: {panel}</Notice>;
+  else if (!s && justOpened && status === "waiting")
+    body = <Notice>Conectado. Esperando la sesión: el panel se llena solo cuando corras.</Notice>;
   else if (panel === "radio") body = <RadioPanel messages={engineer.messages} voice={voice} />;
   else if (s) body = <SnapshotPanel panel={panel as OverlayPanel} s={s} rows={rows} />;
   else if (status === "offline") body = <Notice>Sin conexión. Si el link fue revocado, creá uno nuevo.</Notice>;
