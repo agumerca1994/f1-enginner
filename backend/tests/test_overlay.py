@@ -74,3 +74,16 @@ def test_overlay_link_cannot_manage_anything(client):
     auth = {"Authorization": f"Bearer {token}"}
     assert client.get("/api/overlay/tokens", headers=auth).status_code == 401
     assert client.post("/api/engineer/live", json={"active": True}, headers=auth).status_code == 401
+
+
+def test_bridge_token_opens_the_live_socket_for_its_floating_panels(client):
+    from tests.test_ingest import pair_bridge
+
+    token = pair_bridge(client, next(_emails))
+    with client.websocket_connect("/live/v1") as ws:
+        ws.send_json({"type": "auth", "device_token": token})
+        assert ws.receive_json() == {"type": "ready"}
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/live/v1") as ws:
+            ws.send_json({"type": "auth", "device_token": "rbd_made-up"})
+            ws.receive_json()

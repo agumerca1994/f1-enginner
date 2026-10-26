@@ -50,5 +50,21 @@ No hace falta vincular nada.
    (.f1cap.zst y .txt) por Drive o WhatsApp.
 
 
+C) PANELES FLOTANTES (CON EL JUEGO EN ESTA PC)
+---------------------------------------------
+Paneles sobre el juego: delta, relativos, tiempos, posiciones, pedales y la
+radio del ingeniero. Necesitan esta PC vinculada (como en A) y el juego en
+esta misma PC.
+1. En el juego: Pantalla → Modo de pantalla: VENTANA SIN BORDES. En
+   pantalla completa el juego tapa cualquier panel.
+2. En la app: pestaña "Paneles" (o clic derecho en el ícono → Paneles
+   flotantes) y tildá los que quieras.
+3. Para acomodarlos, destildá "Bloquear para conducir" (o Ctrl+Alt+F10):
+   se ven con un borde celeste. Arrastralos con el mouse y cambiá el tamaño
+   con la rueda. Después volvé a bloquear: los clics pasan al juego.
+4. Aparecen solos cuando corrés y se ocultan en los menús.
+   Ctrl+Alt+F11 los oculta o muestra.
+
+
 Si algo falla, mandanos también el log:
 %LocalAppData%\RaceEngineer\Logs\bridge-app.log

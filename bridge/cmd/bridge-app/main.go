@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/agumerca1994/race-engineer/bridge/internal/agent"
 	"github.com/agumerca1994/race-engineer/bridge/internal/config"
+	"github.com/agumerca1994/race-engineer/bridge/internal/overlay"
 	"github.com/agumerca1994/race-engineer/bridge/internal/pairing"
 )
 
@@ -33,6 +35,7 @@ const (
 	dashboardURL = "https://f1.imanzanastore.com.ar"
 	prefAutoSend = "autoSend"
 	prefDevMode  = "devMode"
+	prefPanels   = "overlayPanels"
 )
 
 func main() {
@@ -53,6 +56,7 @@ func main() {
 		c.refreshMenu()
 	}
 
+	c.setupPanels()
 	c.window = newStatusWindow(c)
 	if !background {
 		c.window.Show()
@@ -61,6 +65,7 @@ func main() {
 	c.loadAccount()
 	go c.ticker()
 	a.Run()
+	c.stopPanels()
 	c.stop()
 	if _, err := c.sampler.stop(); err != nil {
 		logger.Printf("closing the sample: %v", err)
@@ -88,6 +93,13 @@ type controller struct {
 	menu       *fyne.Menu
 	menuStatus *fyne.MenuItem
 	menuShape  string
+
+	// Floating panels over the game (Windows only).
+	live       *overlay.Live
+	pedals     *overlay.Pedals
+	panels     *overlay.Manager
+	panelsStop context.CancelFunc
+	liveStop   context.CancelFunc
 }
 
 func newController(a fyne.App, logger *log.Logger) *controller {
@@ -132,6 +144,9 @@ func (c *controller) loadAccount() {
 			c.email = acc.Email
 			c.mu.Unlock()
 		}
+		if c.linked() {
+			c.startLive()
+		}
 		if c.linked() && c.app.Preferences().BoolWithFallback(prefAutoSend, true) {
 			c.start()
 		}
@@ -145,10 +160,14 @@ func (c *controller) start() {
 		c.mu.Unlock()
 		return
 	}
-	ag := agent.New(agent.Config{
+	cfg := agent.Config{
 		Listen: listenAddr, Server: c.cfg.Server, Token: c.cfg.Token, Version: version,
 		Logf: func(format string, args ...any) { c.log.Printf(format, args...) },
-	})
+	}
+	if c.panels.Supported() {
+		cfg.OnPacket = c.pedals.Observe
+	}
+	ag := agent.New(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	c.running, c.cancel, c.done, c.lastErr = ag, cancel, done, ""
@@ -283,6 +302,7 @@ func (c *controller) unlink() {
 }
 
 func (c *controller) clearLink() {
+	c.stopLive()
 	c.mu.Lock()
 	c.cfg.Token, c.cfg.DeviceID, c.email = "", 0, ""
 	cfg := c.cfg
@@ -436,7 +456,7 @@ func (c *controller) refreshMenu() {
 	// Rebuilding the menu while it is open makes it flicker, so only rebuild
 	// when its items change; otherwise just update the status line.
 	dev, recording := c.devMode(), c.sampler.recording()
-	shape := fmt.Sprintf("%v/%v/%v/%v", linked, running, dev, recording)
+	shape := fmt.Sprintf("%v/%v/%v/%v/%s", linked, running, dev, recording, c.panelsShape())
 	if shape == c.menuShape && c.menu != nil {
 		if c.menuStatus.Label != head {
 			c.menuStatus.Label = head
@@ -463,8 +483,11 @@ func (c *controller) refreshMenu() {
 	items = append(items,
 		fyne.NewMenuItem("Abrir dashboard", func() { c.openURL(dashboardURL) }),
 		fyne.NewMenuItem("Mostrar ventana", func() { c.window.Show() }),
-		fyne.NewMenuItemSeparator(),
 	)
+	if item := c.panelsMenu(); item != nil {
+		items = append(items, item)
+	}
+	items = append(items, fyne.NewMenuItemSeparator())
 	devItem := fyne.NewMenuItem("Modo desarrollo", func() { c.setDevMode(!c.devMode()) })
 	devItem.Checked = dev
 	items = append(items, devItem)
@@ -494,4 +517,97 @@ func openLog() *log.Logger {
 		}
 	}
 	return log.New(w, "", log.LstdFlags)
+}
+
+// --- floating panels ----------------------------------------------------------
+
+// setupPanels prepares the floating panels; on Windows they run for the app's life.
+func (c *controller) setupPanels() {
+	c.live, c.pedals = &overlay.Live{}, &overlay.Pedals{}
+	var saved overlay.Settings
+	if raw := c.app.Preferences().String(prefPanels); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &saved); err != nil {
+			c.log.Printf("reading panel settings: %v", err)
+		}
+	}
+	c.panels = overlay.NewManager(c.live, c.pedals, saved, func(s overlay.Settings) {
+		if b, err := json.Marshal(s); err == nil {
+			c.app.Preferences().SetString(prefPanels, string(b))
+		}
+		c.changed()
+	})
+	if !c.panels.Supported() {
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	c.panelsStop = cancel
+	go c.panels.Run(ctx)
+}
+
+func (c *controller) stopPanels() {
+	c.stopLive()
+	if c.panelsStop != nil {
+		c.panelsStop()
+	}
+}
+
+// startLive follows the account's live session for the panels.
+func (c *controller) startLive() {
+	if !c.panels.Supported() {
+		return
+	}
+	c.mu.Lock()
+	if c.liveStop != nil || c.cfg.Token == "" {
+		c.mu.Unlock()
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	c.liveStop = cancel
+	server, token := c.cfg.Server, c.cfg.Token
+	c.mu.Unlock()
+	go c.live.Run(ctx, server, token, c.log.Printf)
+}
+
+func (c *controller) stopLive() {
+	c.mu.Lock()
+	stop := c.liveStop
+	c.liveStop = nil
+	c.mu.Unlock()
+	if stop != nil {
+		stop()
+	}
+}
+
+// panelsShape changes whenever the panels submenu must be rebuilt.
+func (c *controller) panelsShape() string {
+	if !c.panels.Supported() {
+		return ""
+	}
+	s := c.panels.Settings()
+	out := fmt.Sprint(s.Locked)
+	for _, p := range overlay.Panels {
+		out += fmt.Sprint(s.Panels[p.ID].On)
+	}
+	return out
+}
+
+func (c *controller) panelsMenu() *fyne.MenuItem {
+	if !c.panels.Supported() {
+		return nil
+	}
+	s := c.panels.Settings()
+	var items []*fyne.MenuItem
+	for _, p := range overlay.Panels {
+		id, on := p.ID, s.Panels[p.ID].On
+		it := fyne.NewMenuItem(p.Label, func() { c.panels.SetPanel(id, !on) })
+		it.Checked = on
+		items = append(items, it)
+	}
+	lock := fyne.NewMenuItem("Bloquear para conducir (Ctrl+Alt+F10)", func() { c.panels.SetLocked(!s.Locked) })
+	lock.Checked = s.Locked
+	items = append(items, fyne.NewMenuItemSeparator(), lock,
+		fyne.NewMenuItem("Restablecer posiciones", c.panels.ResetPositions))
+	menu := fyne.NewMenuItem("Paneles flotantes", nil)
+	menu.ChildMenu = fyne.NewMenu("", items...)
+	return menu
 }

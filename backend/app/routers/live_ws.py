@@ -2,7 +2,8 @@
 
 Browsers cannot set headers on a WebSocket, so the first message must be
 {"type": "auth", "token": "<Firebase ID token>"} (or a dev email with AUTH_DEV_MODE),
-or {"type": "auth", "overlay_token": "rbo_..."} for a read-only overlay link.
+or {"type": "auth", "overlay_token": "rbo_..."} for a read-only overlay link, or
+{"type": "auth", "device_token": "rbd_..."} for the bridge's own floating panels.
 The server then sends {"type": "snapshot", "data": {...}} whenever the live state
 changed, at most every PUSH_INTERVAL_S, and {"type": "idle"} while nothing arrives.
 """
@@ -12,7 +13,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from app.core.auth import authenticate_token, overlay_from_token
+from app.core.auth import authenticate_token, device_from_token, overlay_from_token
 from app.core.database import AsyncSessionLocal
 from app.engineer.runner import engineer_hub
 from app.live import snapshot
@@ -41,6 +42,9 @@ async def live_ws(ws: WebSocket):
         if first.get("overlay_token"):
             overlay = await overlay_from_token(db, first["overlay_token"])
             tenant_id, overlay_id = (overlay.tenant_id, overlay.id) if overlay else (None, None)
+        elif first.get("device_token"):
+            device = await device_from_token(db, first["device_token"])
+            tenant_id = device.tenant_id if device else None
         else:
             user = await authenticate_token(db, token=first.get("token"), dev_email=first.get("dev_user"))
             tenant_id = user.tenant_id if user else None

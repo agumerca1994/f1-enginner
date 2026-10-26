@@ -59,6 +59,9 @@ type statusWindow struct {
 	devCheck  *widget.Check
 	ipLabel   *widget.Label
 
+	// Paneles (Windows only)
+	panels *panelsTab
+
 	// Desarrollo
 	devTab     *container.TabItem
 	note       *widget.Entry
@@ -89,6 +92,10 @@ func newStatusWindow(c *controller) *statusWindow {
 		container.NewTabItemWithIcon("Estado", theme.HomeIcon(), scroll(w.buildStatus())),
 		container.NewTabItemWithIcon("Ajustes", theme.SettingsIcon(), scroll(w.buildSettings())),
 	)
+	if c.panels.Supported() {
+		w.panels = newPanelsTab(c)
+		w.tabs.Append(w.panels.item)
+	}
 	w.devTab = container.NewTabItemWithIcon("Desarrollo", theme.MediaRecordIcon(), scroll(w.buildDev()))
 
 	w.win.SetContent(container.NewBorder(container.NewPadded(header), nil, nil, nil, w.tabs))
@@ -286,6 +293,9 @@ func lanText() string {
 // refresh copies the controller state into the widgets. Called on the UI thread.
 func (w *statusWindow) refresh() {
 	c := w.c
+	if w.panels != nil {
+		w.panels.refresh()
+	}
 	head, level := c.headline()
 	w.headline.SetText(head)
 	w.dot.FillColor = levelColors[level]

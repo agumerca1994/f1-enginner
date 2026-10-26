@@ -28,6 +28,9 @@ type Config struct {
 	RecordTo string // optional capture file for everything received
 	Version  string
 	Logf     func(format string, args ...any)
+	// OnPacket, if set, sees every datagram received, before filtering. The app's
+	// floating panels read the pedals from it at the game's own rate.
+	OnPacket func(at time.Time, data []byte)
 }
 
 // Status is a snapshot of what the agent is doing, safe to read at any time.
@@ -177,6 +180,9 @@ func (a *Agent) Run(ctx context.Context) error {
 		a.mu.Unlock()
 		if tap != nil {
 			tap(d.At, d.Data)
+		}
+		if cfg.OnPacket != nil {
+			cfg.OnPacket(d.At, d.Data)
 		}
 		if allow {
 			client.Enqueue(d.At, d.Data)
