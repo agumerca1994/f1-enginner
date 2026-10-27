@@ -16,10 +16,11 @@ function pickVoice(): SpeechSynthesisVoice | null {
   );
 }
 
-// Team-radio keying tones: two short beeps opening the channel and the reverse closing it.
-const OPEN_TONES: [number, number][] = [[1000, 0.06], [1400, 0.06]];
-const CLOSE_TONES: [number, number][] = [[1400, 0.06], [1000, 0.06]];
-const TONE_GAP_S = 0.02;
+// The broadcast team-radio chime: three pure tones back to back, G5 D6 B5, about
+// 90 ms each (measured on a reference clip of the TV graphics' radio sound).
+const OPEN_TONES: [number, number][] = [[784, 0.092], [1175, 0.092], [988, 0.092]];
+const CLOSE_TONES: [number, number][] = [];
+const TONE_GAP_S = 0;
 
 let audio: AudioContext | null = null;
 
@@ -36,15 +37,15 @@ function audioContext(): AudioContext | null {
 /** Plays the tones and returns how long they last, in milliseconds. */
 export function radioTones(tones: [number, number][]): number {
   const ctx = audioContext();
-  if (!ctx) return 0;
+  if (!ctx || !tones.length) return 0;
   let t = ctx.currentTime + 0.01;
   for (const [hz, len] of tones) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = hz;
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.12, t + 0.005);
-    gain.gain.setValueAtTime(0.12, t + len - 0.005);
+    gain.gain.linearRampToValueAtTime(0.12, t + 0.004);
+    gain.gain.setValueAtTime(0.12, t + len - 0.004);
     gain.gain.linearRampToValueAtTime(0, t + len);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t);
