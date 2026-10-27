@@ -21,17 +21,19 @@ import (
 	"github.com/agumerca1994/race-engineer/bridge/internal/capture"
 )
 
-// accSampler records Assetto Corsa Competizione (shared memory plus the
-// broadcasting API) into a sample, the raw material for supporting ACC.
+// accSampler records an Assetto Corsa game into a sample, the raw material for
+// supporting it: the shared memory always, and ACC's broadcasting API when
+// broadcasting.json has it on.
 type accSampler struct {
-	mu       sync.Mutex
-	w        *capture.Writer
-	path     string
-	note     string
-	stats    *acc.Stats
-	cancel   context.CancelFunc
-	done     chan struct{}
-	lastPath string
+	mu        sync.Mutex
+	w         *capture.Writer
+	path      string
+	note      string
+	stats     *acc.Stats
+	cancel    context.CancelFunc
+	done      chan struct{}
+	lastPath  string
+	broadcast bool // ACC's broadcasting is part of this recording
 }
 
 func (s *accSampler) recording() bool {
@@ -46,13 +48,15 @@ func (s *accSampler) start(note string) error {
 	if s.w != nil {
 		return nil
 	}
-	path, err := acc.SettingsPath()
-	if err != nil {
-		return err
+	var settings acc.BroadcastSettings // Port 0: shared memory only
+	if path, err := acc.SettingsPath(); err == nil {
+		if read, err := acc.ReadSettings(path); err == nil {
+			settings = read
+		}
 	}
-	settings, err := acc.ReadSettings(path)
-	if err != nil || settings.Port <= 0 {
-		return errors.New("ACC no tiene activado el broadcasting: cerrá ACC y tocá \"Preparar ACC\"")
+	source := "assetto corsa shared memory"
+	if settings.Port > 0 {
+		source += fmt.Sprintf(" + acc broadcasting 127.0.0.1:%d", settings.Port)
 	}
 	dir, err := samplesDir()
 	if err != nil {
@@ -63,12 +67,13 @@ func (s *accSampler) start(note string) error {
 	}
 	file := filepath.Join(dir, "acc-"+time.Now().Format("2006-01-02-150405")+".f1cap.zst")
 	w, err := capture.Create(file, capture.Meta{BridgeVersion: version, StartedAt: time.Now().UTC(),
-		ListenAddr: fmt.Sprintf("acc shared memory + broadcasting 127.0.0.1:%d", settings.Port), Note: note})
+		ListenAddr: source, Note: note})
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.w, s.path, s.note, s.stats, s.cancel, s.done = w, file, note, &acc.Stats{}, cancel, make(chan struct{})
+	s.broadcast = settings.Port > 0
 	stats, done := s.stats, s.done
 	go func() {
 		defer close(done)
@@ -109,8 +114,15 @@ func (s *accSampler) stop() (string, error) {
 // describe is one line per source: what arrived and what failed.
 func (s *accSampler) describe() string {
 	pages, messages, registered, lastErr := s.stats.Snapshot()
-	text := fmt.Sprintf("Memoria compartida: física %d, gráficos %d, estática %d\nBroadcasting: %d mensajes (registrado: %v)\n",
-		pages[acc.KindPhysics], pages[acc.KindGraphics], pages[acc.KindStatic], messages, registered)
+	text := fmt.Sprintf("Memoria compartida (ACC, original, Rally): física %d, gráficos %d, estática %d\n",
+		pages[acc.KindPhysics], pages[acc.KindGraphics], pages[acc.KindStatic])
+	text += fmt.Sprintf("Memoria compartida (EVO): física %d, gráficos %d, estática %d\n",
+		pages[acc.KindEvoPhysics], pages[acc.KindEvoGraphics], pages[acc.KindEvoStatic])
+	if s.broadcast {
+		text += fmt.Sprintf("Broadcasting de ACC: %d mensajes (registrado: %v)\n", messages, registered)
+	} else {
+		text += "Broadcasting de ACC: no (sólo memoria compartida)\n"
+	}
 	if lastErr != "" {
 		text += "Último error: " + lastErr + "\n"
 	}
@@ -122,17 +134,21 @@ func (s *accSampler) progress() string {
 	defer s.mu.Unlock()
 	if s.w == nil {
 		if s.lastPath != "" {
-			return "Última muestra de ACC: " + filepath.Base(s.lastPath)
+			return "Última muestra de Assetto Corsa: " + filepath.Base(s.lastPath)
 		}
 		return "Sin grabar"
 	}
-	pages, messages, registered, lastErr := s.stats.Snapshot()
-	text := fmt.Sprintf("Grabando ACC · física %d · gráficos %d · autos (broadcasting) %d", pages[acc.KindPhysics], pages[acc.KindGraphics], messages)
-	if !registered {
-		text += " · esperando a ACC"
+	pages, messages, registered, _ := s.stats.Snapshot()
+	physics := pages[acc.KindPhysics] + pages[acc.KindEvoPhysics]
+	text := fmt.Sprintf("Grabando Assetto Corsa · física %d · gráficos %d", physics, pages[acc.KindGraphics]+pages[acc.KindEvoGraphics])
+	if s.broadcast {
+		text += fmt.Sprintf(" · autos (broadcasting) %d", messages)
+		if !registered {
+			text += " · esperando a ACC"
+		}
 	}
-	if lastErr != "" && pages[acc.KindPhysics] == 0 {
-		text += " · " + lastErr
+	if physics == 0 {
+		text += " · esperando al juego: entrá a pista"
 	}
 	return text
 }
@@ -150,7 +166,7 @@ func newAccDevSection(c *controller, note *widget.Entry) (*accDevSection, fyne.C
 	s := &accDevSection{c: c, info: widget.NewLabel(""), prepare: hint("")}
 	s.info.Wrapping = fyne.TextWrapWord
 	s.prepare.Hide()
-	s.record = widget.NewButtonWithIcon("Grabar muestra de ACC", theme.MediaRecordIcon(), func() {
+	s.record = widget.NewButtonWithIcon("Grabar muestra de Assetto Corsa", theme.MediaRecordIcon(), func() {
 		if err := c.accSampler.start(note.Text); err != nil {
 			c.setError(err.Error())
 		}
@@ -159,7 +175,7 @@ func newAccDevSection(c *controller, note *widget.Entry) (*accDevSection, fyne.C
 	s.stop = widget.NewButtonWithIcon("Detener", theme.MediaStopIcon(), func() {
 		go func() {
 			if _, err := c.accSampler.stop(); err != nil {
-				c.setError(fmt.Sprintf("La muestra de ACC se guardó con errores: %v", err))
+				c.setError(fmt.Sprintf("La muestra de Assetto Corsa se guardó con errores: %v", err))
 			}
 			c.changed()
 		}()
@@ -182,10 +198,10 @@ func newAccDevSection(c *controller, note *widget.Entry) (*accDevSection, fyne.C
 		}
 		s.prepare.Show()
 	})
-	content := section("Assetto Corsa Competizione",
-		hint("Graba la telemetría de ACC (memoria compartida y la lista de autos por broadcasting) para sumarlo a la app. "+
-			"La primera vez, con ACC cerrado, tocá \"Preparar ACC\". Después abrí ACC, entrá a pista y grabá. "+
-			"Usa la misma Nota de arriba."),
+	content := section("Assetto Corsa",
+		hint("Graba la telemetría de Assetto Corsa Competizione, EVO, Rally o el original para sumarlos a la app. "+
+			"Abrí el juego, entrá a pista y grabá unos minutos manejando; en la Nota de arriba poné qué juego es. "+
+			"Sólo para Competizione: la primera vez, con el juego cerrado, tocá \"Preparar ACC\" para sumar la lista de autos."),
 		container.NewHBox(prepare),
 		s.prepare,
 		s.info,

@@ -58,6 +58,8 @@ func (p *page) open() error {
 	return nil
 }
 
+func (p *page) static() bool { return p.kind == KindStatic || p.kind == KindEvoStatic }
+
 func (p *page) close() {
 	if p.view != 0 {
 		windows.UnmapViewOfFile(p.view)
@@ -68,7 +70,7 @@ func (p *page) close() {
 // read copies the page when it changed since the last call.
 func (p *page) read() []byte {
 	src := unsafe.Slice((*byte)(p.data), p.size)
-	if p.kind == KindStatic {
+	if p.static() {
 		if bytes.Equal(src, p.last) {
 			return nil
 		}
@@ -88,6 +90,9 @@ func readPages(ctx context.Context, emit func(kind byte, page []byte), stats *St
 		{name: `Local\acpmf_physics`, kind: KindPhysics},
 		{name: `Local\acpmf_graphics`, kind: KindGraphics},
 		{name: `Local\acpmf_static`, kind: KindStatic},
+		{name: `Local\acevo_pmf_physics`, kind: KindEvoPhysics},
+		{name: `Local\acevo_pmf_graphics`, kind: KindEvoGraphics},
+		{name: `Local\acevo_pmf_static`, kind: KindEvoStatic},
 	}
 	defer func() {
 		for _, p := range pages {
@@ -104,26 +109,34 @@ func readPages(ctx context.Context, emit func(kind byte, page []byte), stats *St
 		case <-tick.C:
 		}
 		retry := time.Since(lastOpen) >= reopenEvery
+		if retry {
+			lastOpen = time.Now()
+		}
+		var openErr error
+		open := 0
 		for _, p := range pages {
 			if p.view == 0 {
 				if !retry {
 					continue
 				}
-				lastOpen = time.Now()
 				if err := p.open(); err != nil {
-					stats.fail(err)
+					openErr = err
 					continue
 				}
 			}
+			open++
 			switch {
-			case p.kind == KindGraphics && n%graphicsEvery != 0:
+			case (p.kind == KindGraphics || p.kind == KindEvoGraphics) && n%graphicsEvery != 0:
 				continue
-			case p.kind == KindStatic && n%staticEvery != 0 && p.last != nil:
+			case p.static() && n%staticEvery != 0 && p.last != nil:
 				continue
 			}
 			if b := p.read(); b != nil {
 				emit(p.kind, b)
 			}
+		}
+		if open == 0 && openErr != nil {
+			stats.fail(openErr) // only one game runs at a time: the other family never opens
 		}
 	}
 }

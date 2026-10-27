@@ -11,6 +11,11 @@ b"ACC" and a kind byte:
 - b"B": one message of the ACC broadcasting protocol (every car on track),
   received by the bridge on 127.0.0.1 and passed on unchanged.
 
+Samples of the other Assetto Corsa games use the same records: the original and
+Rally publish `acpmf_*` pages with their own layouts (the static page's
+`smVersion`/`acVersion` tell them apart) and EVO's `acevo_pmf_*` pages come as
+b"p", b"g", b"s". None of them is decoded yet.
+
 Nothing here has been checked against a real ACC recording yet: the layouts
 follow the documentation and the offsets an existing overlay asserts
 (`playerCarID` at 1216, `penalty` at 1228, `iDeltaLapTime` at 1360).

@@ -1,4 +1,8 @@
-// Package acc reads Assetto Corsa Competizione telemetry on the player's PC.
+// Package acc reads Assetto Corsa Competizione telemetry on the player's PC,
+// and records the shared memory of the other Assetto Corsa games for study:
+// the original and Rally publish the same page names as ACC (each with its own
+// layout; the static page's version strings tell them apart) and EVO uses
+// Local\acevo_pmf_*, recorded under the lowercase kinds.
 //
 // ACC has no UDP telemetry stream like the F1 games. The player's own car is in
 // three shared-memory pages (physics, graphics, static; Windows only), and every
@@ -20,6 +24,10 @@ const (
 	KindGraphics  = 'G'
 	KindStatic    = 'S'
 	KindBroadcast = 'B'
+
+	KindEvoPhysics  = 'p'
+	KindEvoGraphics = 'g'
+	KindEvoStatic   = 's'
 )
 
 // Record wraps a payload as the server expects it.
@@ -76,6 +84,9 @@ func (s *Stats) Snapshot() (pages map[byte]int, messages int, registered bool, l
 func Run(ctx context.Context, settings BroadcastSettings, write func(at time.Time, data []byte), stats *Stats) {
 	var wg sync.WaitGroup
 	wg.Add(2)
+	if settings.Port <= 0 {
+		wg.Done() // no broadcasting (another Assetto Corsa, or ACC not prepared): shared memory only
+	}
 	go func() {
 		defer wg.Done()
 		readPages(ctx, func(kind byte, page []byte) {
@@ -84,6 +95,9 @@ func Run(ctx context.Context, settings BroadcastSettings, write func(at time.Tim
 		}, stats)
 	}()
 	go func() {
+		if settings.Port <= 0 {
+			return
+		}
 		defer wg.Done()
 		for ctx.Err() == nil {
 			err := Broadcast(ctx, settings, func(msg []byte) {

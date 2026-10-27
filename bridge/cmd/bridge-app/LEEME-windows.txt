@@ -50,17 +50,22 @@ No hace falta vincular nada.
    (.f1cap.zst y .txt) por Drive o WhatsApp.
 
 
-B2) GRABAR MUESTRAS DE ASSETTO CORSA COMPETIZIONE (ACC EN ESTA PC)
------------------------------------------------------------------
+B2) GRABAR MUESTRAS DE ASSETTO CORSA (EN ESTA PC)
+-------------------------------------------------
+Sirve para Assetto Corsa Competizione, EVO, Rally y el Assetto Corsa
+original. Ninguno necesita configurar nada en el juego: la app lee la
+memoria compartida que el juego publica mientras está abierto.
 Con el Modo desarrollo activado (ver B), la pestaña Desarrollo tiene una
-sección "Assetto Corsa Competizione".
-1. La primera vez, con ACC CERRADO, tocá "Preparar ACC": activa el
-   broadcasting de ACC (el archivo Documentos\Assetto Corsa Competizione\
-   Config\broadcasting.json). Si ACC estaba abierto, reinicialo.
-2. Abrí ACC y entrá a pista (práctica, clasificación o carrera con autos).
-3. Escribí la Nota (pista, sesión, online u offline) y tocá
-   "Grabar muestra de ACC". Andá unas vueltas y tocá "Detener".
+sección "Assetto Corsa".
+1. Sólo para Competizione, y sólo la primera vez: con el juego CERRADO,
+   tocá "Preparar ACC". Suma la lista de todos los autos en pista (activa
+   Documentos\Assetto Corsa Competizione\Config\broadcasting.json).
+2. Abrí el juego y entrá a pista (práctica, etapa o carrera).
+3. En la Nota poné QUÉ JUEGO es (Competizione, EVO, Rally u original),
+   la pista y la sesión, y tocá "Grabar muestra de Assetto Corsa".
+   Manejá unos minutos (no alcanza con estar en el menú) y tocá "Detener".
 4. "Abrir carpeta" y mandanos los archivos acc-*.f1cap.zst y acc-*.txt.
+   En el .txt, "física" tiene que ser mayor que 0.
 
 
 C) PANELES FLOTANTES (CON EL JUEGO EN ESTA PC)
