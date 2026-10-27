@@ -31,7 +31,8 @@ TRIGGER_TEXT = {
     "rain_forecast": "El pronóstico marca {rain_percent}% de lluvia en los próximos 15 minutos.",
     "damage": "El auto sufrió daño nuevo: {parts}.",
     "penalty": "Nueva penalización o advertencia: {penalties_s}s de penalización, {warnings} advertencias.",
-    "sector_completed": "Cerró el sector {sector} en {tiempo_s}s (delta {delta_s}s vs su mejor). Comentario corto, sin frenar la vuelta.",
+    "sector_completed": ("Sector {sector}: {delta_s}s contra su mejor parcial (negativo = mejor). Si vale la pena, "
+                         "decí sólo la diferencia y, si perdió, dónde; nunca leas el tiempo del sector."),
     "blue_flag": "Bandera azul: viene un auto más rápido a doblarlo, avisale que lo deje pasar.",
     "pitted": "El piloto acaba de parar en boxes (parada {stops}).",
     "overtake_available": ("Reglamento 2026: el piloto tiene el modo adelantamiento disponible a {gap_s}s del de "

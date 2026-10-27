@@ -74,3 +74,17 @@ def test_live_sector_captured_on_a_real_race():
         engineer.observe(packet, live)
     facts = analysis.build(live, engineer.history)
     assert facts["sectores"]["vuelta_en_curso"]["s1_s"] is not None
+
+
+def test_no_sector_call_without_a_reference_nor_from_the_first_lap():
+    h = SessionHistory()
+    live = _live()
+    assert not h._sector_note(1, 31_000, invalid=False, t=1.0, live=live)  # nothing to compare yet
+    h._cur_s1, h._cur_s2 = 36_000, 45_000
+    h._finalize_sectors(120_000, lap_num=1)  # the race start
+    assert h.best_sectors == {}
+    h._cur_s1, h._cur_s2 = 32_000, 42_000
+    h._finalize_sectors(110_000, lap_num=2)
+    assert h.best_sectors[1] == 32_000
+    assert not h._sector_note(1, 31_950, invalid=False, t=2.0, live=live)  # 50 ms: not worth a call
+    assert h._sector_note(1, 31_850, invalid=False, t=2.0, live=live)

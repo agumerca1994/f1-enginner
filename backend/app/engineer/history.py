@@ -26,6 +26,7 @@ DAMAGE_CONFIRM_S = 8.0
 RAIN_ALERT_PERCENT = 40
 # A sector is worth a radio call only on a personal best or a loss of at least this.
 SECTOR_LOSS_MS = 300
+SECTOR_PB_MS = 100  # a new best sector has to beat the old one by this much to be worth a call
 
 
 @dataclass
@@ -347,7 +348,7 @@ class SessionHistory:
                 safety_car=self._lap_sc or self._sc_status in ("Full safety car", "Virtual safety car"),
             ))
             if i == player:
-                sectors = self._finalize_sectors(int(lap["last_lap_time_in_ms"]) or None)
+                sectors = self._finalize_sectors(int(lap["last_lap_time_in_ms"]) or None, num - 1)
                 self.player_laps.append(self._player_record(num - 1, lap, live, sectors))
                 out.append(Trigger("lap_completed", packet.session_time, num - 1))
                 out += self._tyre_overuse(packet.session_time, num - 1)
@@ -387,10 +388,10 @@ class SessionHistory:
 
     def _sector_note(self, idx: int, val: int, invalid: bool, t: float, live: LiveSession) -> list[Trigger]:
         best = self.best_sectors.get(idx)
-        if invalid:
-            return []  # an invalid sector is not a fair comparison
-        is_pb = best is None or val < best
-        loss = val - best if best is not None else 0
+        if invalid or best is None:
+            return []  # an invalid sector is not a fair comparison, and with no reference there is none
+        is_pb = val <= best - SECTOR_PB_MS
+        loss = val - best
         if not (is_pb or loss >= SECTOR_LOSS_MS):
             return []
         return [Trigger("sector_completed", t, self._player_lap(live), {
@@ -398,13 +399,14 @@ class SessionHistory:
             "mejor_personal": is_pb, "delta_s": round(loss / 1000, 3),
         })]
 
-    def _finalize_sectors(self, total_ms: int | None) -> list[int | None]:
+    def _finalize_sectors(self, total_ms: int | None, lap_num: int | None = None) -> list[int | None]:
         """At lap completion: S3 = total − S1 − S2, record the lap and update the bests."""
         s1, s2 = self._cur_s1, self._cur_s2
         s3 = total_ms - s1 - s2 if (total_ms and s1 and s2 and total_ms > s1 + s2) else None
         sectors = [s1, s2, s3]
         self.last_lap_sectors = sectors
-        if not (self._lap_invalid or self._lap_sc or self._lap_pit):
+        # Lap 1 starts from the grid or the pit lane: never a reference for the sectors.
+        if not (self._lap_invalid or self._lap_sc or self._lap_pit or lap_num == 1):
             for i, val in zip((1, 2, 3), sectors):
                 if val and (self.best_sectors.get(i) is None or val < self.best_sectors[i]):
                     self.best_sectors[i] = val
