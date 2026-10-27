@@ -1,7 +1,8 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.engineer.runner import engineer_hub
+from app.engineer.voice import voice_cache
 from app.models import EngineerMessage, GameSession, User
 from app.telemetry import constants as c
 
@@ -138,3 +140,15 @@ async def usage(
         ],
         "provider_now": engineer_hub.runner(user.tenant_id).provider_name,
     }
+
+
+@router.get("/radio/{key}.mp3")
+async def radio_audio(key: str):
+    """The engineer's voice for one radio line. No login: the id is the hash of a line this
+    server produced (OBS and the overlays need it too), and anything else is a 404."""
+    if len(key) != 32 or any(ch not in "0123456789abcdef" for ch in key):
+        raise HTTPException(404)
+    audio = await voice_cache.get(key)
+    if audio is None:
+        raise HTTPException(404, "No voice for that line")
+    return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400, immutable"})

@@ -274,9 +274,9 @@ def rules_response(request: EngineerRequest) -> dict:
     elif "pitted" in kinds:
         radio = "Buena parada. Dos vueltas para darle temperatura a las gomas nuevas."
     elif "session_end" in kinds:
-        radio = f"Bandera a cuadros, terminamos P{pl.get('posicion')}. Buen trabajo."
+        radio = f"Bandera a cuadros, terminamos {_place(pl.get('posicion'))}. Buen trabajo."
     elif "session_start" in kinds or "race_start" in kinds:
-        radio = f"Largamos P{pl.get('posicion')} con {ne.get('compuesto')}." + (
+        radio = f"Largamos {_place(pl.get('posicion'))} con {c.COMPOUNDS_ES.get(ne.get('compuesto'), 'estas gomas')}." + (
             f" Hay que parar una vez, la ventana es de la {window[0]} a la {window[-1]}." if owes_stop and window else "")
     else:  # a routine lap: speak only when something needs attention
         if ers is not None and ers < 15:
@@ -416,3 +416,13 @@ def _overuse_call(d: dict) -> str:
         issue = next((i for k in corners for i in k["problemas"]), None)
         text += f" La castigás en la {where}" + (f": {CORNER_TIPS[issue].split(':')[1].strip()}." if issue else ".")
     return text
+
+
+PLACES = ("primeros", "segundos", "terceros", "cuartos", "quintos", "sextos", "séptimos", "octavos", "novenos", "décimos")
+
+
+def _place(pos) -> str:
+    """'cuartos', as an engineer says it; 'en el puesto 14' further back."""
+    if isinstance(pos, int) and 1 <= pos <= len(PLACES):
+        return PLACES[pos - 1]
+    return f"en el puesto {pos}" if pos else "en carrera"

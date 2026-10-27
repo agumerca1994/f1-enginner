@@ -216,6 +216,8 @@ export type EngineerMessage = {
   latency_ms: number;
   cost_usd: number;
   radio: string | null;
+  /** The engineer's voice for `radio` (path on the API), when the voice service is on. */
+  audio?: string;
   prioridad: "info" | "importante" | "urgente";
   /** Absent on radio-only calls (the quick lane): only full calls carry the pit-wall analysis. */
   estrategia?: {

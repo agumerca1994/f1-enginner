@@ -82,10 +82,16 @@ def test_live_engineer_speaks_when_active(client):
         ws.send_text(json.dumps({"type": "bye"}))
         assert ws.receive_json() == {"type": "goodbye"}
 
-    state = client.get("/api/engineer/live", headers=headers).json()
+    import time as _time
+
+    for _ in range(50):  # radio calls wait for a straight, or until the session goes quiet
+        state = client.get("/api/engineer/live", headers=headers).json()
+        if state["messages"]:
+            break
+        _time.sleep(0.1)
     first = state["messages"][0]
     assert first["triggers"] == ["race_start"] and first["provider"] == "reglas"
-    assert first["radio"].startswith("Largamos P16")
+    assert first["radio"].startswith("Largamos en el puesto 16 con")
     assert first["estrategia"]["proximo_compuesto"] is not None  # the two-compound stop is planned
 
 

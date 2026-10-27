@@ -48,6 +48,7 @@ def _runner(ai):
     runner.session_uid = 1
     runner._store = lambda *a: asyncio.sleep(0)
     runner.engineer.observe = lambda packet, live: None  # only the lanes and the outbox under test
+    runner._last_packet_wall = float("inf")  # a session in progress: packets keep coming
     return runner
 
 
@@ -149,3 +150,15 @@ def test_a_real_race_produces_corner_coaching():
     assert radio and "la " in radio
     facts = json.loads(notes[-1].facts_json)
     assert facts["curvas"]["peores"] and np.isfinite(facts["curvas"]["curvas_detectadas"])
+
+
+def test_a_call_is_not_held_once_the_session_goes_quiet():
+    import time
+
+    runner = _runner(TwoLaneAI())
+    runner._game_time = 10.0
+    runner._last_packet_wall = time.monotonic()
+    runner._deliver({"id": 7, "radio": "Bandera a cuadros.", "prioridad": "info"})
+    assert not runner.messages  # mid-corner: it waits
+    runner._last_packet_wall -= 5  # nothing arrived for a while: the race is over or paused
+    assert [m["id"] for m in runner.messages_after(0)] == [7]

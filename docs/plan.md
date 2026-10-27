@@ -29,7 +29,7 @@ Decisiones tomadas por el usuario:
 | Extra: landing pública | ✅ En producción | `landing/` (HTML estático + nginx, servicio `f1eng-landing`) en https://web-f1.imanzanastore.com.ar. Descargas de Windows y Mac desde la última release de GitHub |
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
 | P3 Procesamiento e ingeniero | 🟡 En producción | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude. **Producción corre `claude (pro)`** (Sonnet por vuelta, Opus en eventos), verificado en `GET /internal/engineer`. Al largar una carrera baja el plan de paradas desde la grilla (trigger `race_start`) usando clima, vueltas y vida de gomas, y lo calibra con lo aprendido en prácticas del mismo GP (`track_knowledge`) |
-| P4 Agente y voz | 🟡 En curso | Etapa 1 en producción: coaching curva por curva, goma castigada, radio rápida (Haiku 5.5) separada del muro, mensajes en las rectas, estilo de radio real y tonos de radio. Faltan la voz natural (Supertonic 3) y hablarle (apretar para hablar). Investigación en `docs/investigacion-radio-y-voz.md` |
+| P4 Agente y voz | 🟡 En curso | Etapa 1 en producción: coaching curva por curva, goma castigada, radio rápida (Haiku 5.5) separada del muro, mensajes en las rectas, estilo de radio real y tonos de radio. Voz natural en pausa (ver `tts/README.md`): se probó una voz propia (MeloTTS + OpenVoice con voz diseñada), pero generarla en el VPS carga demasiado; se espera un servicio externo. Falta hablarle (apretar para hablar). Investigación en `docs/investigacion-radio-y-voz.md` |
 | P5 MCP público | 🟡 En producción | `/mcp` con OAuth 2.1 (registro dinámico, PKCE, rotación de refresh) y tokens personales `rbm_pat_`, scope `telemetry:read`. Tools: `list_sessions`, `get_session_review`, `compare_laps`, `get_engineer_radio`, `get_live_session`. Consentimiento en `/oauth/authorize` y sección en Ajustes. Discovery, registro y redirección al consentimiento verificados en producción; falta conectarlo desde claude.ai |
 | P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
 | P7 Hardening comercial | ⏳ Pendiente | — |
@@ -82,6 +82,16 @@ Decisiones tomadas por el usuario:
   - **Cola de radio:** los mensajes esperan la próxima recta (acelerador > 85%, sin freno, volante derecho durante 0,6 s), como máximo 15 s; los urgentes salen al instante.
   - **Estilo:** `prompts/radio_es.md` y el manual con el estilo de radio real; tonos de radio en el dashboard.
   - **Numeración:** las curvas las numera la app desde la largada y pueden no coincidir con la oficial.
+
+- **Voz del ingeniero, etapa 2** (2026-10-27).
+  - **Pitido:** es el de la transmisión de F1, tres tonos puros de unos 90 ms cada uno (784, 1175 y 988 Hz), medidos sobre un clip de referencia.
+  - **Voces descartadas:**
+    - las 10 voces de Supertonic: el usuario las rechazó por el acento;
+    - OmniVoice: el modelo es CC-BY-NC, no comercial;
+    - Chatterbox y Qwen3-TTS con la voz clonada del usuario: suenan bien, pero tardan de 8 a 60 s por frase.
+  - **Elegida y armada:** la voz liviana MeloTTS + OpenVoice con voz diseñada, en `tts/`. **Queda en pausa** porque en el VPS carga demasiado (5–10 s por frase en Linux).
+  - **Lo que quedó listo:** el backend pide la voz a `TTS_URL` y el dashboard reproduce el audio con efecto de radio (Web Audio). Sin `TTS_URL`, como hoy, usa la voz del navegador. Falta elegir un servicio externo.
+  - **Recursos para retomarlo:** las grabaciones del usuario (su voz, con consentimiento) y las muestras están en el Escritorio, en `voces-ingeniero/`.
 
 ### Assetto Corsa Competizione (pendiente, después de las mejoras de F1)
 Decidido el 2026-10-26: sumar **ACC en PC**. En PS4/PS5 ni ACC ni AC exportan telemetría.

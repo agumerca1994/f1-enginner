@@ -20,11 +20,13 @@ Urgent ones go out immediately.
 import asyncio
 import itertools
 import logging
+import time
 from collections import deque
 
 from app.core.database import AsyncSessionLocal
 from app.engineer.engine import EngineerRequest, RaceEngineer, merge
 from app.engineer.providers import Advice, RulesProvider, get_provider, rules_response
+from app.engineer.voice import voice_cache
 from app.live.state import LiveSession
 from app.models import EngineerMessage
 from app.telemetry.registry import Packet
@@ -33,6 +35,7 @@ logger = logging.getLogger(__name__)
 _ids = itertools.count(1)
 
 RADIO_HOLD_S = 15.0  # longest a non-urgent call waits for a straight (game seconds)
+QUIET_RELEASE_S = 2.0  # no packets for this long (pause, session over, link down): nothing to disturb
 STRAIGHT_S = 0.6  # this long flat out and straight counts as a straight
 DEEP_EVERY_LAPS = 3  # the quiet pit-wall refresh on routine laps
 
@@ -56,6 +59,7 @@ class EngineerRunner:
         self._outbox: list[tuple[float, dict]] = []
         self._straight_since: float | None = None
         self._game_time = 0.0
+        self._last_packet_wall = 0.0
 
     @property
     def provider_name(self) -> str:
@@ -78,6 +82,7 @@ class EngineerRunner:
         self._outbox.clear()
 
     def messages_after(self, message_id: int) -> list[dict]:
+        self._flush_outbox()  # the viewer polls this: a quiet session still gets its last calls
         return [m for m in self.messages if m["id"] > message_id]
 
     def observe(self, packet: Packet, live: LiveSession) -> EngineerRequest | None:
@@ -85,6 +90,7 @@ class EngineerRunner:
             self.session_uid = packet.session_uid
             self.reset()
         self._game_time = packet.session_time
+        self._last_packet_wall = time.monotonic()
         if packet.name == "car_telemetry":
             self._track_straight(packet)
         request = self.engineer.observe(packet, live)
@@ -127,13 +133,21 @@ class EngineerRunner:
     def _flush_outbox(self) -> None:
         if not self._outbox:
             return
-        if self._on_straight() or self._game_time - self._outbox[0][0] >= RADIO_HOLD_S:
+        quiet = time.monotonic() - self._last_packet_wall >= QUIET_RELEASE_S
+        if self._on_straight() or quiet or self._game_time - self._outbox[0][0] >= RADIO_HOLD_S:
             for _, message in self._outbox:
                 self.messages.append(message)
             self._outbox.clear()
 
     def _deliver(self, message: dict) -> None:
-        """Hand a message to the dashboard: at once if urgent or silent, else on the next straight."""
+        """Hand a message to the dashboard: at once if urgent or silent, else on the next straight.
+
+        The voice starts being made right away, so it is ready when the straight comes.
+        """
+        if message.get("radio"):
+            key = voice_cache.request(message["radio"])
+            if key:
+                message["audio"] = f"/api/engineer/radio/{key}.mp3"
         if not message.get("radio") or message.get("prioridad") == "urgente":
             self.messages.append(message)
             return
@@ -221,6 +235,7 @@ class EngineerRunner:
             logger.exception("could not store an engineer message", extra={"tenant_id": self.tenant_id})
 
     def state(self) -> dict:
+        self._flush_outbox()
         return {"active": self.active, "provider": self.provider_name, "messages": list(self.messages)}
 
 
