@@ -27,7 +27,8 @@ BIN_M = 10.0
 APEX_WINDOW_BINS = 15  # an apex is the slowest point within ±150 m
 LOOKBACK_BINS = 40  # the braking zone starts at the fastest point in the 400 m before
 MIN_SPEED_DROP_KMH = 25.0  # slowing down less than this is a kink, not a corner
-MAP_MIN_COVERAGE = 0.7  # share of bins with data needed to map the corners
+MAP_MIN_COVERAGE = 0.7  # share of bins with data needed to map the corners...
+MAP_MAX_LAPS = 6  # ...pooled over up to this many laps: on a lossy link one lap is never enough
 CORNER_MIN_SAMPLES = 3
 
 # Thresholds measured on real races (Madrid, PC at 100%): wheel slip ratio p99 ~0.28
@@ -37,7 +38,8 @@ LOCK_RATIO = -0.3
 OVERSTEER_RAD = 0.12
 UNDERSTEER_RAD = 0.14
 MIN_SPEED_FOR_SLIP_KMH = 60
-ISSUE_SAMPLES = 2  # samples in one pass to count it as a real lock-up / slide
+ISSUE_SAMPLES = 2  # samples in one pass to count it as a real lock-up / slide...
+SPARSE_PASS_SAMPLES = 15  # ...or just one when the link delivered fewer samples than this for the corner
 
 # When to coach.
 LOSS_CALL_S = 0.15  # lost this much against the best pass of the session...
@@ -75,14 +77,15 @@ class CornerPass:
     def issues(self) -> list[str]:
         """Problems seen in this pass, the most frequent first."""
         counts = {
-            "fuera_de_pista": self.off_track * ISSUE_SAMPLES,  # one sample off track already counts
+            "fuera_de_pista": self.off_track * ISSUE_SAMPLES,  # one sample off track always counts
             "bloqueo_delantero": self.lock_front,
             "bloqueo_trasero": self.lock_rear,
             "patinaje_traccion": self.spin_rear,
             "sobreviraje": self.oversteer,
             "subviraje": self.understeer,
         }
-        return [k for k, n in sorted(counts.items(), key=lambda kv: -kv[1]) if n >= ISSUE_SAMPLES]
+        need = 1 if self.samples < SPARSE_PASS_SAMPLES else ISSUE_SAMPLES
+        return [k for k, n in sorted(counts.items(), key=lambda kv: -kv[1]) if n >= need]
 
 
 @dataclass
@@ -126,6 +129,7 @@ class CornerCoach:
         self._lap: _Lap | None = None
         self._last_lap_packet = None
         self._last_call_lap: dict[int, int] = {}
+        self._map_laps: list[np.ndarray] = []  # speed traces pooled until the corners can be mapped
 
     # --- feeding ----------------------------------------------------------------
 
@@ -214,7 +218,14 @@ class CornerCoach:
         if lap_ms > 0 and self.track_length:
             lap.times.append((self.track_length, lap_ms))
         if not self.corners:
-            self.corners = self._map(lap)
+            v = self._speeds(lap)
+            # A standing start or a pit stop looks like a hairpin: keep those laps out of the map.
+            slow_start = np.nanmin(v[:30], initial=np.inf) < 60 if np.isfinite(v[:30]).any() else False
+            if lap.clean and not slow_start:
+                self._map_laps = (self._map_laps + [v])[-MAP_MAX_LAPS:]
+            if not self._map_laps:
+                return None
+            self.corners = self._map(self._pooled())
             if not self.corners:
                 return None
         passes = {k.number: p for k in self.corners if (p := self._measure(lap, k)) is not None}
@@ -234,9 +245,15 @@ class CornerCoach:
                 v[i] = b.speed_min
         return v
 
-    def _map(self, lap: _Lap) -> list[Corner]:
-        """Find the corners in a lap's speed trace; empty if the lap has too little data."""
-        v = self._speeds(lap)
+    def _pooled(self) -> np.ndarray:
+        """The laps seen so far merged bin by bin (mean of the laps that have data there)."""
+        stack = np.vstack(self._map_laps)
+        counts = np.isfinite(stack).sum(axis=0)
+        total = np.where(np.isfinite(stack), stack, 0).sum(axis=0)
+        return np.where(counts > 0, total / np.maximum(counts, 1), np.nan)
+
+    def _map(self, v: np.ndarray) -> list[Corner]:
+        """Find the corners in a speed trace by lap distance; empty if it has too little data."""
         if np.isfinite(v).mean() < MAP_MIN_COVERAGE:
             return []
         idx = np.arange(len(v))
