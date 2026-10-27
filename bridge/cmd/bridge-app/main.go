@@ -44,6 +44,10 @@ func main() {
 
 	a := app.NewWithID(appID)
 	a.SetIcon(appIcon)
+	if v := a.Metadata().Version; version == "dev" && v != "" && v != "0.0.1" {
+		version = v // fyne package --app-version stamps the metadata, not main.version
+	}
+	logger.Printf("Ingeniero Bridge %s started", version)
 	c := newController(a, logger)
 
 	if desk, ok := a.(desktop.App); ok {
@@ -526,11 +530,21 @@ func openLog() *log.Logger {
 	if dir, err := logDir(); err == nil {
 		if os.MkdirAll(dir, 0o755) == nil {
 			if f, err := os.OpenFile(filepath.Join(dir, "bridge-app.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644); err == nil {
-				w = io.MultiWriter(os.Stderr, f)
+				w = logWriter{f}
 			}
 		}
 	}
 	return log.New(w, "", log.LstdFlags)
+}
+
+// logWriter writes to the file and copies to stderr when there is one. A
+// Windows GUI app has no stderr, and io.MultiWriter would stop at that error
+// before reaching the file.
+type logWriter struct{ f *os.File }
+
+func (l logWriter) Write(p []byte) (int, error) {
+	os.Stderr.Write(p)
+	return l.f.Write(p)
 }
 
 // --- floating panels ----------------------------------------------------------

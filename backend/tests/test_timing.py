@@ -88,6 +88,16 @@ def _packet(t, cars):
     return SimpleNamespace(session_time=t, body={"lap_data": cars})
 
 
+def test_a_restart_or_looped_replay_drops_the_reference_but_a_flashback_keeps_it():
+    timing = LiveTiming()
+    timing.delta.reference, timing.delta.reference_lap, timing.delta.best_ms = [(0.0, 0), (TRACK, 100_000)], 3, 100_000
+    timing.observe(_packet(500.0, [_lap(5, 100, 2_000)]), 0, TRACK, False)
+    timing.observe(_packet(492.0, [_lap(5, 100, 2_000)]), 0, TRACK, False)  # flashback
+    assert timing.delta.reference_lap == 3
+    timing.observe(_packet(20.0, [_lap(1, 100, 2_000)]), 0, TRACK, False)  # back to the start
+    assert timing.delta.reference_lap is None and not timing.delta.reference
+
+
 def test_relatives_use_the_time_since_the_car_ahead_passed():
     timing = LiveTiming()
     # Car 1 drives 100 m ahead of the player at 50 m/s: 2 s apart on track.

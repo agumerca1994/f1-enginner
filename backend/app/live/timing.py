@@ -20,6 +20,7 @@ LINE_MARGIN_M = 200.0
 MAX_PASSAGE_GAP_S = 3.0
 PASSAGE_WINDOW_S = 600.0
 FLASHBACK_M = 50.0  # the car moving back this much within a lap is a flashback
+RESTART_REWIND_S = 60.0  # flashbacks rewind seconds; restarts and looped replays far more
 PACE_LAPS = 5  # pace = median of the clean laps among the last PACE_LAPS
 PACE_MIN_LAPS = 3
 STABLE_CLOSING_S = 0.1  # pace differences below this per lap read as "holding"
@@ -129,6 +130,10 @@ class LiveTiming:
             # A flashback or restart rewinds the clock: older passages no longer line up.
             for car in self.cars.values():
                 car.passages.clear()
+            if t < self.session_time - RESTART_REWIND_S:
+                # Far more than a flashback: the session restarted or a replay looped. Its laps
+                # are not a reference for the new run (a looped replay would read ±0.000).
+                self.delta = LapDelta()
         self.session_time = t
         laps = packet.body["lap_data"]
         for i in range(len(laps)):
