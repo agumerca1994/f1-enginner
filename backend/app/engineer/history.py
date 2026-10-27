@@ -8,6 +8,7 @@ records then simply have gaps, and the analysis works with what exists.
 
 from dataclasses import dataclass, field
 
+from app.engineer.corners import CornerCoach
 from app.live.state import LiveSession
 from app.telemetry import constants as c
 from app.telemetry import registry
@@ -78,6 +79,18 @@ class Trigger:
     detail: dict = field(default_factory=dict)
 
 
+WHEEL_ES = ("trasera izquierda", "trasera derecha", "delantera izquierda", "delantera derecha")
+# Issues that wear each axle: rears from traction and slides, fronts from lock-ups and understeer.
+AXLE_ISSUES = {
+    "rear": ("patinaje_traccion", "sobreviraje", "bloqueo_trasero"),
+    "front": ("bloqueo_delantero", "subviraje"),
+}
+OVERUSE_RATIO = 1.35  # one tyre wearing this much faster than the median of the others...
+OVERUSE_MIN_PCT_LAP = 0.4  # ...and at least this fast, in % per lap
+OVERUSE_LAPS = 4  # measured over the last laps of the stint
+OVERUSE_CALL_GAP = 5
+
+
 class SessionHistory:
     def __init__(self) -> None:
         self.car_laps: dict[int, list[CarLap]] = {}
@@ -125,6 +138,8 @@ class SessionHistory:
         self._warnings = 0
         self._pit_stops = 0
         self._started = False
+        self.corners = CornerCoach()
+        self._overuse_called: dict[int, int] = {}
 
     # --- feeding ------------------------------------------------------------
 
@@ -188,6 +203,9 @@ class SessionHistory:
             new += self._overtake_changes(packet, live)
         elif packet.name == "lap_data":
             new += self._lap_changes(packet, live)
+        note = self.corners.observe(packet, live)
+        if note:
+            new.append(Trigger("corner_coaching", t, self._player_lap(live), note))
         self.triggers += new
         return new
 
@@ -332,6 +350,7 @@ class SessionHistory:
                 sectors = self._finalize_sectors(int(lap["last_lap_time_in_ms"]) or None)
                 self.player_laps.append(self._player_record(num - 1, lap, live, sectors))
                 out.append(Trigger("lap_completed", packet.session_time, num - 1))
+                out += self._tyre_overuse(packet.session_time, num - 1)
 
         me = laps[player]
         out += self._player_sector_triggers(me, packet.session_time, live)
@@ -392,6 +411,41 @@ class SessionHistory:
         self._cur_s1 = self._cur_s2 = None
         self._sector = 0
         return sectors
+
+    def _tyre_overuse(self, t: float, lap: int) -> list[Trigger]:
+        """One tyre wearing clearly faster than the rest over the last laps of this stint."""
+        stint: list[PlayerLap] = []
+        for pl in reversed(self.player_laps):
+            if pl.wear is None:
+                break
+            stint.insert(0, pl)
+            if pl.pitted or len(stint) == OVERUSE_LAPS:
+                break
+        if len(stint) < 3 or stint[-1].lap - stint[0].lap != len(stint) - 1:
+            return []
+        laps = len(stint) - 1
+        rates = [(stint[-1].wear[w] - stint[0].wear[w]) / laps for w in range(4)]
+        worst = max(range(4), key=lambda w: rates[w])
+        others = sorted(r for w, r in enumerate(rates) if w != worst)[1]  # the median of the other three
+        if rates[worst] < OVERUSE_MIN_PCT_LAP or rates[worst] < OVERUSE_RATIO * max(others, 0.05):
+            return []
+        if lap - self._overuse_called.get(worst, -99) < OVERUSE_CALL_GAP:
+            return []
+        self._overuse_called[worst] = lap
+        axle = "rear" if worst < 2 else "front"
+        summary = self.corners.summary() or {}
+        culprits = [
+            {"curva": r["curva"], "sector": r["sector"],
+             "problemas": [i for i in r["problemas_en_vueltas"] if i in AXLE_ISSUES[axle]]}
+            for r in summary.get("peores", []) if any(i in AXLE_ISSUES[axle] for i in r["problemas_en_vueltas"])
+        ][:2]
+        return [Trigger("tyre_overuse", t, lap, {
+            "rueda": WHEEL_ES[worst],
+            "pct_por_vuelta": round(rates[worst], 2),
+            "resto_pct_por_vuelta": round(others, 2),
+            "desgaste_pct": round(stint[-1].wear[worst], 1),
+            "curvas": culprits,
+        })]
 
     def _player_record(self, lap_num: int, lap, live: LiveSession, sectors: list[int | None] | None = None) -> PlayerLap:
         status = live.last.get("car_status")

@@ -217,7 +217,8 @@ export type EngineerMessage = {
   cost_usd: number;
   radio: string | null;
   prioridad: "info" | "importante" | "urgente";
-  estrategia: {
+  /** Absent on radio-only calls (the quick lane): only full calls carry the pit-wall analysis. */
+  estrategia?: {
     plan: string;
     vuelta_box: number | null;
     ventana_box: number[] | null;
@@ -225,9 +226,9 @@ export type EngineerMessage = {
     alternativa: string;
     certeza: "baja" | "media" | "alta";
   };
-  manejo: string[];
-  reglaje: { parametro: string; cambio: string; motivo: string }[];
-  analisis: string;
+  manejo?: string[];
+  reglaje?: { parametro: string; cambio: string; motivo: string }[];
+  analisis?: string;
 };
 
 export type EngineerState = {

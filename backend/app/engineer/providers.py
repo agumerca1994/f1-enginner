@@ -11,6 +11,8 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
+from functools import cache
+from pathlib import Path
 
 import anthropic
 
@@ -55,21 +57,45 @@ RESPONSE_SCHEMA = {
     "additionalProperties": False,
 }
 
-# US$ per million tokens (input, output), from Anthropic's price list of June 2026.
-# Cache reads cost ~10% of input and 5-minute cache writes ~125%.
+RADIO_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "radio": {"type": ["string", "null"]},
+        "prioridad": {"type": "string", "enum": ["info", "importante", "urgente"]},
+    },
+    "required": ["radio", "prioridad"],
+    "additionalProperties": False,
+}
+
+# US$ per million tokens (input, output), from Anthropic's price list of October 2026.
+# Cache reads cost ~10% of input and 5-minute cache writes ~125%. Longest ids first:
+# prices are matched by prefix.
 PRICES = {
+    "claude-haiku-5-5": (0.10, 0.50),
+    "claude-sonnet-5-5": (2.0, 10.0),
+    "claude-opus-5-5": (4.0, 20.0),
     "claude-haiku-4-5": (1.0, 5.0),
     "claude-sonnet-5": (2.0, 10.0),
     "claude-opus-5": (5.0, 25.0),
-    "claude-opus-5-5": (4.0, 20.0),
 }
-# (per-lap model, model for important moments). Haiku was tested and misread the
-# race state (see docs/pruebas/ingeniero-ia-real-2026-09-27.md), so both tiers use
-# Sonnet per lap; Pro adds Opus for the decisions that matter most.
+# (pit-wall model on routine laps, model for important moments). Pro adds Opus for
+# the decisions that matter most.
 TIERS = {
-    "standard": ("claude-sonnet-5", "claude-sonnet-5"),
-    "pro": ("claude-sonnet-5", "claude-opus-5"),
+    "standard": ("claude-sonnet-5-5", "claude-sonnet-5-5"),
+    "pro": ("claude-sonnet-5-5", "claude-opus-5-5"),
 }
+# The radio lane: short calls on every routine moment, so the cheapest model. It gets
+# the full facts and a focused brief, which is what an earlier Haiku lacked when it
+# misread the race state (docs/pruebas/ingeniero-ia-real-2026-09-27.md).
+RADIO_MODEL = "claude-haiku-5-5"
+# Models that take the server-side refusal fallback (Haiku has none).
+FALLBACK_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5")
+RADIO_PROMPT = Path(__file__).parent / "prompts" / "radio_es.md"
+
+
+@cache
+def radio_system() -> str:
+    return RADIO_PROMPT.read_text(encoding="utf-8")
 
 
 @dataclass
@@ -91,28 +117,50 @@ class RulesProvider:
 
 
 class AnthropicProvider:
-    def __init__(self, api_key: str, tier: str = "standard", fast_model: str = "", deep_model: str = ""):
+    def __init__(self, api_key: str, tier: str = "standard", fast_model: str = "", deep_model: str = "",
+                 radio_model: str = ""):
         default_fast, default_deep = TIERS.get(tier, TIERS["standard"])
         self.fast_model = fast_model or default_fast
         self.deep_model = deep_model or default_deep
+        self.radio_model = radio_model or RADIO_MODEL
         self.client = anthropic.AsyncAnthropic(api_key=api_key, timeout=60.0, max_retries=2)
         self.name = f"claude ({tier})"
 
     async def advise(self, request: EngineerRequest) -> Advice:
+        """The full call: strategy, driving, setup and analysis for the pit wall, plus radio."""
         model = self.deep_model if request.deep else self.fast_model
+        return await self._call(
+            model,
+            # The manual is the same on every call: cache it.
+            system=[{"type": "text", "text": request.system, "cache_control": {"type": "ephemeral"}}],
+            user=request.user,
+            schema=RESPONSE_SCHEMA,
+            effort="medium" if request.deep else "low",
+            max_tokens=4096,
+        )
+
+    async def radio(self, request: EngineerRequest) -> Advice:
+        """Just the radio call, quick: the radio brief plus the manual, both cached."""
+        return await self._call(
+            self.radio_model,
+            system=[{"type": "text", "text": request.system},
+                    {"type": "text", "text": radio_system(), "cache_control": {"type": "ephemeral"}}],
+            user=request.user,
+            schema=RADIO_SCHEMA,
+            effort="low",
+            max_tokens=600,
+        )
+
+    async def _call(self, model: str, *, system: list, user: str, schema: dict, effort: str, max_tokens: int) -> Advice:
         params: dict = {
             "model": model,
-            "max_tokens": 4096,
-            # The manual is the same on every call: cache it.
-            "system": [{"type": "text", "text": request.system, "cache_control": {"type": "ephemeral"}}],
-            "messages": [{"role": "user", "content": request.user}],
-            "output_config": {"format": {"type": "json_schema", "schema": RESPONSE_SCHEMA}},
+            "max_tokens": max_tokens,
+            "system": system,
+            "messages": [{"role": "user", "content": user}],
+            "output_config": {"format": {"type": "json_schema", "schema": schema}, "effort": effort},
         }
-        if not model.startswith("claude-haiku"):
-            # Radio calls must be quick; strategy calls may think a bit more.
-            params["output_config"]["effort"] = "medium" if request.deep else "low"
         started = time.monotonic()
-        if model.startswith("claude-opus-5"):
+        if model.startswith(FALLBACK_MODELS):
             # Server-side fallback: if the model declines, the API retries on a fallback model.
             response = await self.client.beta.messages.create(
                 betas=["server-side-fallback-2026-07-01"], extra_body={"fallbacks": "default"}, **params)
@@ -141,7 +189,8 @@ def cost(model: str, usage: dict) -> float:
 def get_provider():
     if settings.ANTHROPIC_API_KEY:
         return AnthropicProvider(settings.ANTHROPIC_API_KEY, settings.ENGINEER_TIER,
-                                 settings.ENGINEER_FAST_MODEL, settings.ENGINEER_DEEP_MODEL)
+                                 settings.ENGINEER_FAST_MODEL, settings.ENGINEER_DEEP_MODEL,
+                                 settings.ENGINEER_RADIO_MODEL)
     return RulesProvider()
 
 
@@ -212,6 +261,10 @@ def rules_response(request: EngineerRequest) -> dict:
         priority = "importante" if d["pct"] >= 30 else "info"
     elif "blue_flag" in kinds:
         radio, priority = "Bandera azul: viene el líder a doblarte, dejalo pasar en la próxima recta.", "importante"
+    elif "corner_coaching" in kinds:
+        radio, priority = _corner_call(next(t.detail for t in request.triggers if t.kind == "corner_coaching")), "importante"
+    elif "tyre_overuse" in kinds:
+        radio, priority = _overuse_call(next(t.detail for t in request.triggers if t.kind == "tyre_overuse")), "importante"
     elif "sector_completed" in kinds:
         d = next((t.detail for t in request.triggers if t.kind == "sector_completed"), {})
         if d.get("mejor_personal"):
@@ -320,3 +373,46 @@ def _catch_call(f: dict) -> tuple[str, str] | None:
             return f"Le descontás {closing:.1f} por vuelta a {name}: en {n} vueltas lo tenés.", "info"
         return f"{name} te descuenta {closing:.1f} por vuelta: te alcanza en {n} vueltas. Cuidá las salidas.", "importante"
     return None
+
+
+CORNER_TIPS = {
+    "bloqueo_delantero": "bloqueás adelante en la frenada: frená más progresivo o balance de frenos un punto atrás",
+    "bloqueo_trasero": "bloqueás atrás en la frenada: balance de frenos un punto adelante y soltá el freno antes de doblar",
+    "patinaje_traccion": "patinás atrás en la salida: abrí el acelerador más suave hasta enderezar",
+    "sobreviraje": "se te va la cola: soltá el freno más gradual mientras doblás",
+    "subviraje": "el auto no gira: entrá un poco más lento y acelerá antes",
+    "fuera_de_pista": "te vas de pista: ojo con los límites, que cuesta tiempo y advertencias",
+}
+
+
+def _tenths(seconds: float) -> str:
+    return f"{round(seconds * 10)} décimas" if seconds < 0.95 else f"{seconds:.1f} segundos".replace(".", ",")
+
+
+def _corner_call(d: dict) -> str:
+    """'Perdés cuatro décimas en la salida de la 3: patinás atrás...' from a corner note."""
+    n = d["curva"]
+    issue = next(iter(d.get("problemas_repetidos") or d.get("problemas") or []), None)
+    loss = d.get("perdida_s")
+    if issue:  # the tip already names the phase
+        head = f"Perdés {_tenths(loss)} en la {n}" if loss and loss > 0 else f"En la {n}"
+        return f"{head}: {CORNER_TIPS[issue]}."
+    head = f"Perdés {_tenths(loss)} en la {d['donde_pierde'] or 'curva'} de la {n}" if loss and loss > 0 else f"En la {n}"
+    now, best = d.get("velocidad_kmh") or {}, d.get("velocidad_mejor_paso_kmh") or {}
+    if d.get("donde_pierde") == "salida" and now.get("salida") and best.get("salida"):
+        return f"{head}: salís {best['salida'] - now['salida']} km/h más lento que en tu mejor paso, acelerá antes."
+    if now.get("entrada") and best.get("entrada") and best["entrada"] > now["entrada"]:
+        return f"{head}: llegás {best['entrada'] - now['entrada']} km/h más lento, frenás antes de lo necesario."
+    return f"{head}: mirá esa curva, ahí está la diferencia con tu mejor vuelta."
+
+
+def _overuse_call(d: dict) -> str:
+    rueda = d["rueda"]
+    text = (f"La goma {rueda} se gasta más que las otras: {d['pct_por_vuelta']:.1f} por ciento por vuelta "
+            f"contra {d['resto_pct_por_vuelta']:.1f}.").replace(".", ",", 2)
+    corners = d.get("curvas") or []
+    if corners:
+        where = " y la ".join(str(k["curva"]) for k in corners)
+        issue = next((i for k in corners for i in k["problemas"]), None)
+        text += f" La castigás en la {where}" + (f": {CORNER_TIPS[issue].split(':')[1].strip()}." if issue else ".")
+    return text

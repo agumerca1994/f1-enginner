@@ -16,8 +16,46 @@ function pickVoice(): SpeechSynthesisVoice | null {
   );
 }
 
+// Team-radio keying tones: two short beeps opening the channel and the reverse closing it.
+const OPEN_TONES: [number, number][] = [[1000, 0.06], [1400, 0.06]];
+const CLOSE_TONES: [number, number][] = [[1400, 0.06], [1000, 0.06]];
+const TONE_GAP_S = 0.02;
+
+let audio: AudioContext | null = null;
+
+function audioContext(): AudioContext | null {
+  try {
+    audio ??= new AudioContext();
+    if (audio.state === "suspended") audio.resume();
+    return audio;
+  } catch {
+    return null;
+  }
+}
+
+/** Plays the tones and returns how long they last, in milliseconds. */
+export function radioTones(tones: [number, number][]): number {
+  const ctx = audioContext();
+  if (!ctx) return 0;
+  let t = ctx.currentTime + 0.01;
+  for (const [hz, len] of tones) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = hz;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.12, t + 0.005);
+    gain.gain.setValueAtTime(0.12, t + len - 0.005);
+    gain.gain.linearRampToValueAtTime(0, t + len);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + len);
+    t += len + TONE_GAP_S;
+  }
+  return Math.round((t - ctx.currentTime) * 1000);
+}
+
 /**
- * Reads the engineer's radio calls aloud. Urgent calls cut whatever is being said.
+ * Reads the engineer's radio calls aloud, between radio keying tones. Urgent calls cut whatever is being said.
  * Browsers only allow speech after a user gesture, so it starts off and is turned
  * on with a tap; the choice is remembered.
  */
@@ -48,7 +86,9 @@ export function useEngineerVoice(messages: EngineerMessage[], { alwaysOn = false
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang ?? "es-AR";
     utterance.rate = 1.05;
-    synth.speak(utterance);
+    utterance.onend = () => radioTones(CLOSE_TONES);
+    const wait = synth.speaking ? 0 : radioTones(OPEN_TONES); // queued calls follow the previous close
+    setTimeout(() => synth.speak(utterance), wait + 80);
   }, []);
 
   // Speak radio calls that arrive while the voice is on; never replay old ones.

@@ -32,6 +32,8 @@ export function EngineerPanel({
 }) {
   const voice = useEngineerVoice(engineer.messages);
   const latest = engineer.messages.slice(-1)[0];
+  // Radio-only calls (the quick lane) carry no strategy: the pit wall shows the last full analysis.
+  const wall = [...engineer.messages].reverse().find((m) => m.estrategia);
   const lastRadio = [...engineer.messages].reverse().find((m) => m.radio);
   const history = engineer.messages.filter((m) => m.radio && m.id !== lastRadio?.id).slice(-5).reverse();
   const cost = engineer.messages.reduce((sum, m) => sum + (m.cost_usd || 0), 0);
@@ -76,8 +78,8 @@ export function EngineerPanel({
         </p>
       ) : !latest ? (
         <p className="py-3 text-sm text-muted">
-          Escuchando la sesión. El ingeniero habla al completar cada vuelta o cuando pasa algo importante: safety car,
-          daños, lluvia, boxes.
+          Escuchando la sesión. El ingeniero te habla en las rectas: ritmo, rivales, en qué curva perdés tiempo, qué goma
+          estás castigando, y al instante si pasa algo urgente (safety car, daños, lluvia, boxes).
         </p>
       ) : (
         <div className="space-y-3">
@@ -96,11 +98,11 @@ export function EngineerPanel({
             </div>
           )}
 
-          <Strategy s={latest.estrategia} />
+          {wall?.estrategia && <Strategy s={wall.estrategia} />}
 
-          {latest.manejo.length > 0 && (
+          {wall?.manejo && wall.manejo.length > 0 && (
             <ul className="space-y-1 text-sm">
-              {latest.manejo.map((tip) => (
+              {wall.manejo.map((tip) => (
                 <li key={tip} className="flex gap-2">
                   <span className="text-accent">›</span>
                   {tip}
@@ -109,11 +111,11 @@ export function EngineerPanel({
             </ul>
           )}
 
-          {latest.reglaje.length > 0 && (
+          {wall?.reglaje && wall.reglaje.length > 0 && (
             <div>
               <div className="label mb-1">Reglaje sugerido</div>
               <ul className="space-y-1 text-sm">
-                {latest.reglaje.map((r) => (
+                {wall.reglaje.map((r) => (
                   <li key={r.parametro}>
                     <span className="font-medium">{r.parametro}</span> <span className="text-accent">{r.cambio}</span>
                     <span className="text-muted"> · {r.motivo}</span>
@@ -123,7 +125,7 @@ export function EngineerPanel({
             </div>
           )}
 
-          {latest.analisis && <p className="text-sm leading-relaxed text-muted">{latest.analisis}</p>}
+          {wall?.analisis && <p className="text-sm leading-relaxed text-muted">{wall.analisis}</p>}
 
           {history.length > 0 && (
             <div>
@@ -153,7 +155,7 @@ export function EngineerPanel({
   );
 }
 
-function Strategy({ s }: { s: EngineerState["messages"][number]["estrategia"] }) {
+function Strategy({ s }: { s: NonNullable<EngineerState["messages"][number]["estrategia"]> }) {
   const window = s.ventana_box?.filter(Boolean) ?? [];
   return (
     <div className="rounded-xl border border-line p-3">

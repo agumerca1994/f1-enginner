@@ -41,7 +41,24 @@ TRIGGER_TEXT = {
     "blisters": ("Ampollas en la goma {rueda}: {pct}%. Decile cómo cuidarla (temperatura, deslizamiento) "
                  "y si cambia el plan de paradas."),
     "session_end": "Terminó la sesión: hacé un resumen breve para el piloto.",
+    "corner_coaching": ("Coaching de curva (datos de la vuelta que cerró): {detalle}. Decile en la próxima recta "
+                        "dónde pierde y qué cambiar, como un ingeniero: curva, fase, cuánto y una sola acción."),
+    "tyre_overuse": ("Una goma se gasta más que el resto: {detalle}. Decile cuál, en qué curvas la castiga y qué "
+                     "hacer distinto (o qué ajuste ayuda), sin alarmar."),
 }
+
+# Moments the quick radio handles alone; anything else also gets the full strategy call.
+ROUTINE_TRIGGERS = ("lap_completed", "sector_completed", "corner_coaching", "tyre_overuse", "blue_flag",
+                    "overtake_available", "rival_overtake")
+
+# Moments whose detail is a whole structure: it goes to the model as JSON.
+STRUCTURED_TRIGGERS = ("corner_coaching", "tyre_overuse")
+
+
+def moment_text(t: Trigger) -> str:
+    if t.kind in STRUCTURED_TRIGGERS:
+        return TRIGGER_TEXT[t.kind].format(detalle=json.dumps(t.detail, ensure_ascii=False))
+    return TRIGGER_TEXT[t.kind].format(lap=t.lap, **t.detail)
 
 
 @cache
@@ -58,6 +75,7 @@ class EngineerRequest:
     radio_json: str
     facts_json: str
     system: str = field(default_factory=lambda: system_prompt())
+    quiet: bool = False  # a pit-wall refresh that must not speak
 
     @property
     def user(self) -> str:
@@ -85,7 +103,7 @@ class EngineerRequest:
     @property
     def deep(self) -> bool:
         """Moments that deserve the stronger model: anything but a routine lap or a sector note."""
-        return any(t.kind not in ("lap_completed", "sector_completed") for t in self.triggers)
+        return any(t.kind not in ROUTINE_TRIGGERS for t in self.triggers)
 
 
 def merge(older: "EngineerRequest", newer: "EngineerRequest") -> "EngineerRequest":
@@ -97,6 +115,7 @@ def merge(older: "EngineerRequest", newer: "EngineerRequest") -> "EngineerReques
         moments=older.moments + [m for m in newer.moments if m not in older.moments],
         radio_json=newer.radio_json,
         facts_json=newer.facts_json,
+        quiet=older.quiet and newer.quiet,
     )
 
 
@@ -128,7 +147,7 @@ class RaceEngineer:
             triggers=triggers,
             session_time=triggers[-1].session_time,
             lap=triggers[-1].lap,
-            moments=[TRIGGER_TEXT[t.kind].format(lap=t.lap, **t.detail) for t in triggers],
+            moments=[moment_text(t) for t in triggers],
             radio_json=json.dumps(self.recent_radio[-6:], ensure_ascii=False) if self.recent_radio else "Ninguno todavía.",
             facts_json=json.dumps(facts, ensure_ascii=False, separators=(",", ":")),
         )

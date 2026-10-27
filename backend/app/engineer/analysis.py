@@ -53,6 +53,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
         "piloto": _player(snap, history, laps),
         "ritmo": _pace(laps, history, player_idx),
         "sectores": _sectores(snap, history, laps),
+        "curvas": history.corners.summary(),
         "neumaticos": _tyres(snap, laps),
         "combustible": _fuel(snap, laps, total, current),
         "rivales": {**_rivals(snap, history), "alcance": _reach(snap)},

@@ -1,9 +1,20 @@
 """Runs the race engineer for one viewer of a session, live or replayed.
 
 Packets feed the engineer's history all the time (it costs nothing); only when
-the assistant is active are its requests sent to the provider. One request is
-in flight at a time: moments that arrive meanwhile are merged into the next
-one, so a slow model never builds a backlog of stale questions.
+the assistant is active are its requests sent to the provider.
+
+With an AI provider there are two lanes, each with one request in flight
+(moments that arrive meanwhile are merged into the next one):
+
+- the radio lane: a quick, cheap model writes the radio call for routine
+  moments (a lap, a sector, corner coaching, a worn tyre) right when they happen;
+- the strategy lane: the full call (strategy, driving, setup and analysis for
+  the pit wall) on important moments, which may speak, and every few laps
+  without speaking, to keep the pit wall current.
+
+Radio calls are not read out at once: like a real engineer they wait for the
+next straight (full throttle, no brake, wheel straight), at most RADIO_HOLD_S.
+Urgent ones go out immediately.
 """
 
 import asyncio
@@ -21,6 +32,10 @@ from app.telemetry.registry import Packet
 logger = logging.getLogger(__name__)
 _ids = itertools.count(1)
 
+RADIO_HOLD_S = 15.0  # longest a non-urgent call waits for a straight (game seconds)
+STRAIGHT_S = 0.6  # this long flat out and straight counts as a straight
+DEEP_EVERY_LAPS = 3  # the quiet pit-wall refresh on routine laps
+
 
 class EngineerRunner:
     def __init__(self, tenant_id: int, mode: str, game_session_id: int | None = None, provider=None):
@@ -32,21 +47,35 @@ class EngineerRunner:
         self.session_uid: int | None = None
         self.active = False
         self.messages: deque[dict] = deque(maxlen=40)
-        self._pending: EngineerRequest | None = None
+        self._pending: EngineerRequest | None = None  # strategy lane (and everything, without AI)
+        self._pending_radio: EngineerRequest | None = None
         self._busy = False
+        self._busy_radio = False
+        self._last_deep_lap: int | None = None
+        # Radio calls waiting for a straight: (game time queued, message).
+        self._outbox: list[tuple[float, dict]] = []
+        self._straight_since: float | None = None
+        self._game_time = 0.0
 
     @property
     def provider_name(self) -> str:
         return self.provider.name
 
+    @property
+    def _two_lanes(self) -> bool:
+        return hasattr(self.provider, "radio")
+
     def reset(self) -> None:
         """Start over (a new game session, or a replay rewound)."""
         self.engineer = RaceEngineer()
-        self._pending = None
+        self._pending = self._pending_radio = None
+        self._outbox.clear()
+        self._last_deep_lap = None
 
     def discard_pending(self) -> None:
         """Forget moments collected while jumping through a replay: only playback speaks."""
-        self._pending = None
+        self._pending = self._pending_radio = None
+        self._outbox.clear()
 
     def messages_after(self, message_id: int) -> list[dict]:
         return [m for m in self.messages if m["id"] > message_id]
@@ -55,14 +84,73 @@ class EngineerRunner:
         if self.session_uid != packet.session_uid:
             self.session_uid = packet.session_uid
             self.reset()
+        self._game_time = packet.session_time
+        if packet.name == "car_telemetry":
+            self._track_straight(packet)
         request = self.engineer.observe(packet, live)
         if request is not None and self.active:
-            self._pending = merge(self._pending, request) if self._pending else request
+            self._queue(request)
+        self._flush_outbox()
         return request
 
+    def _queue(self, request: EngineerRequest) -> None:
+        if not self._two_lanes or request.deep:
+            self._pending = merge(self._pending, request) if self._pending else request
+            return
+        self._pending_radio = merge(self._pending_radio, request) if self._pending_radio else request
+        lap = request.lap or 0
+        laps = [t for t in request.triggers if t.kind == "lap_completed"]
+        if laps and (self._last_deep_lap is None or lap - self._last_deep_lap >= DEEP_EVERY_LAPS):
+            self._last_deep_lap = lap
+            quiet = EngineerRequest(**{**request.__dict__, "quiet": True})
+            self._pending = merge(self._pending, quiet) if self._pending else quiet
+
+    # --- when to speak --------------------------------------------------------------
+
+    def _track_straight(self, packet: Packet) -> None:
+        t = packet.body["car_telemetry_data"][packet.player_car_index] \
+            if packet.player_car_index < len(packet.body["car_telemetry_data"]) else None
+        if t is None:
+            return
+        stopped = int(t["speed"]) < 5  # grid, garage or pit box: nothing to disturb
+        flat = float(t["throttle"]) > 0.85 and float(t["brake"]) < 0.05 and abs(float(t["steer"])) < 0.12
+        if stopped:
+            self._straight_since = packet.session_time - STRAIGHT_S
+        elif flat:
+            self._straight_since = self._straight_since if self._straight_since is not None else packet.session_time
+        else:
+            self._straight_since = None
+
+    def _on_straight(self) -> bool:
+        return self._straight_since is not None and self._game_time - self._straight_since >= STRAIGHT_S
+
+    def _flush_outbox(self) -> None:
+        if not self._outbox:
+            return
+        if self._on_straight() or self._game_time - self._outbox[0][0] >= RADIO_HOLD_S:
+            for _, message in self._outbox:
+                self.messages.append(message)
+            self._outbox.clear()
+
+    def _deliver(self, message: dict) -> None:
+        """Hand a message to the dashboard: at once if urgent or silent, else on the next straight."""
+        if not message.get("radio") or message.get("prioridad") == "urgente":
+            self.messages.append(message)
+            return
+        self._outbox.append((self._game_time, message))
+        self._flush_outbox()
+
+    # --- asking -----------------------------------------------------------------------
+
     def dispatch(self) -> None:
-        """Send the waiting request, if any and nothing is in flight. Call from the event loop."""
-        if self._busy or self._pending is None or not self.active:
+        """Send the waiting requests, if any and their lane is free. Call from the event loop."""
+        if not self.active:
+            return
+        if not self._busy_radio and self._pending_radio is not None:
+            request, self._pending_radio = self._pending_radio, None
+            self._busy_radio = True
+            asyncio.create_task(self._ask_radio(request))
+        if self._busy or self._pending is None:
             return
         request, self._pending = self._pending, None
         if request.urgent and not isinstance(self.provider, RulesProvider):
@@ -77,7 +165,19 @@ class EngineerRunner:
             return
         advice = Advice(response, "aviso inmediato", 0)
         self.engineer.remember(request, response)  # the AI sees it and confirms or corrects it
-        self.messages.append(self._message(request, advice))
+        self._deliver(self._message(request, advice))
+
+    async def _ask_radio(self, request: EngineerRequest) -> None:
+        try:
+            advice = await self.provider.radio(request)
+        except Exception as e:
+            logger.warning("engineer radio call failed", extra={"tenant_id": self.tenant_id, "error": str(e)})
+        else:
+            self.engineer.remember(request, advice.response)
+            self._deliver(self._message(request, advice))
+            await self._store(request, advice)
+        self._busy_radio = False
+        self.dispatch()
 
     async def _ask(self, request: EngineerRequest) -> None:
         try:
@@ -87,9 +187,10 @@ class EngineerRunner:
             self._busy = False
             self.dispatch()
             return
+        if request.quiet:
+            advice.response["radio"] = None  # a pit-wall refresh: the radio lane already spoke
         self.engineer.remember(request, advice.response)
-        message = self._message(request, advice)
-        self.messages.append(message)
+        self._deliver(self._message(request, advice))
         await self._store(request, advice)
         self._busy = False
         self.dispatch()

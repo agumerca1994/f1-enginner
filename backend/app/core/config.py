@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     ENGINEER_TIER: str = "standard"  # standard | pro
     ENGINEER_FAST_MODEL: str = ""  # per-lap radio; empty = the tier's default
     ENGINEER_DEEP_MODEL: str = ""  # strategy and important moments; empty = the tier's default
+    ENGINEER_RADIO_MODEL: str = ""  # the quick radio lane; empty = Claude Haiku 5.5
 
     # Raw telemetry received from bridges, one .f1cap.zst per connection and game session.
     CAPTURE_DIR: str = "/data/captures"
