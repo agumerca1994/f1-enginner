@@ -20,9 +20,17 @@ DAMAGE_STEP = 15
 BLISTER_LEVELS = (15, 30, 50)
 # 2026 overtake mode: worth a call when the gap ahead (or behind) is at most this.
 OVERTAKE_GAP_MS = 1500
-# Players often undo a crash with a flashback a few seconds later: damage is
-# reported only if no flashback follows within this many seconds.
+# Players often undo a crash with a flashback: damage is reported only if no
+# flashback follows within this many seconds of game time. Game time, because
+# the game sits paused in the flashback menu while the player picks the moment.
 DAMAGE_CONFIRM_S = 8.0
+# A puncture: a tyre's damage jumps by PUNCTURE_JUMP or more, to PUNCTURE_PCT or more.
+# Worn tyres also climb, but a point at a time.
+PUNCTURE_PCT = 50
+PUNCTURE_JUMP = 30
+# Tyre damage keys in a damage trigger, in the order of every per-wheel array (RL, RR, FL, FR).
+PUNCTURE_KEYS = ("puncture_rear_left", "puncture_rear_right", "puncture_front_left", "puncture_front_right")
+WHEEL_OF_PUNCTURE = dict(zip(PUNCTURE_KEYS, c.WHEEL_NAMES_ES))
 RAIN_ALERT_PERCENT = 40
 # A sector is worth a radio call only on a personal best or a loss of at least this.
 SECTOR_LOSS_MS = 300
@@ -133,7 +141,8 @@ class SessionHistory:
         self._sc_status = "None"
         self._rain_alerted = False
         self._damage: dict[str, int] = {}
-        self._pending_damage: tuple[float, float, dict] | None = None  # (clock, session_time, parts)
+        self._tyre_damage: list[int] = []  # per wheel, last packet
+        self._pending_damage: tuple[float, dict] | None = None  # (session_time, parts)
         self._rebaseline_damage = False
         self._penalties = 0
         self._warnings = 0
@@ -148,10 +157,15 @@ class SessionHistory:
         """Update the history with one packet; return the moments worth an engineer call."""
         new: list[Trigger] = []
         t = packet.session_time
-        if self._pending_damage and live.clock() - self._pending_damage[0] >= DAMAGE_CONFIRM_S:
-            _, when, parts = self._pending_damage
-            self._pending_damage = None
-            new.append(Trigger("damage", when, self._player_lap(live), {"parts": parts}))
+        if self._pending_damage:
+            when, parts = self._pending_damage
+            if t < when - 1.0:
+                # The game clock went back: a flashback whose event packet was lost.
+                self._pending_damage = None
+                self._rebaseline_damage = True
+            elif t - when >= DAMAGE_CONFIRM_S:
+                self._pending_damage = None
+                new.append(Trigger("damage", when, self._player_lap(live), {"parts": parts}))
         if packet.name == "event":
             code, details = registry.event_details(packet)
             if code not in ("BUTN", "SPTP"):
@@ -248,14 +262,24 @@ class SessionHistory:
             "rear_wing": int(d["rear_wing_damage"]), "floor": int(d["floor_damage"]), "diffuser": int(d["diffuser_damage"]),
             "sidepod": int(d["sidepod_damage"]), "gearbox": int(d["gear_box_damage"]), "engine": int(d["engine_damage"]),
         }
+        tyres = [int(v) for v in d["tyres_damage"]]
         if not self._damage or self._rebaseline_damage:
-            self._damage, self._rebaseline_damage = parts, False
+            self._damage, self._tyre_damage, self._rebaseline_damage = parts, tyres, False
             return []
         grown = {k: v for k, v in parts.items() if v - self._damage.get(k, 0) >= DAMAGE_STEP}
-        self._damage = parts
-        if grown:
-            # Wait to see whether a flashback undoes it before calling the engineer.
-            self._pending_damage = (live.clock(), packet.session_time, grown)
+        # The baseline moves only on what gets reported, or down on a repair, so damage
+        # that builds up over several packets in one crash still adds up.
+        self._damage = {k: v if k in grown or v < self._damage[k] else self._damage[k] for k, v in parts.items()}
+        # Tyre damage follows wear, a point at a time; a puncture sends it to 100 at once.
+        grown |= {key: v for key, v, before in zip(PUNCTURE_KEYS, tyres, self._tyre_damage)
+                  if v >= PUNCTURE_PCT and v - before >= PUNCTURE_JUMP}
+        self._tyre_damage = tyres
+        if grown or self._pending_damage:
+            # Wait to see whether a flashback undoes it before calling the engineer,
+            # keeping the latest value of every part already waiting.
+            now = parts | dict(zip(PUNCTURE_KEYS, tyres))
+            when, waiting = self._pending_damage or (packet.session_time, {})
+            self._pending_damage = (when, {k: now[k] for k in waiting} | grown)
         return []
 
     def _blister_changes(self, packet: Packet, live: LiveSession) -> list[Trigger]:

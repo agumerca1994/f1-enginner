@@ -105,6 +105,7 @@ export type Snapshot = {
   damage?: {
     age_s: number | null;
     tyres_wear_percent: Wheels;
+    tyres_damage_percent?: Wheels; // follows wear; far above it is a puncture
     front_left_wing: number;
     front_right_wing: number;
     rear_wing: number;

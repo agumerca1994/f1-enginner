@@ -170,6 +170,7 @@ def build(live: LiveSession) -> dict[str, Any]:
         out["damage"] = {
             "age_s": _age(live, "car_damage"),
             "tyres_wear_percent": _wheels(d["tyres_wear"]),
+            "tyres_damage_percent": _wheels(d["tyres_damage"]),  # 100 on a puncture
             "front_left_wing": int(d["front_left_wing_damage"]),
             "front_right_wing": int(d["front_right_wing_damage"]),
             "rear_wing": int(d["rear_wing_damage"]),

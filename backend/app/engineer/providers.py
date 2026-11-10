@@ -19,6 +19,7 @@ import anthropic
 from app.core.config import settings
 from app.engineer.analysis import REACH_STATES
 from app.engineer.engine import EngineerRequest
+from app.engineer.history import WHEEL_OF_PUNCTURE
 from app.telemetry import constants as c
 
 logger = logging.getLogger(__name__)
@@ -238,11 +239,18 @@ def rules_response(request: EngineerRequest) -> dict:
         priority = "importante"
     elif "damage" in kinds:
         parts = next((t.detail.get("parts", {}) for t in request.triggers if t.kind == "damage"), {})
+        flats = [WHEEL_OF_PUNCTURE[p] for p in parts if p in WHEEL_OF_PUNCTURE]
+        parts = {p: v for p, v in parts.items() if p not in WHEEL_OF_PUNCTURE}
         worst = max(parts.values(), default=0)
         names = [c.DAMAGE_PARTS_ES.get(p, p) for p in parts]
         wing = any("wing" in p for p, v in parts.items() if v >= 50)
-        radio = f"Daño en {_y(names)}, {worst}%." + (" Paramos a cambiar el alerón." if wing else " Seguimos, te aviso si perdemos ritmo.")
-        priority = "urgente" if worst >= 50 else "importante"
+        if flats:
+            radio = (f"¡Pinchazo en la {_y(flats)}! Box, box, entrá ahora y cuidá el auto hasta boxes."
+                     + (" Cambiamos también el alerón." if wing else ""))
+            priority = "urgente"
+        else:
+            radio = f"Daño en {_y(names)}, {worst}%." + (" Paramos a cambiar el alerón." if wing else " Seguimos, te aviso si perdemos ritmo.")
+            priority = "urgente" if worst >= 50 else "importante"
     elif "rain_forecast" in kinds:
         radio = "Viene lluvia en los próximos 15 minutos: preparate para intermedios."
         priority = "importante"
@@ -275,7 +283,9 @@ def rules_response(request: EngineerRequest) -> dict:
         radio = "Buena parada. Dos vueltas para darle temperatura a las gomas nuevas."
     elif "session_end" in kinds:
         radio = f"Bandera a cuadros, terminamos {_place(pl.get('posicion'))}. Buen trabajo."
-    elif "session_start" in kinds or "race_start" in kinds:
+    elif "session_start" in kinds:  # practice or qualifying: the position means nothing yet
+        radio = f"Arrancamos la tanda con {c.COMPOUNDS_ES.get(ne.get('compuesto'), 'estas gomas')}. Radio check, te escucho."
+    elif "race_start" in kinds:
         radio = f"Largamos {_place(pl.get('posicion'))} con {c.COMPOUNDS_ES.get(ne.get('compuesto'), 'estas gomas')}." + (
             f" Hay que parar una vez, la ventana es de la {window[0]} a la {window[-1]}." if owes_stop and window else "")
     else:  # a routine lap: speak only when something needs attention

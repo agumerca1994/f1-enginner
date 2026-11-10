@@ -84,13 +84,16 @@ def test_live_engineer_speaks_when_active(client):
 
     import time as _time
 
-    for _ in range(50):  # radio calls wait for a straight, or until the session goes quiet
+    # Radio calls wait for a straight, or until the session goes quiet; urgent ones
+    # (a damage call) go out at once, so the start brief need not be the first.
+    first = None
+    for _ in range(50):
         state = client.get("/api/engineer/live", headers=headers).json()
-        if state["messages"]:
+        first = next((m for m in state["messages"] if m["triggers"] == ["race_start"]), None)
+        if first:
             break
         _time.sleep(0.1)
-    first = state["messages"][0]
-    assert first["triggers"] == ["race_start"] and first["provider"] == "reglas"
+    assert first is not None and first["provider"] == "reglas"
     assert first["radio"].startswith("Largamos en el puesto 16 con")
     assert first["estrategia"]["proximo_compuesto"] is not None  # the two-compound stop is planned
 

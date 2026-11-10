@@ -9,7 +9,7 @@ enough context (sample size, estimated or measured) to judge how much to trust i
 import statistics
 from typing import Any
 
-from app.engineer.history import PlayerLap, SessionHistory, pit_loss_samples
+from app.engineer.history import PUNCTURE_JUMP, PUNCTURE_PCT, PlayerLap, SessionHistory, pit_loss_samples
 from app.live import snapshot
 from app.live.state import LiveSession
 from app.telemetry import constants as c
@@ -117,7 +117,7 @@ def _player(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dict[
         "drs_disponible": st.get("drs_allowed"),
         "temp_motor_c": car.get("engine_temperature_c"),
         "danos_pct": {k: v for k, v in (snap.get("damage") or {}).items()
-                      if k not in ("age_s", "tyres_wear_percent")},
+                      if k not in ("age_s", "tyres_wear_percent", "tyres_damage_percent")},
     }
 
 
@@ -193,6 +193,7 @@ def _tyres(snap: dict, laps: list[PlayerLap]) -> dict[str, Any]:
     damage = snap.get("damage") or {}
     wear = damage.get("tyres_wear_percent") or {}
     blisters = damage.get("tyre_blisters_percent")
+    tyre_damage = damage.get("tyres_damage_percent") or {}
     stint = [pl for pl in laps if pl.compound == st.get("tyre") and pl.wear]
     # Only the laps since the last tyre change belong to the current stint.
     for i in range(len(stint) - 1, 0, -1):
@@ -224,6 +225,9 @@ def _tyres(snap: dict, laps: list[PlayerLap]) -> dict[str, Any]:
         "muestras_del_stint": len(stint),
         # 2025 format onwards: blisters per tyre, percent.
         "ampollas_pct": {w: round(v, 1) for w, v in zip(WHEELS, blisters.values())} if blisters else None,
+        # Tyre damage follows wear; far above it, it is a puncture.
+        "pinchazos": [w for w, dmg, worn in zip(WHEELS, tyre_damage.values(), wear.values())
+                      if dmg >= PUNCTURE_PCT and dmg - worn >= PUNCTURE_JUMP],
     }
 
 

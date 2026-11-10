@@ -72,6 +72,8 @@ DAMAGE_PARTS_ES = {
     "front_left_wing": "alerón delantero izquierdo", "front_right_wing": "alerón delantero derecho",
     "rear_wing": "alerón trasero", "floor": "piso", "diffuser": "difusor", "sidepod": "pontón",
     "gearbox": "caja de cambios", "engine": "motor",
+    "puncture_rear_left": "pinchazo trasero izquierdo", "puncture_rear_right": "pinchazo trasero derecho",
+    "puncture_front_left": "pinchazo delantero izquierdo", "puncture_front_right": "pinchazo delantero derecho",
 }
 
 # Visual compounds as the engineer says them ("ponemos medios").

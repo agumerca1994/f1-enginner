@@ -121,12 +121,16 @@ export function CarTopView({ s }: { s: Snapshot }) {
 
 function WheelStats({ s, wheel }: { s: Snapshot; wheel: Wheel }) {
   const wear = s.damage?.tyres_wear_percent[wheel];
+  const tyreDamage = s.damage?.tyres_damage_percent?.[wheel];
+  // Same rule as the engineer: damage at 50% or more and 30 points above wear.
+  const flat = tyreDamage != null && wear != null && tyreDamage >= 50 && tyreDamage - wear >= 30;
   const car = s.car;
   const surface = car?.surface?.[wheel];
   const off = surface ? SURFACE_ES[surface] : null;
   return (
     <div className="space-y-0.5">
       {off && <div className="text-[0.65rem] font-semibold uppercase tracking-wider text-[#fb923c]">{off}</div>}
+      {flat && <div className="text-xs font-bold uppercase tracking-wider text-danger">Pinchazo</div>}
       {wear != null && (
         <div className={`num text-2xl font-semibold leading-none ${levelClass(wearLevel(wear))}`}>
           {wear.toFixed(0)}

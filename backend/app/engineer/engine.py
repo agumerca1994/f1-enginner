@@ -11,8 +11,9 @@ from functools import cache
 from pathlib import Path
 
 from app.engineer import analysis
-from app.engineer.history import SessionHistory, Trigger
+from app.engineer.history import WHEEL_OF_PUNCTURE, SessionHistory, Trigger
 from app.live.state import LiveSession
+from app.telemetry import constants as c
 from app.telemetry.registry import Packet
 
 MANUAL = Path(__file__).parent / "prompts" / "manual_es.md"
@@ -30,6 +31,8 @@ TRIGGER_TEXT = {
     "safety_car": "Cambio de safety car: {from} → {to}.",
     "rain_forecast": "El pronóstico marca {rain_percent}% de lluvia en los próximos 15 minutos.",
     "damage": "El auto sufrió daño nuevo: {parts}.",
+    "puncture": ("Pinchazo en la goma {ruedas}: se desinfla y el auto se vuelve inmanejable, puede romper el piso "
+                 "o la suspensión. Mandalo a boxes ya, prioridad urgente."),
     "penalty": "Nueva penalización o advertencia: {penalties_s}s de penalización, {warnings} advertencias.",
     "sector_completed": ("Sector {sector}: {delta_s}s contra su mejor parcial (negativo = mejor). Si vale la pena, "
                          "decí sólo la diferencia y, si perdió, dónde; nunca leas el tiempo del sector."),
@@ -57,6 +60,14 @@ STRUCTURED_TRIGGERS = ("corner_coaching", "tyre_overuse")
 
 
 def moment_text(t: Trigger) -> str:
+    if t.kind == "damage":
+        parts = t.detail.get("parts", {})
+        flats = [WHEEL_OF_PUNCTURE[k] for k in parts if k in WHEEL_OF_PUNCTURE]
+        rest = {c.DAMAGE_PARTS_ES.get(k, k): f"{v}%" for k, v in parts.items() if k not in WHEEL_OF_PUNCTURE}
+        text = [TRIGGER_TEXT["damage"].format(parts=", ".join(f"{k} {v}" for k, v in rest.items()))] if rest else []
+        if flats:
+            text.append(TRIGGER_TEXT["puncture"].format(ruedas=" y ".join(flats)))
+        return " ".join(text)
     if t.kind in STRUCTURED_TRIGGERS:
         return TRIGGER_TEXT[t.kind].format(detalle=json.dumps(t.detail, ensure_ascii=False))
     return TRIGGER_TEXT[t.kind].format(lap=t.lap, **t.detail)
