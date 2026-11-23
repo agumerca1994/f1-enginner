@@ -17,7 +17,7 @@ Decisiones tomadas por el usuario:
 - el proveedor de LLM es configurable;
 - el producto es comercial y multiusuario.
 
-## Estado actual (actualizado 2026-10-26)
+## Estado actual (actualizado 2026-11-23)
 
 | Fase | Estado | Qué hay |
 |---|---|---|
@@ -30,7 +30,7 @@ Decisiones tomadas por el usuario:
 | Extra: repeticiones | ✅ En producción | `/sessions` y `/replay/[id]`: reproducir sesiones grabadas con play, pausa, velocidad y salto |
 | P3 Procesamiento e ingeniero | 🟡 En producción | Motor del ingeniero (`app/engineer/`) y card "Ingeniero de pista" en el dashboard con voz, activable en vivo y en repeticiones. Sin API key responde con reglas (nivel gratuito); con `ANTHROPIC_API_KEY` usa Claude. **Producción corre `claude (pro)`** (Sonnet por vuelta, Opus en eventos), verificado en `GET /internal/engineer`. Al largar una carrera baja el plan de paradas desde la grilla (trigger `race_start`) usando clima, vueltas y vida de gomas, y lo calibra con lo aprendido en prácticas del mismo GP (`track_knowledge`) |
 | P4 Agente y voz | 🟡 En curso | Etapa 1 en producción: coaching curva por curva, goma castigada, radio rápida (Haiku 5.5) separada del muro, mensajes en las rectas, estilo de radio real y tonos de radio. Voz natural en pausa (ver `tts/README.md`): se probó una voz propia (MeloTTS + OpenVoice con voz diseñada), pero generarla en el VPS carga demasiado; se espera un servicio externo. Falta hablarle (apretar para hablar). Investigación en `docs/investigacion-radio-y-voz.md` |
-| P5 MCP público | 🟡 En producción | `/mcp` con OAuth 2.1 (registro dinámico, PKCE, rotación de refresh) y tokens personales `rbm_pat_`, scope `telemetry:read`. Tools: `list_sessions`, `get_session_review`, `compare_laps`, `get_engineer_radio`, `get_live_session`. Consentimiento en `/oauth/authorize` y sección en Ajustes. Discovery, registro y redirección al consentimiento verificados en producción; falta conectarlo desde claude.ai |
+| P5 MCP público | 🟡 En producción | `/mcp` con OAuth 2.1 (registro dinámico, PKCE, rotación de refresh) y tokens personales `rbm_pat_`, scope `telemetry:read`. Tools: `list_sessions`, `get_session_review`, `compare_laps`, `compare_lap_telemetry`, `get_engineer_radio`, `get_live_session`. Consentimiento en `/oauth/authorize` y sección en Ajustes. Discovery, registro y redirección al consentimiento verificados en producción; falta conectarlo desde claude.ai |
 | P6 MCP de logs | 🟡 Base lista | Endpoints `/internal/{logs,logs/summary,devices,sessions,live}` con clave interna; falta el servidor MCP stdio |
 | P7 Hardening comercial | ⏳ Pendiente | — |
 
@@ -92,6 +92,13 @@ Decisiones tomadas por el usuario:
   - **Elegida y armada:** la voz liviana MeloTTS + OpenVoice con voz diseñada, en `tts/`. **Queda en pausa** porque en el VPS carga demasiado (5–10 s por frase en Linux).
   - **Lo que quedó listo:** el backend pide la voz a `TTS_URL` y el dashboard reproduce el audio con efecto de radio (Web Audio). Sin `TTS_URL`, como hoy, usa la voz del navegador. Falta elegir un servicio externo.
   - **Recursos para retomarlo:** las grabaciones del usuario (su voz, con consentimiento) y las muestras están en el Escritorio, en `voces-ingeniero/`.
+
+- **Pestaña BOX, etapa 1: gráfico de telemetría** (2026-11-23). Idea del usuario: un "box" para las prácticas que guarde el historial de la telemetría, el reglaje de cada vuelta y sugerencias de reglaje y de manejo. Plan acordado, en este orden:
+  1. **Gráfico de telemetría (hecho).** `/box?s=<id>`: velocidad, delta, acelerador, freno y marcha por distancia, tu vuelta contra otra tuya o contra la mejor vuelta de cualquier piloto de la sesión (el juego manda la telemetría de todos los autos). Curvas numeradas con zoom, lectura al pasar el mouse y zoom arrastrando; con zoom el delta arranca en cero al inicio del tramo. Tabla de vueltas con sectores, gomas, reglaje (A, B, C… cuando cambia) y cobertura de datos; reglaje de la vuelta con los cambios contra el de la referencia; curva por curva con punto de frenada, velocidad mínima, aceleración a fondo y problemas; "Dónde está el tiempo" con las tres curvas que más cuestan y la causa. Sale de las grabaciones: `app/engineer/traces.py` (bins de 5 m, matrices numpy por canal y auto, tiempo exacto por distancia desde LapData), `app/engineer/box.py`, `GET /api/sessions/{id}/box` y `/box/compare?a=car:lap&b=car:lap`. Funciona también con la sesión en curso (lee lo grabado hasta el momento; botón "Actualizar"). En el MCP, `compare_lap_telemetry` da la misma comparación curva por curva para que Claude explique dónde se pierde tiempo.
+  2. **Tandas (pendiente).** Detectar salida y vuelta a boxes y analizar cada tanda (balance por fase, temperaturas y desgaste por eje, frenos, velocidad punta, fondeos). El usuario pidió explícitamente **no perder el historial**: cada análisis queda guardado y se puede volver a ver, no sólo el de las últimas vueltas.
+  3. **Asesor de reglaje (pendiente).** Reglas que miden el problema y la IA que lo traduce a cambios en la escala del juego, uno o dos por vez, más consejos de manejo; guardado por sesión y visible en BOX y en el MCP. La tanda siguiente se compara con la anterior en el gráfico.
+  4. **Reglaje base y memoria por pista (pendiente).** Desde el mejor reglaje propio guardado en `track_knowledge`, ajustado por clima y temperatura.
+  - Límite conocido: el juego no da la temperatura interna/externa de la banda de rodadura, así que el camber no se ajusta por temperatura. En clasificación y carrera el reglaje queda bloqueado: el asesor es para prácticas.
 
 ### Assetto Corsa Competizione (pendiente, después de las mejoras de F1)
 Decidido el 2026-10-26: sumar **ACC en PC**. En PS4/PS5 ni ACC ni AC exportan telemetría.

@@ -86,9 +86,14 @@ function Sessions() {
               </div>
             </div>
             {s.has_recording ? (
-              <Link href={`/replay/${s.id}`} className="shrink-0 rounded-xl bg-fg px-4 py-2 text-sm font-semibold text-bg hover:opacity-90">
-                Ver repetición
-              </Link>
+              <div className="flex shrink-0 gap-2">
+                <Link href={`/box?s=${s.id}`} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold hover:border-accent">
+                  Box
+                </Link>
+                <Link href={`/replay/${s.id}`} className="rounded-xl bg-fg px-4 py-2 text-sm font-semibold text-bg hover:opacity-90">
+                  Ver repetición
+                </Link>
+              </div>
             ) : (
               <span className="shrink-0 text-xs text-muted">Sin grabación</span>
             )}

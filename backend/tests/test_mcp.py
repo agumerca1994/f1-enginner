@@ -94,7 +94,8 @@ def test_oauth_flow_tools_and_refresh_rotation(client):
     assert tokens["access_token"].startswith("rbm_at_") and tokens["scope"] == "telemetry:read"
 
     names = {t["name"] for t in _call(client, tokens["access_token"], "tools/list").json()["result"]["tools"]}
-    assert names == {"list_sessions", "get_session_review", "compare_laps", "get_engineer_radio", "get_live_session"}
+    assert names == {"list_sessions", "get_session_review", "compare_laps", "compare_lap_telemetry", "get_engineer_radio",
+                     "get_live_session"}
     assert _tool(client, tokens["access_token"], "list_sessions")["sesiones"] == []
     assert _tool(client, tokens["access_token"], "get_live_session")["en_vivo"] is False
 

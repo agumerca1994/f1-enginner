@@ -1,0 +1,65 @@
+"""The BOX tab: laps, setups and lap-against-lap telemetry of a recorded session."""
+
+import re
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth import get_current_user
+from app.core.database import get_db
+from app.engineer import box
+from app.engineer.review import SessionReview, review_async
+from app.models import GameSession, SessionCapture, User
+from app.telemetry import constants as c
+
+router = APIRouter(prefix="/api/sessions", tags=["box"])
+
+_LAP_REF = re.compile(r"^(\d{1,2}):(\d{1,3})$")  # "car slot:lap number"
+
+
+async def _review(session_id: int, user: User, db: AsyncSession) -> tuple[GameSession, SessionReview]:
+    g = await db.get(GameSession, session_id)
+    if g is None or g.tenant_id != user.tenant_id:
+        raise HTTPException(404, "Session not found")
+    paths = list(await db.scalars(select(SessionCapture.path).where(SessionCapture.game_session_id == g.id)))
+    if not paths:
+        raise HTTPException(404, "This session has no recording")
+    r = await review_async(paths)
+    if r is None:
+        raise HTTPException(422, "The recording could not be read")
+    return g, r
+
+
+def _parse(ref: str) -> tuple[int, int]:
+    m = _LAP_REF.match(ref)
+    if m is None:
+        raise HTTPException(422, "Laps are given as car:lap, e.g. 19:5")
+    return int(m.group(1)), int(m.group(2))
+
+
+@router.get("/{session_id}/box")
+async def overview(session_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The player's laps with their setup and data coverage, the setups used and the other cars' best laps."""
+    g, r = await _review(session_id, user, db)
+    return {
+        "sesion": {
+            "id": g.id,
+            "pista": c.TRACKS.get(g.track_id) if g.track_id is not None else None,
+            "tipo": c.SESSION_TYPES.get(g.session_type) if g.session_type is not None else None,
+            "inicio": g.started_at.isoformat(),
+            "en_curso": g.ended_at is None,
+        },
+        **box.overview(r),
+    }
+
+
+@router.get("/{session_id}/box/compare")
+async def compare(session_id: int, a: str, b: str, user: User = Depends(get_current_user),
+                  db: AsyncSession = Depends(get_db)):
+    """Two laps' speed, throttle, brake and gear by distance, and the corner-by-corner comparison of B against A."""
+    _, r = await _review(session_id, user, db)
+    out = box.comparison(r, _parse(a), _parse(b))
+    if out is None:
+        raise HTTPException(404, "No trace for one of those laps")
+    return out

@@ -4,7 +4,6 @@ All read-only and scoped to the caller's tenant. Field names are in Spanish, the
 same words the engineer's analysis uses, so the model reads one vocabulary.
 """
 
-import asyncio
 import time
 import unicodedata
 from typing import Annotated, Any, Literal
@@ -16,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
 from app.engineer import analysis
-from app.engineer.review import SessionReview, lap_row, review
+from app.engineer.review import SessionReview, lap_row, review_async
 from app.engineer.runner import engineer_hub
 from app.live.state import live_store
 from app.mcp_server.context import current_caller
@@ -32,8 +31,6 @@ SESSION_KINDS = {
 }
 # A live session with no packet for this long is reported as stale, not current.
 LIVE_STALE_S = 60
-# Reviews replay whole captures: one at a time, so a burst of calls cannot pin the CPU.
-_review_lock = asyncio.Lock()
 
 
 def _fold(text: str) -> str:
@@ -69,8 +66,7 @@ async def _review(tenant_id: int, session_id: int) -> tuple[GameSession, Session
         paths = list(await db.scalars(select(SessionCapture.path).where(SessionCapture.game_session_id == g.id)))
     if not paths:
         raise ToolError("Esa sesión no tiene grabación: sólo se guardan las que llegaron por el bridge.")
-    async with _review_lock:
-        result = await asyncio.to_thread(review, paths)
+    result = await review_async(paths)
     if result is None:
         raise ToolError("No se pudo leer la grabación de esa sesión.")
     return g, result
@@ -222,3 +218,48 @@ async def get_live_session() -> dict[str, Any]:
             for m in list(runner.messages)[-5:]
         ],
     }
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def compare_lap_telemetry(
+    session_id: Annotated[int, Field(description="Id de la sesión, de list_sessions")],
+    lap: Annotated[int | None, Field(ge=1, description="Vuelta del jugador a analizar; vacío = su mejor vuelta")] = None,
+    against_lap: Annotated[int | None, Field(ge=1, description="Otra vuelta del jugador para comparar")] = None,
+    against_driver: Annotated[str | None, Field(description="Comparar con la mejor vuelta de este piloto (apellido como lo muestra el juego). Si no se da ninguna referencia, se usa la del auto más rápido de la sesión")] = None,
+) -> dict[str, Any]:
+    """Telemetría curva por curva entre dos vueltas, como el gráfico de velocidad y acelerador:
+    dónde frena cada uno, a qué velocidad pasa por el vértice, cuándo vuelve a acelerar a fondo
+    y cuánto tiempo gana o pierde en cada curva. Sirve para decirle al jugador dónde y cómo mejorar."""
+    from app.engineer import box
+
+    caller = await current_caller()
+    _, r = await _review(caller.tenant_id, session_id)
+    tr = r.traces
+    if tr is None or tr.player is None or not tr.player_laps:
+        raise ToolError("No hay vueltas completas con telemetría en esa sesión.")
+    if lap is None:
+        best = tr.best.get(tr.player)
+        lap = best.lap if best else max(tr.player_laps)
+    if lap not in tr.player_laps:
+        raise ToolError(f"No hay traza de la vuelta {lap}. Vueltas con traza: {sorted(tr.player_laps)}.")
+    if against_lap is not None:
+        ref = (tr.player, against_lap)
+    else:
+        refs = tr.references(limit=30)
+        if against_driver:
+            refs = [t for t in refs if _fold(against_driver) in _fold(tr.names.get(t.car, ("", ""))[0] or "")]
+        if not refs:
+            names = sorted(n for car, (n, _) in tr.names.items() if n and car in tr.best and car != tr.player)
+            raise ToolError(f"No hay una vuelta válida de referencia. Pilotos con vuelta: {', '.join(names) or 'ninguno'}.")
+        ref = (refs[0].car, refs[0].lap)
+    # A = the reference, B = the player's lap: positive differences are what the player loses.
+    out = box.comparison(r, ref, (tr.player, lap), arrays=False)
+    if out is None:
+        raise ToolError(f"No hay traza de la vuelta {against_lap}. Vueltas con traza: {sorted(tr.player_laps)}.")
+    out["nota"] = (
+        "A es la referencia y B la vuelta del jugador. diferencia_s positiva = el jugador pierde ese tiempo. "
+        "b_frena_mas_tarde_m negativo = el jugador frena antes; b_acelera_mas_tarde_m positivo = acelera a fondo "
+        "más tarde. Distancias en metros desde la línea. Curvas numeradas por la app en orden desde la largada "
+        "(puede no coincidir con la numeración oficial). Con poca recepción algunos puntos quedan en null."
+    )
+    return out

@@ -487,9 +487,14 @@ def _events(history: SessionHistory, cars: list[dict]) -> list[dict]:
 
 def _setup(live: LiveSession) -> dict[str, Any] | None:
     packet = live.last.get("car_setups")
-    if packet is None:
-        return None
+    return None if packet is None else setup_values(packet)
+
+
+def setup_values(packet) -> dict[str, Any] | None:
+    """The player's setup from a CarSetups packet, in the engineer's words. None when it is all zeros."""
     s = packet.body["car_setups"][packet.player_car_index]
+    if int(s["front_wing"]) == 0 and int(s["rear_wing"]) == 0 and int(s["brake_bias"]) == 0:
+        return None  # not shared (restricted online telemetry) or not sent yet
     return {
         "aleron_delantero": int(s["front_wing"]), "aleron_trasero": int(s["rear_wing"]),
         "diferencial_acelerando_pct": int(s["on_throttle"]), "diferencial_soltando_pct": int(s["off_throttle"]),

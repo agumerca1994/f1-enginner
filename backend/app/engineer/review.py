@@ -6,6 +6,7 @@ would have computed, and adds what only makes sense once the session is over.
 Reading a full race takes a second or two, so results are cached per capture set.
 """
 
+import asyncio
 import os
 import statistics
 from collections import OrderedDict
@@ -14,7 +15,9 @@ from typing import Any
 
 from app.engineer import analysis
 from app.engineer.engine import RaceEngineer
+from app.engineer.corners import CornerCoach
 from app.engineer.history import PlayerLap
+from app.engineer.traces import TraceCollector
 from app.live.snapshot import RESULT_STATUS
 from app.live.state import LiveSession
 from app.replay.player import ReplayPlayer, ReplaySource
@@ -22,6 +25,8 @@ from app.telemetry import constants as c
 
 _CACHE_SIZE = 8
 _cache: OrderedDict[tuple, "SessionReview"] = OrderedDict()
+# Reviews replay whole captures: one at a time, so a burst of calls cannot pin the CPU.
+_lock = asyncio.Lock()
 
 
 @dataclass
@@ -31,6 +36,8 @@ class SessionReview:
     stints: list[dict[str, Any]]
     classification: list[dict[str, Any]] | None
     duration_s: float
+    traces: TraceCollector | None = None  # speed/throttle/brake by lap distance, for the BOX tab
+    corners: CornerCoach | None = None  # the corner map and every corner pass of the player
 
     def lap(self, number: int) -> PlayerLap | None:
         return next((pl for pl in self.laps if pl.lap == number), None)
@@ -46,12 +53,13 @@ def review(paths: list[str]) -> SessionReview | None:
     source = ReplaySource(paths)
     if not source.files:
         return None
-    state: dict[str, Any] = {"engineer": RaceEngineer(), "uid": None}
+    state: dict[str, Any] = {"engineer": RaceEngineer(), "traces": TraceCollector(), "uid": None}
 
     def observe(packet, live: LiveSession) -> None:
         if state["uid"] != packet.session_uid:  # a capture can hold a menu or a previous session
-            state["uid"], state["engineer"] = packet.session_uid, RaceEngineer()
+            state["uid"], state["engineer"], state["traces"] = packet.session_uid, RaceEngineer(), TraceCollector()
         state["engineer"].observe(packet, live)
+        state["traces"].observe(packet, live)
 
     player = ReplayPlayer(source, on_packet=observe)
     player.seek(float("inf"))
@@ -65,11 +73,18 @@ def review(paths: list[str]) -> SessionReview | None:
         stints=stints(laps),
         classification=classification(player.live),
         duration_s=round(player.live.updated_at, 1),  # the replay clock at the last packet
+        traces=state["traces"],
+        corners=history.corners,
     )
     _cache[key] = result
     while len(_cache) > _CACHE_SIZE:
         _cache.popitem(last=False)
     return result
+
+
+async def review_async(paths: list[str]) -> SessionReview | None:
+    async with _lock:
+        return await asyncio.to_thread(review, paths)
 
 
 def _mtime(path: str) -> float:
