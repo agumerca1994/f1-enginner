@@ -52,6 +52,7 @@ async def overview(session_id: int, user: User = Depends(get_current_user), db: 
         "sesion": {
             "id": g.id,
             "pista": c.TRACKS.get(g.track_id) if g.track_id is not None else None,
+            "track_id": g.track_id,
             "tipo": c.SESSION_TYPES.get(g.session_type) if g.session_type is not None else None,
             "inicio": g.started_at.isoformat(),
             "en_curso": g.ended_at is None,

@@ -19,7 +19,7 @@ from typing import Any
 
 import numpy as np
 
-from app.engineer.analysis import setup_values
+from app.engineer.setup_sheet import setup_values
 
 BIN_M = 5.0
 FLASHBACK_M = 50.0  # the car moving back this much within a lap is a flashback

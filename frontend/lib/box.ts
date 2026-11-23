@@ -68,7 +68,7 @@ export type Run = {
 };
 
 export type BoxOverview = {
-  sesion: { id: number; pista: string | null; tipo: string | null; inicio: string; en_curso: boolean };
+  sesion: { id: number; pista: string | null; track_id: number | null; tipo: string | null; inicio: string; en_curso: boolean };
   largo_pista_m: number | null;
   sectores_m: number[] | null;
   vueltas: BoxLap[];

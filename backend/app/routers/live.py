@@ -34,6 +34,7 @@ class GameSessionOut(BaseModel):
     session_uid: str
     game_version: str | None
     track: str | None
+    track_id: int | None
     session_type: str | None
     total_laps: int | None
     online: bool | None
@@ -60,6 +61,7 @@ async def sessions(all: bool = False, user: User = Depends(get_current_user), db
             session_uid=g.session_uid,
             game_version=g.game_version,
             track=c.TRACKS.get(g.track_id) if g.track_id is not None else None,
+            track_id=g.track_id,
             session_type=c.SESSION_TYPES.get(g.session_type) if g.session_type is not None else None,
             total_laps=g.total_laps,
             online=bool(g.network_game) if g.network_game is not None else None,

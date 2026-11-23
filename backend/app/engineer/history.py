@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 from app.engineer.corners import CornerCoach
 from app.live.state import LiveSession
+from app.engineer.setup_sheet import setup_values
 from app.telemetry import constants as c
 from app.telemetry import registry
 from app.telemetry.registry import Packet
@@ -78,6 +79,7 @@ class PlayerLap:
     peak_rear_slip: float | None = None   # rear slip angle peak (oversteer when high)
     overtake_pct: float | None = None  # 2026: share of the lap with the overtake mode on
     ers_harvested_mj: float | None = None  # energy recovered this lap (MGU-K + MGU-H)
+    setup: dict | None = None  # the player's setup on this lap, when the game shares it
 
 
 @dataclass
@@ -499,6 +501,7 @@ class SessionHistory:
             surface_temp_avg=_average([sample[0] for sample in self._temp_samples]),
             inner_temp_avg=_average([sample[1] for sample in self._temp_samples]),
             sectors_ms=sectors,
+            setup=setup_values(setups) if (setups := live.last.get("car_setups")) is not None else None,
             off_track_pct=round(100 * self._offtrack_samples / self._track_samples, 1) if self._track_samples else None,
             peak_lat_g=round(self._peak_lat_g, 2) or None,
             peak_brake_g=round(self._peak_brake_g, 2) or None,

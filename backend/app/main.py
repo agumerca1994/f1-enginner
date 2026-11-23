@@ -8,7 +8,7 @@ from starlette.routing import Route
 
 from app.core.config import settings
 from app.core.logging_config import log_queue_consumer, setup_logging
-from app.routers import box, devices, engineer, ingest, internal, live, live_ws, overlay, replay_ws
+from app.routers import box, devices, setup, engineer, ingest, internal, live, live_ws, overlay, replay_ws
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ app.include_router(devices.router)
 app.include_router(ingest.router)
 app.include_router(live.router)
 app.include_router(box.router)
+app.include_router(setup.router)
 app.include_router(engineer.router)
 app.include_router(live_ws.router)
 app.include_router(overlay.router)

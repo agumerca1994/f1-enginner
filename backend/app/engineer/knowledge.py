@@ -57,6 +57,23 @@ def summarize(history: SessionHistory) -> dict[str, Any] | None:
     }
 
 
+WET = ("Intermediate", "Wet")
+
+
+def best_setups(history: SessionHistory) -> dict[str, Any]:
+    """The setup of the session's best clean lap, apart for dry and wet running."""
+    out: dict[str, Any] = {}
+    for laps in (analysis._clean(analysis._dedupe(history.player_laps)),):
+        for pl in laps:
+            if not pl.setup or not pl.time_ms:
+                continue
+            key = "lluvia" if pl.compound in WET else "seco"
+            if key not in out or pl.time_ms / 1000 < out[key]["vuelta_s"]:
+                out[key] = {"valores": pl.setup, "vuelta_s": round(pl.time_ms / 1000, 3), "compuesto": pl.compound,
+                            "temp_pista": pl.track_temp, "clima": pl.weather}
+    return out
+
+
 def _pit_loss(history: SessionHistory) -> dict[str, Any]:
     """The green-flag pit loss this session measured, with how many stops back it."""
     samples = pit_loss_samples(history.car_laps)
@@ -97,13 +114,22 @@ async def save(db: AsyncSession, tenant_id: int, track_id: int, history: Session
     """
     summary = summarize(history)
     pit = _pit_loss(history)
-    if summary is None and not pit["perdida_box_paradas"]:
+    setups = best_setups(history)
+    if summary is None and not pit["perdida_box_paradas"] and not setups:
         return False
     row = await db.scalar(
         select(TrackKnowledge).where(TrackKnowledge.tenant_id == tenant_id, TrackKnowledge.track_id == track_id)
     )
     stored = dict(row.summary) if row is not None else {}
-    changed = False
+    # The best setup per condition is kept apart: the fastest clean lap ever wins.
+    best = dict(stored.get("mejor_reglaje") or {})
+    setups_changed = False
+    for key, candidate in setups.items():
+        if key not in best or candidate["vuelta_s"] < best[key]["vuelta_s"]:
+            best[key], setups_changed = candidate, True
+    if summary is None and not pit["perdida_box_paradas"] and not setups_changed:
+        return False
+    changed = setups_changed
     if summary is not None and (row is None or summary["vueltas_limpias"] >= row.clean_laps):
         stored = {**summary, "perdida_box_s": stored.get("perdida_box_s"),
                   "perdida_box_paradas": stored.get("perdida_box_paradas") or 0}
@@ -113,8 +139,10 @@ async def save(db: AsyncSession, tenant_id: int, track_id: int, history: Session
     if pit["perdida_box_paradas"] >= (stored.get("perdida_box_paradas") or 0) and pit["perdida_box_paradas"]:
         changed = changed or stored.get("perdida_box_s") != pit["perdida_box_s"]
         stored.update(pit)
-    elif summary is None or not changed:
-        return changed
+    elif not changed:
+        return False
+    if best:
+        stored["mejor_reglaje"] = best
     if row is None:
         db.add(TrackKnowledge(tenant_id=tenant_id, track_id=track_id, clean_laps=clean, summary=stored))
     else:

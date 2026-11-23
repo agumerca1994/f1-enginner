@@ -11,7 +11,27 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { BoxOverview, SetupSuggestion, SetupValues } from "@/lib/box";
 
-type GameSession = { id: number; track: string | null; session_type: string | null; started_at: string; has_recording: boolean };
+type GameSession = {
+  id: number;
+  session_uid: string;
+  track: string | null;
+  track_id: number | null;
+  session_type: string | null;
+  started_at: string;
+  has_recording: boolean;
+};
+
+type BaseSetup = {
+  pista: string | null;
+  lluvia: boolean;
+  caracteristicas: { carga: number; pianos: number; traccion: number; frenada: number; nota: string };
+  valores: SetupValues;
+  nota: string;
+  tu_mejor: { valores: SetupValues; vuelta_s: number; compuesto: string | null; temp_pista: number | null } | null;
+};
+
+type Source = "tanda" | "mejor" | "base";
+const SOURCE_LABEL: Record<Source, string> = { tanda: "Tu última tanda", mejor: "Tu mejor reglaje acá", base: "Reglaje base" };
 
 export default function SetupPage() {
   return (
@@ -43,6 +63,13 @@ function Setup() {
   const [overview, setOverview] = useState<BoxOverview | null>(null);
   const [selected, setSelected] = useState<string>("aleron_delantero");
   const [symptom, setSymptom] = useState<number | null>(null);
+  const [tracks, setTracks] = useState<{ id: number; pista: string }[]>([]);
+  const [pickedTrack, setPickedTrack] = useState<number | null>(null);
+  // A session that just started is not in the list yet (it hides the very short ones): its track comes from the live state.
+  const [liveTrack, setLiveTrack] = useState<number | null>(null);
+  const [wet, setWet] = useState(false);
+  const [base, setBase] = useState<BaseSetup | null>(null);
+  const [source, setSource] = useState<Source | null>(null); // null = the best available
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +81,13 @@ function Setup() {
         const all = await api<GameSession[]>("/api/sessions", await credentials());
         const recorded = all.filter((s) => s.has_recording);
         setSessions(recorded);
+        setTracks(await api<{ id: number; pista: string }[]>("/api/setup/tracks", await credentials()));
+        try {
+          const live = await api<{ session_uid: string; track?: { id: number } | null }>("/api/live", await credentials());
+          if (live.track && !recorded.some((s) => s.session_uid === live.session_uid)) setLiveTrack(live.track.id);
+        } catch {
+          /* no live session */
+        }
         const wanted = Number(q.get("s"));
         setSid(recorded.find((s) => s.id === wanted)?.id ?? recorded[0]?.id ?? null);
       } catch {
@@ -86,21 +120,51 @@ function Setup() {
     window.history.replaceState(null, "", url);
   }, [selected, sid]);
 
+  // The track whose base setup to offer: the session's, or one picked by hand.
+  const trackId = pickedTrack ?? liveTrack ?? overview?.sesion.track_id ?? sessions?.find((s) => s.id === sid)?.track_id ?? null;
+  useEffect(() => {
+    if (trackId == null) {
+      setBase(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const b = await api<BaseSetup>(`/api/setup/base?track_id=${trackId}&lluvia=${wet}`, await credentials());
+        if (!cancelled) setBase(b);
+      } catch {
+        if (!cancelled) setBase(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [trackId, wet, credentials]);
+
   // The setup and advice of the session's last run with data.
   const lastRun = useMemo(() => {
     const runs = overview?.tandas ?? [];
     return [...runs].reverse().find((r) => r.vueltas_limpias.length > 0) ?? runs[runs.length - 1] ?? null;
   }, [overview]);
-  const setup = useMemo(() => {
-    if (!overview) return null;
+  const runSetup = useMemo(() => {
+    if (!overview || pickedTrack != null || liveTrack != null) return null;
     const id = lastRun?.reglaje ?? overview.reglajes[overview.reglajes.length - 1]?.id;
     return overview.reglajes.find((s) => s.id === id)?.valores ?? null;
-  }, [overview, lastRun]);
+  }, [overview, lastRun, pickedTrack, liveTrack]);
+  // Where the values come from: the last run once there is one, else the best own setup here, else the base.
+  const available: Source[] = [
+    ...(runSetup ? (["tanda"] as Source[]) : []),
+    ...(base?.tu_mejor ? (["mejor"] as Source[]) : []),
+    ...(base ? (["base"] as Source[]) : []),
+  ];
+  const active: Source | null = source && available.includes(source) ? source : (available[0] ?? null);
+  const setup = active === "tanda" ? runSetup : active === "mejor" ? (base?.tu_mejor?.valores ?? null) : active === "base" ? (base?.valores ?? null) : null;
   const suggestions = useMemo(() => {
     const out: Record<string, SetupSuggestion> = {};
+    if (active !== "tanda") return out;
     for (const s of lastRun?.sugerencias_reglaje ?? []) out[ACADEMY_ALIAS[s.parametro] ?? s.parametro] = s;
     return out;
-  }, [lastRun]);
+  }, [lastRun, active]);
 
   const order = useMemo(() => GROUPS.flatMap((g) => ACADEMY.filter((e) => e.group === g).map((e) => e.key)), []);
   const recommended = symptom != null ? SYMPTOMS[symptom].keys : [];
@@ -146,8 +210,8 @@ function Setup() {
             <span className="truncate text-lg font-semibold">Qué hace cada ajuste</span>
           </div>
           <div className="text-sm text-muted">
-            {overview?.sesion.pista
-              ? `Valores de tu última tanda en ${overview.sesion.pista} · ${overview.sesion.tipo ? sessionName(overview.sesion.tipo) : "Sesión"}`
+            {active && (base?.pista ?? overview?.sesion.pista)
+              ? `${SOURCE_LABEL[active]} · ${base?.pista ?? overview?.sesion.pista}${active === "tanda" && overview?.sesion.tipo ? ` · ${sessionName(overview.sesion.tipo)}` : ""}`
               : "Elegí un ajuste para ver qué pasa en el auto"}
           </div>
         </div>
@@ -155,7 +219,11 @@ function Setup() {
           {sessions && sessions.length > 0 && (
             <select
               value={sid ?? ""}
-              onChange={(e) => setSid(Number(e.target.value))}
+              onChange={(e) => {
+                setSid(Number(e.target.value));
+                setLiveTrack(null);
+                setPickedTrack(null);
+              }}
               className="max-w-64 rounded-lg border border-line bg-panel-2 px-2 py-1.5 text-sm"
               aria-label="Sesión"
             >
@@ -174,6 +242,22 @@ function Setup() {
           </Link>
         </div>
       </header>
+
+      <SourceBar
+        available={available}
+        active={active}
+        onSource={setSource}
+        wet={wet}
+        onWet={setWet}
+        base={base}
+        tracks={tracks}
+        trackId={trackId}
+        onTrack={(id) => {
+          setPickedTrack(id);
+          setSource(null);
+        }}
+        lastRunNumber={lastRun?.tanda ?? null}
+      />
 
       <section className="mt-3 rounded-2xl border border-line bg-panel p-3">
         <div className="label mb-2">¿Qué sentís en el auto?</div>
@@ -377,5 +461,78 @@ function RangeBar({ entry, current, suggested }: { entry: AcademyEntry; current:
         <span>{fmt(entry, hi)}</span>
       </div>
     </div>
+  );
+}
+
+function SourceBar({
+  available,
+  active,
+  onSource,
+  wet,
+  onWet,
+  base,
+  tracks,
+  trackId,
+  onTrack,
+  lastRunNumber,
+}: {
+  available: Source[];
+  active: Source | null;
+  onSource: (s: Source) => void;
+  wet: boolean;
+  onWet: (w: boolean) => void;
+  base: BaseSetup | null;
+  tracks: { id: number; pista: string }[];
+  trackId: number | null;
+  onTrack: (id: number) => void;
+  lastRunNumber: number | null;
+}) {
+  const explain: Record<Source, string> = {
+    tanda: `Lo que usaste en la tanda ${lastRunNumber ?? ""} y lo que te sugiere el ingeniero para la próxima.`,
+    mejor: base?.tu_mejor
+      ? `El reglaje de tu mejor vuelta limpia en esta pista (${base.tu_mejor.vuelta_s.toLocaleString("es-AR", { minimumFractionDigits: 3 })} s${base.tu_mejor.compuesto ? `, ${base.tu_mejor.compuesto}` : ""}). Buen punto de partida para hoy.`
+      : "",
+    base: base ? `${base.caracteristicas.nota} ${base.nota}` : "",
+  };
+  return (
+    <section className="mt-3 rounded-2xl border border-line bg-panel p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="label mr-1">Valores</div>
+        {(["tanda", "mejor", "base"] as Source[]).map((s) => {
+          const on = active === s;
+          const can = available.includes(s);
+          return (
+            <button
+              key={s}
+              disabled={!can}
+              onClick={() => onSource(s)}
+              className={`rounded-full border px-3 py-1 text-sm ${on ? "border-accent bg-accent/15 text-fg" : "border-line text-muted hover:text-fg"} disabled:cursor-not-allowed disabled:opacity-40`}
+              title={can ? undefined : s === "tanda" ? "Todavía no diste vueltas en esta sesión" : s === "mejor" ? "Todavía no corriste en esta pista" : "Elegí una pista"}
+            >
+              {SOURCE_LABEL[s]}
+            </button>
+          );
+        })}
+        <label className="ml-auto flex items-center gap-2 text-sm text-muted">
+          <input type="checkbox" checked={wet} onChange={(e) => onWet(e.target.checked)} />
+          Lluvia
+        </label>
+        <select
+          value={trackId ?? ""}
+          onChange={(e) => onTrack(Number(e.target.value))}
+          className="max-w-48 rounded-lg border border-line bg-panel-2 px-2 py-1 text-sm"
+          aria-label="Pista"
+        >
+          {trackId == null && <option value="">Elegí la pista…</option>}
+          {tracks.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.pista}
+            </option>
+          ))}
+        </select>
+      </div>
+      {active && <p className="mt-2 text-sm text-muted">{explain[active]}</p>}
+      {!active && <p className="mt-2 text-sm text-muted">Elegí la pista para ver un reglaje base.</p>}
+    </section>
   );
 }
