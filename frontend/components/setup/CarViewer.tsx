@@ -2,13 +2,36 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+
+import {
+  BODY,
+  FLOOR,
+  FRONT_ENDPLATE,
+  haloHalf,
+  loft,
+  planPlate,
+  plate,
+  R,
+  REAR_ENDPLATE,
+  RIM,
+  roundedTexture,
+  sidepod,
+  TRACK,
+  tube,
+  tyre,
+  WB_F,
+  WB_R,
+  wing,
+} from "@/components/setup/carModel";
 
 /**
- * A single-seater drawn as a technical draft: dark panels with cyan edges. The
- * setting being looked at lights up its part, the camera swings round to it and
- * the part acts out what the setting does (the wing flap tilts, the wheels show
- * camber and toe, the car rises and drops with ride height, the brakes glow by
- * the bias). Built from primitives in code: no model file to load.
+ * The single-seater in the Reglaje tab. The setting being looked at lights up
+ * its part, the camera swings round to it like a turntable and the part acts
+ * out what the setting does: the wing flap tilts, the wheels show camber and
+ * toe, the car rises, drops and rolls, the brakes glow by the bias. Parts that
+ * live inside the car (springs, anti-roll bars, differential) only show when
+ * the bodywork turns see-through.
  */
 
 type Part =
@@ -32,6 +55,8 @@ type Part =
   | "diff"
   | "floor";
 
+const INTERNAL: Part[] = ["springs_front", "springs_rear", "arb_front", "arb_rear", "diff"];
+
 type Anim =
   | "wing_front"
   | "wing_rear"
@@ -54,47 +79,32 @@ type Anim =
 
 type Focus = { parts: Part[]; cam: [number, number, number]; target: [number, number, number]; anim: Anim; xray?: boolean };
 
-const WB_F = 1.8; // front axle x
-const WB_R = -1.8; // rear axle x
-const TRACK = 0.8; // half track
-const R = 0.36; // tyre radius
-
 export const FOCUS: Record<string, Focus> = {
-  overview: { parts: [], cam: [5.2, 2.6, 5.2], target: [0, 0.35, 0], anim: "none" },
-  aleron_delantero: { parts: ["front_wing", "front_flap"], cam: [5.6, 1.1, 2.6], target: [2.9, 0.2, 0], anim: "wing_front" },
-  aleron_trasero: { parts: ["rear_wing", "rear_flap"], cam: [-5.2, 2.2, 2.8], target: [-2.4, 0.85, 0], anim: "wing_rear" },
-  diferencial_acelerando_pct: { parts: ["diff", "wheels_rear", "tyres_rear"], cam: [-3.6, 3.8, 2.4], target: [-1.8, 0.3, 0], anim: "diff", xray: true },
-  diferencial_soltando_pct: { parts: ["diff", "wheels_rear", "tyres_rear"], cam: [-3.6, 3.8, -2.4], target: [-1.8, 0.3, 0], anim: "diff", xray: true },
-  camber_del: { parts: ["wheels_front", "tyres_front"], cam: [6.4, 1.0, 0.01], target: [WB_F, 0.35, 0], anim: "camber_front" },
-  camber_tras: { parts: ["wheels_rear", "tyres_rear"], cam: [-6.4, 1.1, 0.01], target: [WB_R, 0.35, 0], anim: "camber_rear" },
-  convergencia_del: { parts: ["wheels_front", "tyres_front"], cam: [WB_F + 0.6, 5.2, 0.01], target: [WB_F, 0, 0], anim: "toe_front" },
-  convergencia_tras: { parts: ["wheels_rear", "tyres_rear"], cam: [WB_R - 0.6, 5.2, 0.01], target: [WB_R, 0, 0], anim: "toe_rear" },
-  suspension_del: { parts: ["springs_front", "arms_front"], cam: [3.4, 1.0, 3.0], target: [WB_F, 0.35, 0], anim: "spring_front", xray: true },
-  suspension_tras: { parts: ["springs_rear", "arms_rear"], cam: [-3.4, 1.0, 3.0], target: [WB_R, 0.35, 0], anim: "spring_rear", xray: true },
-  barra_antivuelco_del: { parts: ["arb_front"], cam: [4.6, 2.2, 0.9], target: [WB_F - 0.2, 0.45, 0], anim: "roll", xray: true },
-  barra_antivuelco_tras: { parts: ["arb_rear"], cam: [-4.6, 2.2, 0.9], target: [WB_R + 0.2, 0.45, 0], anim: "roll", xray: true },
-  altura_del: { parts: ["floor", "body"], cam: [0.8, 0.45, 6.4], target: [0.6, 0.3, 0], anim: "height_front" },
-  altura_tras: { parts: ["floor", "body"], cam: [-0.8, 0.45, 6.4], target: [-0.6, 0.3, 0], anim: "height_rear" },
-  presion_frenos_pct: { parts: ["brakes_front", "brakes_rear"], cam: [2.4, 1.0, 4.4], target: [0, 0.3, 0], anim: "brake_pressure", xray: true },
-  reparto_frenada_pct: { parts: ["brakes_front", "brakes_rear"], cam: [0.01, 4.8, 4.2], target: [0, 0.3, 0], anim: "brake_bias", xray: true },
-  freno_motor_pct: { parts: ["diff", "brakes_rear"], cam: [-3.4, 2.6, 3.2], target: [-1.6, 0.35, 0], anim: "engine_brake", xray: true },
-  presion_del_izq: { parts: ["tyres_front"], cam: [4.2, 1.2, 3.2], target: [WB_F, 0.35, 0], anim: "tyre_front" },
-  presion_tras_izq: { parts: ["tyres_rear"], cam: [-4.2, 1.2, 3.2], target: [WB_R, 0.35, 0], anim: "tyre_rear" },
+  overview: { parts: [], cam: [5.4, 2.4, 5.4], target: [0, 0.35, 0], anim: "none" },
+  aleron_delantero: { parts: ["front_wing", "front_flap"], cam: [6.2, 1.5, 3.4], target: [2.6, 0.25, 0], anim: "wing_front" },
+  aleron_trasero: { parts: ["rear_wing", "rear_flap"], cam: [-6.0, 2.4, 3.4], target: [-2.3, 0.75, 0], anim: "wing_rear" },
+  diferencial_acelerando_pct: { parts: ["diff", "wheels_rear", "tyres_rear"], cam: [-4.4, 4.2, 2.8], target: [WB_R, 0.3, 0], anim: "diff", xray: true },
+  diferencial_soltando_pct: { parts: ["diff", "wheels_rear", "tyres_rear"], cam: [-4.4, 4.2, -2.8], target: [WB_R, 0.3, 0], anim: "diff", xray: true },
+  camber_del: { parts: ["wheels_front", "tyres_front"], cam: [6.6, 1.1, 0.01], target: [WB_F, 0.35, 0], anim: "camber_front" },
+  camber_tras: { parts: ["wheels_rear", "tyres_rear"], cam: [-6.6, 1.2, 0.01], target: [WB_R, 0.35, 0], anim: "camber_rear" },
+  convergencia_del: { parts: ["wheels_front", "tyres_front"], cam: [WB_F + 0.4, 5.6, 0.01], target: [WB_F, 0, 0], anim: "toe_front" },
+  convergencia_tras: { parts: ["wheels_rear", "tyres_rear"], cam: [WB_R - 0.4, 5.6, 0.01], target: [WB_R, 0, 0], anim: "toe_rear" },
+  suspension_del: { parts: ["springs_front", "arms_front"], cam: [3.8, 1.4, 3.4], target: [WB_F, 0.4, 0], anim: "spring_front", xray: true },
+  suspension_tras: { parts: ["springs_rear", "arms_rear"], cam: [-3.8, 1.4, 3.4], target: [WB_R, 0.4, 0], anim: "spring_rear", xray: true },
+  barra_antivuelco_del: { parts: ["arb_front"], cam: [5.0, 2.4, 1.2], target: [WB_F - 0.2, 0.45, 0], anim: "roll", xray: true },
+  barra_antivuelco_tras: { parts: ["arb_rear"], cam: [-5.0, 2.4, 1.2], target: [WB_R + 0.2, 0.45, 0], anim: "roll", xray: true },
+  altura_del: { parts: ["floor"], cam: [1.0, 0.55, 6.8], target: [0.5, 0.3, 0], anim: "height_front" },
+  altura_tras: { parts: ["floor"], cam: [-1.0, 0.55, 6.8], target: [-0.5, 0.3, 0], anim: "height_rear" },
+  presion_frenos_pct: { parts: ["brakes_front", "brakes_rear"], cam: [2.8, 1.4, 4.8], target: [0, 0.3, 0], anim: "brake_pressure", xray: true },
+  reparto_frenada_pct: { parts: ["brakes_front", "brakes_rear"], cam: [0.01, 5.4, 4.4], target: [0, 0.3, 0], anim: "brake_bias", xray: true },
+  freno_motor_pct: { parts: ["diff", "brakes_rear"], cam: [-3.8, 2.8, 3.6], target: [-1.5, 0.35, 0], anim: "engine_brake", xray: true },
+  presion_del_izq: { parts: ["tyres_front"], cam: [4.4, 1.3, 3.4], target: [WB_F, 0.35, 0], anim: "tyre_front" },
+  presion_tras_izq: { parts: ["tyres_rear"], cam: [-4.4, 1.3, 3.4], target: [WB_R, 0.35, 0], anim: "tyre_rear" },
 };
 
-const COLORS = {
-  panel: 0x1a2330,
-  tyre: 0x0e1218,
-  edge: 0x3f5b72,
-  hl: 0x0e7490,
-  hlEmissive: 0x22d3ee,
-  hlEdge: 0xa5f3fc,
-  grid: 0x173040,
-  grid2: 0x101d28,
-};
-
-type Wheel = { group: THREE.Group; camber: THREE.Group; spin: THREE.Group; tyre: THREE.Mesh; front: boolean; side: 1 | -1; hub: THREE.Vector3 };
+type Wheel = { group: THREE.Group; camber: THREE.Group; spin: THREE.Group; front: boolean; side: 1 | -1 };
 type Link = { mesh: THREE.Mesh; inboard: THREE.Vector3; wheel: number; outboard: THREE.Vector3 };
+type Owned = { mesh: THREE.Mesh; lines: THREE.LineSegments; part: Part; base: THREE.Material; glow?: boolean };
 
 export function CarViewer({ focus, bias }: { focus: string; bias?: number | null }) {
   const host = useRef<HTMLDivElement>(null);
@@ -105,102 +115,134 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
     if (!el) return;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     el.appendChild(renderer.domElement);
     renderer.domElement.style.display = "block";
     renderer.domElement.style.touchAction = "pan-y";
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = env;
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+    const key = new THREE.DirectionalLight(0xffffff, 1.2);
     key.position.set(4, 8, 5);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0x88ccff, 0.6);
+    const rim = new THREE.DirectionalLight(0x7dd3fc, 0.8);
     rim.position.set(-6, 3, -4);
     scene.add(rim);
-    const grid = new THREE.GridHelper(16, 32, COLORS.grid, COLORS.grid2);
-    scene.add(grid);
+    scene.add(new THREE.GridHelper(18, 36, 0x173040, 0x0f1b25));
+    const shadowTex = roundedTexture();
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 2.4), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.002;
+    scene.add(shadow);
 
     // --- materials -------------------------------------------------------------
     const mats = {
-      panel: new THREE.MeshStandardMaterial({ color: COLORS.panel, metalness: 0.35, roughness: 0.55, transparent: true }),
-      tyre: new THREE.MeshStandardMaterial({ color: COLORS.tyre, metalness: 0.1, roughness: 0.9, transparent: true }),
-      hl: new THREE.MeshStandardMaterial({ color: COLORS.hl, emissive: COLORS.hlEmissive, emissiveIntensity: 0.55, metalness: 0.3, roughness: 0.4 }),
-      edge: new THREE.LineBasicMaterial({ color: COLORS.edge, transparent: true }),
-      hlEdge: new THREE.LineBasicMaterial({ color: COLORS.hlEdge }),
+      paint: new THREE.MeshPhysicalMaterial({ color: 0x18222e, metalness: 0.45, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.3, envMapIntensity: 0.55, transparent: true }),
+      carbon: new THREE.MeshPhysicalMaterial({ color: 0x0f141b, metalness: 0.3, roughness: 0.5, clearcoat: 0.3, envMapIntensity: 0.5, transparent: true }),
+      rubber: new THREE.MeshStandardMaterial({ color: 0x0b0e12, metalness: 0, roughness: 0.92 }),
+      rim: new THREE.MeshStandardMaterial({ color: 0x2b3542, metalness: 0.85, roughness: 0.3 }),
+      stripe: new THREE.MeshStandardMaterial({ color: 0xe9eef3, roughness: 0.6 }),
+      helmet: new THREE.MeshPhysicalMaterial({ color: 0xe9eef3, metalness: 0.1, roughness: 0.25, clearcoat: 1 }),
+      visor: new THREE.MeshPhysicalMaterial({ color: 0x0a0d12, metalness: 0.9, roughness: 0.1 }),
+      metal: new THREE.MeshStandardMaterial({ color: 0x55667a, metalness: 0.9, roughness: 0.35 }),
+      black: new THREE.MeshBasicMaterial({ color: 0x030405 }),
+      hl: new THREE.MeshStandardMaterial({ color: 0x0e7490, emissive: 0x22d3ee, emissiveIntensity: 0.6, metalness: 0.3, roughness: 0.35 }),
+      line: new THREE.LineBasicMaterial({ color: 0x4f7a96, transparent: true, opacity: 0.55 }),
+      hlLine: new THREE.LineBasicMaterial({ color: 0xa5f3fc }),
     };
-    const owned: { mesh: THREE.Mesh; edges: THREE.LineSegments; part: Part; base: THREE.Material; glow?: boolean }[] = [];
+    const owned: Owned[] = [];
     const brakeMats: { front: boolean; mat: THREE.MeshStandardMaterial }[] = [];
 
-    function add(parent: THREE.Object3D, geo: THREE.BufferGeometry, part: Part, opts: { tyre?: boolean; brake?: boolean; front?: boolean } = {}) {
-      let base: THREE.Material = opts.tyre ? mats.tyre : mats.panel;
+    function add(
+      parent: THREE.Object3D,
+      geo: THREE.BufferGeometry,
+      part: Part,
+      base: THREE.Material,
+      opts: { lines?: THREE.BufferGeometry | false; brake?: boolean; front?: boolean } = {},
+    ) {
+      let material = base;
       if (opts.brake) {
         const m = new THREE.MeshStandardMaterial({ color: 0x2a1a14, emissive: 0xff5a1f, emissiveIntensity: 0, metalness: 0.6, roughness: 0.4 });
         brakeMats.push({ front: !!opts.front, mat: m });
-        base = m;
+        material = m;
       }
-      const mesh = new THREE.Mesh(geo, base);
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 28), mats.edge);
-      mesh.add(edges);
+      const mesh = new THREE.Mesh(geo, material);
+      const lines = new THREE.LineSegments(opts.lines === false ? new THREE.BufferGeometry() : (opts.lines ?? new THREE.EdgesGeometry(geo, 35)), mats.line);
+      mesh.add(lines);
       parent.add(mesh);
-      owned.push({ mesh, edges, part, base, glow: opts.brake });
+      owned.push({ mesh, lines, part, base: material, glow: opts.brake });
       return mesh;
     }
-
-    const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
 
     // --- car ---------------------------------------------------------------------
     const car = new THREE.Group();
     scene.add(car);
     const body = new THREE.Group(); // sprung mass: moves with ride height, pitch and roll
-    body.position.y = 0;
     car.add(body);
 
-    // Floor and plank.
-    add(body, box(3.7, 0.04, 1.4), "floor").position.set(-0.2, 0.08, 0);
-    // Monocoque, nose and cockpit.
-    const tub = add(body, box(2.6, 0.42, 0.66), "body");
-    tub.position.set(0.9, 0.4, 0);
-    const nose = add(body, new THREE.CylinderGeometry(0.08, 0.26, 1.1, 12), "body");
-    nose.rotation.z = Math.PI / 2; // narrow end forward
-    nose.position.set(2.75, 0.3, 0);
-    nose.scale.set(1, 1, 0.8);
-    add(body, box(0.7, 0.12, 0.5), "body").position.set(0.95, 0.66, 0); // cockpit rim
-    // Halo.
-    const halo = add(body, new THREE.TorusGeometry(0.32, 0.03, 8, 24, Math.PI), "body");
-    halo.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
-    halo.position.set(1.05, 0.82, 0);
-    // Sidepods.
-    for (const side of [1, -1]) {
-      const pod = add(body, box(1.7, 0.36, 0.42), "body");
-      pod.position.set(0.05, 0.36, side * 0.52);
+    add(body, loft(BODY), "body", mats.paint, { lines: false });
+    for (const side of [1, -1] as const) {
+      add(body, loft(sidepod(side), 32, 6), "body", mats.paint, { lines: false });
+      // Mirrors on stalks.
+      add(body, tube([[1.2, 0.5, side * 0.33], [1.21, 0.57, side * 0.4], [1.22, 0.62, side * 0.45]], 0.012), "body", mats.carbon, { lines: false });
+      const mirror = new THREE.SphereGeometry(0.06, 16, 10);
+      mirror.scale(0.6, 0.55, 1.2);
+      add(body, mirror, "body", mats.carbon, { lines: false }).position.set(1.22, 0.64, side * 0.47);
     }
-    // Engine cover and airbox.
-    const cover = add(body, new THREE.CylinderGeometry(0.1, 0.34, 1.7, 12), "body");
-    cover.rotation.z = -Math.PI / 2; // narrow end at the back
-    cover.position.set(-1.25, 0.5, 0);
-    cover.scale.set(1, 1, 0.75);
-    add(body, box(0.5, 0.3, 0.26), "body").position.set(0.35, 0.82, 0);
+    add(body, planPlate(FLOOR, 0.025, 0.05), "floor", mats.carbon);
 
-    // Front wing: main plane, a flap that tilts, endplates.
-    add(body, box(0.4, 0.03, 1.8), "front_wing").position.set(3.25, 0.1, 0);
-    for (const side of [1, -1]) add(body, box(0.5, 0.2, 0.02), "front_wing").position.set(3.2, 0.17, side * 0.91);
+    // Cockpit: rim, opening and the driver's helmet.
+    const rimCurve = new THREE.EllipseCurve(0, 0, 0.36, 0.25, 0, Math.PI * 2, false, 0);
+    const rimPts = rimCurve.getPoints(48).slice(0, -1).map((p) => new THREE.Vector3(0.88 + p.x, 0.6, p.y));
+    add(body, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rimPts, true), 64, 0.025, 8, true), "body", mats.carbon, { lines: false });
+    const opening = new THREE.CircleGeometry(1, 40);
+    opening.scale(0.35, 0.24, 1);
+    opening.rotateX(-Math.PI / 2);
+    add(body, opening, "body", mats.black, { lines: false }).position.set(0.88, 0.605, 0);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.125, 24, 18), mats.helmet);
+    helmet.position.set(0.78, 0.72, 0);
+    body.add(helmet);
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.127, 24, 12, -Math.PI / 2.6, Math.PI / 1.3, Math.PI / 2.9, Math.PI / 5), mats.visor);
+    visor.rotation.y = Math.PI / 2;
+    visor.position.copy(helmet.position);
+    body.add(visor);
+    // Halo.
+    for (const side of [1, -1] as const) add(body, tube(haloHalf(side), 0.028), "body", mats.carbon, { lines: false });
+    // Airbox intake above the driver.
+    const intake = new THREE.CircleGeometry(1, 24);
+    intake.scale(0.09, 0.07, 1);
+    intake.rotateY(Math.PI / 2);
+    add(body, intake, "body", mats.black, { lines: false }).position.set(0.42, 0.72, 0);
+
+    // Front wing: main plane, two flaps that tilt together, endplates.
+    add(body, wing(0.44, 1.95, 0.1, 0.04), "front_wing", mats.carbon).position.set(3.5, 0.075, 0);
+    for (const side of [1, -1]) add(body, plate(FRONT_ENDPLATE, 0.014), "front_wing", mats.carbon).position.z = side * 0.98;
     const frontFlap = new THREE.Group();
-    frontFlap.position.set(3.08, 0.16, 0);
+    frontFlap.position.set(3.08, 0.13, 0);
     body.add(frontFlap);
-    add(frontFlap, box(0.26, 0.02, 1.72), "front_flap").position.set(-0.13, 0, 0);
+    add(frontFlap, wing(0.24, 1.9, 0.1, 0.05), "front_flap", mats.carbon);
+    add(frontFlap, wing(0.17, 1.9, 0.1, 0.05), "front_flap", mats.carbon).position.set(-0.17, 0.08, 0);
+    // Nose pylons to the main plane.
+    for (const side of [1, -1]) add(body, tube([[3.0, 0.22, side * 0.04], [3.06, 0.16, side * 0.07], [3.12, 0.1, side * 0.1]], 0.012), "front_wing", mats.carbon, { lines: false });
 
-    // Rear wing: main plane, a flap above it, endplates and pillar.
-    add(body, box(0.32, 0.03, 1.0), "rear_wing").position.set(-2.42, 0.86, 0);
-    for (const side of [1, -1]) add(body, box(0.62, 0.48, 0.02), "rear_wing").position.set(-2.4, 0.86, side * 0.51);
-    add(body, box(0.08, 0.42, 0.06), "rear_wing").position.set(-2.3, 0.62, 0);
+    // Rear wing: main plane, a flap above it, endplates, beam wing and pylon.
+    add(body, wing(0.38, 1.0, 0.11, 0.05), "rear_wing", mats.carbon).position.set(-2.22, 0.84, 0);
+    for (const side of [1, -1]) add(body, plate(REAR_ENDPLATE, 0.014), "rear_wing", mats.carbon).position.z = side * 0.505;
+    add(body, wing(0.2, 0.86, 0.1, 0.04), "rear_wing", mats.carbon).position.set(-2.18, 0.42, 0);
+    add(body, tube([[-2.15, 0.36, 0], [-2.3, 0.62, 0], [-2.36, 0.83, 0]], 0.022), "rear_wing", mats.carbon, { lines: false });
     const rearFlap = new THREE.Group();
-    rearFlap.position.set(-2.28, 0.98, 0);
+    rearFlap.position.set(-2.46, 0.97, 0);
     body.add(rearFlap);
-    add(rearFlap, box(0.24, 0.02, 0.98), "rear_flap").position.set(-0.12, 0, 0);
+    add(rearFlap, wing(0.22, 0.98, 0.1, 0.05), "rear_flap", mats.carbon);
 
-    // Differential and driveshafts.
-    add(body, box(0.3, 0.22, 0.3), "diff").position.set(WB_R, 0.32, 0);
+    // Differential (inside the gearbox).
+    const diff = new THREE.CylinderGeometry(0.11, 0.11, 0.2, 20);
+    diff.rotateX(Math.PI / 2);
+    add(body, diff, "diff", mats.metal).position.set(WB_R, 0.3, 0);
 
     // --- wheels ----------------------------------------------------------------
     const wheels: Wheel[] = [];
@@ -215,93 +257,89 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
         group.add(camber);
         const spin = new THREE.Group(); // rolling around z
         camber.add(spin);
-        const tyreGeo = new THREE.CylinderGeometry(R, R, width, 36, 1, true);
-        tyreGeo.rotateX(Math.PI / 2);
-        const tyre = add(spin, tyreGeo, front ? "tyres_front" : "tyres_rear", { tyre: true });
-        // Sidewalls and rim with spokes, so rolling is visible.
-        const wall = new THREE.RingGeometry(0.2, R, 36);
-        for (const face of [1, -1]) {
-          const w = add(spin, wall, front ? "tyres_front" : "tyres_rear", { tyre: true });
-          w.position.z = (face * width) / 2;
-          if (face < 0) w.rotation.y = Math.PI;
+        add(spin, tyre(width), front ? "tyres_front" : "tyres_rear", mats.rubber, { lines: false });
+        // Compound band on the outer sidewall.
+        const band = new THREE.Mesh(new THREE.RingGeometry(0.295, 0.31, 56), mats.stripe);
+        band.position.z = side * (width / 2 + 0.001);
+        if (side < 0) band.rotation.y = Math.PI;
+        spin.add(band);
+        // Rim and wheel cover, with marks so rolling shows.
+        const barrel = new THREE.CylinderGeometry(RIM, RIM, width - 0.02, 40, 1, true);
+        barrel.rotateX(Math.PI / 2);
+        add(spin, barrel, front ? "wheels_front" : "wheels_rear", mats.rim, { lines: false });
+        const c = add(spin, new THREE.CircleGeometry(RIM, 40), front ? "wheels_front" : "wheels_rear", mats.rim, { lines: false });
+        c.position.z = side * (width / 2 - 0.02);
+        if (side < 0) c.rotation.y = Math.PI;
+        for (let k = 0; k < 3; k++) {
+          const mark = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.018, 0.004), mats.stripe);
+          const ang = (k * Math.PI * 2) / 3;
+          mark.position.set(Math.cos(ang) * 0.17, Math.sin(ang) * 0.17, side * (width / 2 - 0.015));
+          mark.rotation.z = ang;
+          spin.add(mark);
         }
-        for (let k = 0; k < 5; k++) {
-          const spoke = add(spin, box(0.36, 0.03, 0.02), front ? "wheels_front" : "wheels_rear");
-          spoke.rotation.z = (k * Math.PI * 2) / 5;
-          spoke.position.z = (side * width) / 2 + side * 0.005;
-        }
-        // Brake disc inboard of the wheel.
-        const disc = new THREE.CylinderGeometry(0.17, 0.17, 0.03, 24);
+        const nut = new THREE.CylinderGeometry(0.035, 0.035, 0.03, 12);
+        nut.rotateX(Math.PI / 2);
+        add(spin, nut, front ? "wheels_front" : "wheels_rear", mats.metal, { lines: false }).position.z = side * (width / 2 - 0.01);
+        // Brake disc inside the rim.
+        const disc = new THREE.CylinderGeometry(0.17, 0.17, 0.03, 28);
         disc.rotateX(Math.PI / 2);
-        add(camber, disc, front ? "brakes_front" : "brakes_rear", { brake: true, front }).position.z = -side * 0.08;
-        wheels.push({ group, camber, spin, tyre, front, side, hub: new THREE.Vector3(x, R, side * TRACK) });
+        add(camber, disc, front ? "brakes_front" : "brakes_rear", mats.metal, { brake: true, front, lines: false }).position.z = -side * 0.06;
+        wheels.push({ group, camber, spin, front, side });
       }
-    }
-    // Wheel rims are part of the "wheels" highlight too.
-    for (const w of wheels) {
-      const hubGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.06, 12);
-      hubGeo.rotateX(Math.PI / 2);
-      add(w.spin, hubGeo, w.front ? "wheels_front" : "wheels_rear").position.z = (w.side * (w.front ? 0.3 : 0.4)) / 2;
     }
 
-    // --- suspension: arms, springs and anti-roll bars, re-placed every frame ----------
+    // --- suspension, re-placed every frame so it follows the body and the wheels ---
     const links: Link[] = [];
-    const rod = new THREE.CylinderGeometry(0.018, 0.018, 1, 6);
+    const rod = new THREE.CylinderGeometry(0.014, 0.014, 1, 8);
     const coilCurve = new THREE.CatmullRomCurve3(
-      Array.from({ length: 120 }, (_, i) => {
-        const a = (i / 119) * Math.PI * 2 * 7;
-        return new THREE.Vector3(Math.cos(a) * 0.05, i / 119 - 0.5, Math.sin(a) * 0.05);
+      Array.from({ length: 140 }, (_, i) => {
+        const ang = (i / 139) * Math.PI * 2 * 8;
+        return new THREE.Vector3(Math.cos(ang) * 0.045, i / 139 - 0.5, Math.sin(ang) * 0.045);
       }),
     );
-    const coil = new THREE.TubeGeometry(coilCurve, 240, 0.008, 5, false);
+    const coil = new THREE.TubeGeometry(coilCurve, 280, 0.007, 6, false);
     wheels.forEach((w, i) => {
       const fx = w.front ? 1 : -1;
+      const x = w.front ? WB_F : WB_R;
       const armPart: Part = w.front ? "arms_front" : "arms_rear";
-      // Upper and lower wishbones: two legs each, from the tub to the upright.
-      for (const [y, dy] of [[0.48, 0.12], [0.22, -0.12]] as const) {
-        for (const dx of [0.25, -0.25]) {
-          const m = add(body, rod, armPart);
-          links.push({ mesh: m, inboard: new THREE.Vector3(w.hub.x + dx * fx, y, w.side * 0.3), wheel: i, outboard: new THREE.Vector3(0, dy, -w.side * 0.12) });
+      // Upper and lower wishbones from the tub to the upright.
+      for (const [y, dy] of [[0.46, 0.12], [0.2, -0.12]] as const) {
+        for (const dx of [0.28, -0.22]) {
+          links.push({ mesh: add(body, rod, armPart, mats.carbon, { lines: false }), inboard: new THREE.Vector3(x + dx * fx, y, w.side * 0.24), wheel: i, outboard: new THREE.Vector3(0, dy, -w.side * 0.13) });
         }
       }
-      // Pushrod and spring.
-      const push = add(body, rod, armPart);
-      links.push({ mesh: push, inboard: new THREE.Vector3(w.hub.x - 0.15 * fx, 0.62, w.side * 0.22), wheel: i, outboard: new THREE.Vector3(0, -0.1, -w.side * 0.13) });
-      const spring = add(body, coil, w.front ? "springs_front" : "springs_rear");
-      links.push({ mesh: spring, inboard: new THREE.Vector3(w.hub.x - 0.15 * fx, 0.62, w.side * 0.06), wheel: i, outboard: new THREE.Vector3(-0.15 * fx, 0.22, -w.side * 0.2) });
+      // Pushrod to the rocker, and the spring inside the body.
+      links.push({ mesh: add(body, rod, armPart, mats.carbon, { lines: false }), inboard: new THREE.Vector3(x - 0.12 * fx, 0.5, w.side * 0.16), wheel: i, outboard: new THREE.Vector3(0, -0.11, -w.side * 0.14) });
+      links.push({ mesh: add(body, coil, w.front ? "springs_front" : "springs_rear", mats.metal, { lines: false }), inboard: new THREE.Vector3(x - 0.12 * fx, 0.5, w.side * 0.05), wheel: i, outboard: new THREE.Vector3(-0.12 * fx, 0.16, -w.side * 0.62) });
     });
     for (const front of [true, false]) {
-      const x = (front ? WB_F : WB_R) - (front ? 0.15 : -0.15);
-      const bar = new THREE.CylinderGeometry(0.025, 0.025, 0.5, 8);
+      const x = (front ? WB_F : WB_R) + (front ? -0.12 : 0.12);
+      const bar = new THREE.CylinderGeometry(0.022, 0.022, 0.36, 10);
       bar.rotateX(Math.PI / 2);
-      add(body, bar, front ? "arb_front" : "arb_rear").position.set(x, 0.6, 0);
-      for (const side of [1, -1]) add(body, box(0.14, 0.03, 0.03), front ? "arb_front" : "arb_rear").position.set(x + (front ? 0.06 : -0.06), 0.6, side * 0.25);
+      add(body, bar, front ? "arb_front" : "arb_rear", mats.metal, { lines: false }).position.set(x, 0.5, 0);
+      for (const side of [1, -1]) {
+        add(body, new THREE.BoxGeometry(0.13, 0.025, 0.025), front ? "arb_front" : "arb_rear", mats.metal, { lines: false }).position.set(x + (front ? 0.05 : -0.05), 0.5, side * 0.18);
+      }
     }
-    // Driveshafts.
     for (const side of [1, -1]) {
-      const m = add(body, rod, "diff");
       const wi = wheels.findIndex((w) => !w.front && w.side === side);
-      links.push({ mesh: m, inboard: new THREE.Vector3(WB_R, 0.32, side * 0.15), wheel: wi, outboard: new THREE.Vector3(0, 0, -side * 0.12) });
+      links.push({ mesh: add(body, rod, "diff", mats.metal, { lines: false }), inboard: new THREE.Vector3(WB_R, 0.3, side * 0.1), wheel: wi, outboard: new THREE.Vector3(0, 0, -side * 0.1) });
     }
 
     const up = new THREE.Vector3(0, 1, 0);
-    const tmpA = new THREE.Vector3();
-    const tmpB = new THREE.Vector3();
+    const pa = new THREE.Vector3();
+    const pb = new THREE.Vector3();
+    const dir = new THREE.Vector3();
     const inv = new THREE.Matrix4();
     function placeLinks() {
       body.updateMatrixWorld(true);
+      inv.copy(body.matrixWorld).invert();
       for (const l of links) {
-        const w = wheels[l.wheel];
-        tmpA.copy(l.inboard).applyMatrix4(body.matrixWorld);
-        // The spring runs from the tub to the top of the upright, so it shortens as the body drops.
-        tmpB.copy(w.group.position).add(l.outboard);
-        // Meshes live in body space: convert both ends back.
-        inv.copy(body.matrixWorld).invert();
-        const a = tmpA.clone().applyMatrix4(inv);
-        const b = tmpB.clone().applyMatrix4(inv);
-        const dir = b.clone().sub(a);
+        pa.copy(l.inboard); // already in body space
+        pb.copy(wheels[l.wheel].group.position).add(l.outboard).applyMatrix4(inv);
+        dir.copy(pb).sub(pa);
         const len = dir.length();
-        l.mesh.position.copy(a).add(b).multiplyScalar(0.5);
+        l.mesh.position.copy(pa).add(pb).multiplyScalar(0.5);
         l.mesh.quaternion.setFromUnitVectors(up, dir.normalize());
         l.mesh.scale.set(1, Math.max(0.05, len), 1);
       }
@@ -321,12 +359,16 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
       for (const o of owned) {
         const on = lit.has(o.part);
         o.mesh.material = on && !o.glow ? mats.hl : o.base;
-        o.edges.material = on ? mats.hlEdge : mats.edge;
+        o.lines.material = on ? mats.hlLine : mats.line;
+        o.mesh.visible = !INTERNAL.includes(o.part) || !!focus.xray || on;
       }
-      // X-ray: the panels fade so the parts inside (springs, bars, diff, brakes) show.
-      mats.panel.opacity = focus.xray ? 0.22 : 1;
-      mats.panel.depthWrite = !focus.xray;
-      mats.edge.opacity = focus.xray ? 0.45 : 1;
+      // See-through bodywork, so the parts inside show.
+      for (const m of [mats.paint, mats.carbon]) {
+        m.opacity = focus.xray ? 0.16 : 1;
+        m.depthWrite = !focus.xray;
+      }
+      helmet.visible = visor.visible = !focus.xray;
+      mats.line.opacity = focus.xray ? 0.35 : 0.55;
     }
 
     api.current = {
@@ -336,8 +378,8 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
         userYaw = 0;
         applyHighlight();
       },
-      setBias(b) {
-        biasValue = b;
+      setBias(v) {
+        biasValue = v;
       },
     };
     applyHighlight();
@@ -367,8 +409,7 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
       renderer.domElement.style.width = `${w}px`;
       renderer.domElement.style.height = `${h}px`;
       camera.aspect = w / Math.max(1, h);
-      // Narrow screens see the whole car: pull the camera back.
-      camera.fov = camera.aspect < 1 ? 50 : 36;
+      camera.fov = camera.aspect < 1 ? 52 : 34; // narrow screens: see the whole part
       camera.updateProjectionMatrix();
     }
     const ro = new ResizeObserver(resize);
@@ -379,8 +420,9 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
     let last = performance.now();
     let raf = 0;
     const desired = new THREE.Spherical();
-    const shortest = (a: number, b: number) => {
-      let d = b - a;
+    const want = new THREE.Vector3();
+    const shortest = (x: number, y: number) => {
+      let d = y - x;
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
       return d;
@@ -394,75 +436,72 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
       const k = 1 - Math.exp(-dt * 3.2);
 
       // Camera: swing round the car in spherical coordinates, like a turntable.
-      desired.setFromVector3(new THREE.Vector3(...focus.cam).sub(pivot));
+      desired.setFromVector3(want.set(...focus.cam).sub(pivot));
       desired.theta += userYaw + Math.sin(now / 4000) * 0.06;
       sph.radius += (desired.radius - sph.radius) * k;
       sph.phi += (desired.phi - sph.phi) * k;
       sph.theta += shortest(sph.theta, desired.theta) * k;
-      camTarget.lerp(new THREE.Vector3(...focus.target), k);
+      camTarget.lerp(want.set(...focus.target), k);
       camera.position.setFromSpherical(sph).add(pivot);
       camera.lookAt(camTarget);
 
       // Reset the pose, then act out the focused setting.
       body.position.y = 0;
       body.rotation.set(0, 0, 0);
-      frontFlap.rotation.z = 0.25;
-      rearFlap.rotation.z = 0.35;
+      frontFlap.rotation.z = -0.32;
+      rearFlap.rotation.z = -0.45;
       for (const w of wheels) {
         w.group.rotation.y = 0;
         w.camber.rotation.x = w.side * 0.03;
-        w.tyre.scale.set(1, 1, 1);
         w.spin.scale.set(1, 1, 1);
       }
-      for (const b of brakeMats) b.mat.emissiveIntensity = 0;
+      for (const bm of brakeMats) bm.mat.emissiveIntensity = 0;
 
-      const a = focus.anim;
-      if (a === "wing_front") frontFlap.rotation.z = 0.1 + s * 0.55;
-      if (a === "wing_rear") rearFlap.rotation.z = 0.1 + s * 0.65;
-      if (a === "camber_front" || a === "camber_rear") {
-        for (const w of wheels) if (w.front === (a === "camber_front")) w.camber.rotation.x = w.side * (0.04 + s * 0.22);
+      const anim = focus.anim;
+      if (anim === "wing_front") frontFlap.rotation.z = -0.12 - s * 0.5;
+      if (anim === "wing_rear") rearFlap.rotation.z = -0.15 - s * 0.65;
+      if (anim === "camber_front" || anim === "camber_rear") {
+        for (const w of wheels) if (w.front === (anim === "camber_front")) w.camber.rotation.x = w.side * (0.04 + s * 0.2);
       }
-      if (a === "toe_front" || a === "toe_rear") {
+      if (anim === "toe_front" || anim === "toe_rear") {
         for (const w of wheels) {
-          if (w.front !== (a === "toe_front")) continue;
-          // Front: toe-out (fronts of the wheels open); rear: toe-in.
-          const dir = w.front ? -w.side : w.side;
-          w.group.rotation.y = dir * s * 0.28;
+          if (w.front !== (anim === "toe_front")) continue;
+          // Front: toe-out (the fronts of the wheels open); rear: toe-in.
+          w.group.rotation.y = (w.front ? -w.side : w.side) * s * 0.26;
         }
       }
-      if (a === "spring_front") {
-        body.rotation.z = -s * 0.035;
+      if (anim === "spring_front") {
+        body.rotation.z = -s * 0.03;
         body.position.y = -s * 0.02;
       }
-      if (a === "spring_rear") {
-        body.rotation.z = s * 0.035;
+      if (anim === "spring_rear") {
+        body.rotation.z = s * 0.03;
         body.position.y = -s * 0.02;
       }
-      if (a === "roll") body.rotation.x = Math.sin(t * 2.4) * 0.05;
-      if (a === "height_front") {
-        body.rotation.z = (s - 0.5) * 0.05;
+      if (anim === "roll") body.rotation.x = Math.sin(t * 2.4) * 0.05;
+      if (anim === "height_front") {
+        body.rotation.z = (s - 0.5) * 0.045;
         body.position.y = (s - 0.5) * 0.04;
       }
-      if (a === "height_rear") {
-        body.rotation.z = -(s - 0.5) * 0.05;
+      if (anim === "height_rear") {
+        body.rotation.z = -(s - 0.5) * 0.045;
         body.position.y = (s - 0.5) * 0.04;
       }
-      if (a === "brake_pressure") for (const b of brakeMats) b.mat.emissiveIntensity = s * 2.2;
-      if (a === "brake_bias") {
+      if (anim === "brake_pressure") for (const bm of brakeMats) bm.mat.emissiveIntensity = s * 2.2;
+      if (anim === "brake_bias") {
         const front = (biasValue ?? 57) / 100;
-        for (const b of brakeMats) b.mat.emissiveIntensity = (b.front ? front : 1 - front) * 2.8 * (0.55 + 0.45 * s);
+        for (const bm of brakeMats) bm.mat.emissiveIntensity = (bm.front ? front : 1 - front) * 2.8 * (0.55 + 0.45 * s);
       }
-      if (a === "engine_brake") for (const b of brakeMats) if (!b.front) b.mat.emissiveIntensity = s * 1.6;
-      if (a === "tyre_front" || a === "tyre_rear") {
-        for (const w of wheels) if (w.front === (a === "tyre_front")) w.spin.scale.set(1 + s * 0.06, 1 + s * 0.06, 1);
+      if (anim === "engine_brake") for (const bm of brakeMats) if (!bm.front) bm.mat.emissiveIntensity = s * 1.6;
+      if (anim === "tyre_front" || anim === "tyre_rear") {
+        for (const w of wheels) if (w.front === (anim === "tyre_front")) w.spin.scale.set(1 + s * 0.05, 1 + s * 0.05, 1);
       }
-      // Rolling wheels where it helps to see them turn.
-      const rolling = a === "diff" || a === "engine_brake" || a === "brake_pressure";
-      for (const w of wheels) {
-        if (!rolling) continue;
-        // Diff: the outer rear wheel turns faster than the inner one in a corner.
-        const rate = a === "diff" && !w.front ? (w.side > 0 ? 7 : 4.5) : 5;
-        w.spin.rotation.z -= rate * dt;
+      if (anim === "diff" || anim === "engine_brake" || anim === "brake_pressure") {
+        for (const w of wheels) {
+          // Diff: in a corner the outer rear wheel turns faster than the inner one.
+          const rate = anim === "diff" && !w.front ? (w.side > 0 ? 7 : 4.5) : 5;
+          w.spin.rotation.z -= rate * dt;
+        }
       }
 
       placeLinks();
@@ -479,11 +518,13 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
       renderer.domElement.removeEventListener("pointerup", onUp);
       renderer.domElement.removeEventListener("pointercancel", onUp);
       scene.traverse((o) => {
-        const m = o as THREE.Mesh;
-        m.geometry?.dispose?.();
+        (o as THREE.Mesh).geometry?.dispose?.();
       });
       Object.values(mats).forEach((m) => m.dispose());
-      brakeMats.forEach((b) => b.mat.dispose());
+      brakeMats.forEach((bm) => bm.mat.dispose());
+      shadowTex.dispose();
+      env.dispose();
+      pmrem.dispose();
       renderer.dispose();
       el.removeChild(renderer.domElement);
       api.current = null;
