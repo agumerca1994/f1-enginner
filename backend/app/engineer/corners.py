@@ -369,6 +369,19 @@ class CornerCoach:
             "problemas": p.issues() if p else [],
         }
 
+    def seed(self, stored: list[dict] | None) -> None:
+        """Start from the corner map stored for the track, so corner N is the same corner every session."""
+        if stored and not self.corners:
+            self.corners = [Corner(int(c["curva"]), float(c["entrada_m"]), float(c["apex_m"]), float(c["salida_m"]),
+                                   int(c["sector"])) for c in stored]
+
+    def corner_list(self) -> list[dict] | None:
+        """The corner map for the track map and storage; None until the corners are mapped."""
+        if not self.corners:
+            return None
+        return [{"curva": k.number, "sector": k.sector, "entrada_m": round(k.entry_m), "apex_m": round(k.apex_m),
+                 "salida_m": round(k.exit_m)} for k in self.corners]
+
     def summary(self, last_laps: int = 3) -> dict | None:
         """For the engineer's facts: the corners costing the most over the last laps, and recurring issues."""
         if not self.corners or not self.passes:

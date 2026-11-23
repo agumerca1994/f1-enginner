@@ -91,6 +91,8 @@ async def live_ws(ws: WebSocket):
                         logger.exception("could not build a live snapshot", extra={"tenant_id": tenant_id})
                     snapshot_failed = True
                 else:
+                    if data.get("track") is not None:
+                        data["track"]["corners"] = engineer.engineer.history.corners.corner_list()
                     await ws.send_json({"type": "snapshot", "data": data})
             else:
                 idle_for += PUSH_INTERVAL_S

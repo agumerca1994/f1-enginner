@@ -137,6 +137,7 @@ export type Snapshot = {
     sector3_m: number;
     layout_coverage: number;
     layout_ready: boolean;
+    corners?: TrackCorner[] | null; // this session's corner map, once two clean laps mapped it
   } | null;
   cars?: CarRow[];
   events: ({ code: string; session_time: number } & Record<string, number | string>)[];
@@ -206,7 +207,10 @@ export type TrackLayout = {
   coverage: number;
   ready: boolean;
   segments: [number, number][][];
+  corners?: TrackCorner[] | null; // the first corner map stored for this track
 };
+
+export type TrackCorner = { curva: number; sector: number; entrada_m: number; apex_m: number; salida_m: number };
 
 export type EngineerMessage = {
   id: number;

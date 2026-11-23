@@ -20,7 +20,7 @@ from app.engineer.runner import engineer_hub
 from app.live.state import live_store
 from app.mcp_server.context import current_caller
 from app.mcp_server.instance import READ_ONLY, mcp
-from app.models import EngineerMessage, GameSession, SessionCapture, meaningful_session
+from app.models import EngineerMessage, GameSession, SessionCapture, TrackLayout, meaningful_session
 from app.telemetry import constants as c
 
 SESSION_KINDS = {
@@ -64,9 +64,10 @@ async def _review(tenant_id: int, session_id: int) -> tuple[GameSession, Session
     async with AsyncSessionLocal() as db:
         g = await _own_session(db, tenant_id, session_id)
         paths = list(await db.scalars(select(SessionCapture.path).where(SessionCapture.game_session_id == g.id)))
+        layout = await db.get(TrackLayout, g.track_id) if g.track_id is not None else None
     if not paths:
         raise ToolError("Esa sesión no tiene grabación: sólo se guardan las que llegaron por el bridge.")
-    result = await review_async(paths)
+    result = await review_async(paths, layout.corners if layout is not None else None)
     if result is None:
         raise ToolError("No se pudo leer la grabación de esa sesión.")
     return g, result

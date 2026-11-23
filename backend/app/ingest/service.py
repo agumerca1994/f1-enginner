@@ -50,6 +50,7 @@ class IngestConnection:
         self.bad_batches = 0
         self.hello: dict = {}
         self.heartbeat: dict = {}
+        self._corners_saved_for: int | None = None  # session uid whose corner map was already checked
         self._last_flush = time.monotonic()
         self._logged_rejections: set[str] = set()
         self._knowledge_uid: int | None = None  # session we already tried to prime with prior knowledge
@@ -116,7 +117,9 @@ class IngestConnection:
             if live.reception is None:  # a new live session starts without the link info
                 self._apply_link(live)
             if live.layout is not None and not live.layout_loaded:
-                await self._load_layout(db, live)
+                saved = await self._load_layout(db, live)
+                if saved is not None and saved.corners:
+                    engineer_hub.runner(self.device.tenant_id).stored_corners[live.track_id] = saved.corners
 
             open_session = self.sessions.get(packet.session_uid)
             if open_session is None:
@@ -205,12 +208,13 @@ class IngestConnection:
     # --- track layouts ------------------------------------------------------
 
     @staticmethod
-    async def _load_layout(db: AsyncSession, live) -> None:
+    async def _load_layout(db: AsyncSession, live) -> TrackLayout | None:
         """Start from what earlier sessions (of any player) learned about this track."""
         live.layout_loaded = True
         saved = await db.get(TrackLayout, live.track_id)
         if saved is not None:
             live.layout.merge(saved.sums, saved.counts)
+        return saved
 
     async def _save_layout(self, db: AsyncSession) -> None:
         live = self.store.get(self.device.tenant_id)
@@ -228,6 +232,20 @@ class IngestConnection:
         row.sums, row.counts, row.points = sums, counts, b.segments()
         row.coverage, row.ready = b.coverage, b.ready
         b.added_since_save = 0
+
+    async def _save_corners(self, db: AsyncSession) -> None:
+        """Keep the first corner map of each track, so every session numbers the corners the same way."""
+        live = self.store.get(self.device.tenant_id)
+        if live is None or live.track_id is None or self._corners_saved_for == live.session_uid:
+            return
+        coach = engineer_hub.runner(self.device.tenant_id).engineer.history.corners
+        corners = coach.corner_list()
+        if not corners:
+            return
+        self._corners_saved_for = live.session_uid
+        row = await db.get(TrackLayout, live.track_id)
+        if row is not None and row.corners is None and abs(row.track_length_m - coach.track_length) < 1:
+            row.corners = corners
 
     # --- persistence --------------------------------------------------------
 
@@ -253,6 +271,7 @@ class IngestConnection:
         self.rejected.clear()
         await self._save_knowledge(db)
         await self._save_layout(db)
+        await self._save_corners(db)
         await db.commit()
 
     async def _save_knowledge(self, db: AsyncSession) -> None:

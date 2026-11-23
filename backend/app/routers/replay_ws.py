@@ -54,6 +54,8 @@ async def replay_ws(ws: WebSocket):
         paths = list(await db.scalars(
             select(SessionCapture.path).where(SessionCapture.game_session_id == game_session.id)
         ))
+        layout = await db.get(TrackLayout, game_session.track_id) if game_session.track_id is not None else None
+        stored_corners = layout.corners if layout is not None else None
 
     source = ReplaySource(paths)
     if not source.files:
@@ -66,6 +68,8 @@ async def replay_ws(ws: WebSocket):
         await _improve_layout(game_session.track_id, builder)
 
     engineer = EngineerRunner(user.tenant_id, "replay", game_session.id)
+    if stored_corners and game_session.track_id is not None:
+        engineer.stored_corners[game_session.track_id] = stored_corners
     player = ReplayPlayer(source, on_packet=engineer.observe, on_reset=engineer.reset)
     state = {"playing": False, "speed": 1.0, "dirty": True}
     await ws.send_json({"type": "ready", "duration_s": round(duration, 2), "records": count})
@@ -109,13 +113,16 @@ async def replay_ws(ws: WebSocket):
                 last_message = message["id"]
             if state["dirty"]:
                 state["dirty"] = False
+                data = snapshot.build(player.live) if player.live else None
+                if data and data.get("track") is not None:
+                    data["track"]["corners"] = engineer.engineer.history.corners.corner_list()
                 await ws.send_json({
                     "type": "frame",
                     "t": round(player.t, 2),
                     "duration_s": round(duration, 2),
                     "playing": state["playing"],
                     "speed": state["speed"],
-                    "data": snapshot.build(player.live) if player.live else None,
+                    "data": data,
                 })
             await asyncio.sleep(TICK_S)
     except (WebSocketDisconnect, RuntimeError):

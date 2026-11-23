@@ -47,6 +47,8 @@ class EngineerRunner:
         self.game_session_id = game_session_id
         self.provider = provider or get_provider()
         self.engineer = RaceEngineer()
+        # track id -> the corner map stored for it, so the corners keep their numbers across sessions
+        self.stored_corners: dict[int, list[dict]] = {}
         self.session_uid: int | None = None
         self.active = False
         self.messages: deque[dict] = deque(maxlen=40)
@@ -93,6 +95,10 @@ class EngineerRunner:
         self._last_packet_wall = time.monotonic()
         if packet.name == "car_telemetry":
             self._track_straight(packet)
+        coach = self.engineer.history.corners
+        track_id = getattr(live, "track_id", None)
+        if not coach.corners and track_id in self.stored_corners:
+            coach.seed(self.stored_corners[track_id])
         request = self.engineer.observe(packet, live)
         if request is not None and self.active:
             self._queue(request)

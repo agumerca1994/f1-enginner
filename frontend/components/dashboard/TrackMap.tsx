@@ -6,11 +6,12 @@ import { Panel } from "@/components/dashboard/Panel";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { teamColor } from "@/lib/teams";
-import type { Snapshot, TrackLayout } from "@/lib/types";
+import type { Snapshot, TrackCorner, TrackLayout } from "@/lib/types";
 import { WEATHER_ES } from "@/lib/format";
 
 type Bounds = { minX: number; maxX: number; minZ: number; maxZ: number };
 const PAD = 60; // metres around the outline
+const PAD_WITH_CORNERS = 150; // room for the corner numbers outside the outline
 
 /**
  * Top-down circuit map. The outline is built by the server from every car's
@@ -79,6 +80,10 @@ export function TrackMap({ s }: { s: Snapshot }) {
           .map((z) => stretch(loop, (z.inicio_pct / 100) * track.length_m, (z.fin_pct / 100) * track.length_m))
       : [];
   const s3 = track ? pointAt(track.sector3_m) : null;
+  // The stored map keeps the numbering the same across sessions; this session's map fills in a new track.
+  const corners = loop ? (layout?.corners ?? track?.corners ?? []) : [];
+
+  const pad = corners.length ? PAD_WITH_CORNERS : PAD;
 
   return (
     <Panel
@@ -93,7 +98,7 @@ export function TrackMap({ s }: { s: Snapshot }) {
       <div className="relative aspect-[4/3] w-full lg:aspect-[16/10]">
         {view ? (
           <svg
-            viewBox={`${view.minX - PAD} ${view.minZ - PAD} ${view.maxX - view.minX + 2 * PAD} ${view.maxZ - view.minZ + 2 * PAD}`}
+            viewBox={`${view.minX - pad} ${view.minZ - pad} ${view.maxX - view.minX + 2 * pad} ${view.maxZ - view.minZ + 2 * pad}`}
             className="h-full w-full"
             preserveAspectRatio="xMidYMid meet"
           >
@@ -115,6 +120,7 @@ export function TrackMap({ s }: { s: Snapshot }) {
                 strokeLinecap="round"
               />
             ))}
+            {loop && corners.map((k) => <CornerLabel key={k.curva} loop={loop} corner={k} />)}
             {loop && <Marker p={loop[0]} label="META" color="#e9eef3" />}
             {s2 && <Marker p={s2} label="S2" color="#22d3ee" />}
             {s3 && <Marker p={s3} label="S3" color="#22d3ee" />}
@@ -186,6 +192,42 @@ function Marker({ p, label, color }: { p: [number, number]; label: string; color
       <text x={16} y={6} fontSize={24} fill={color} fontWeight={600}>
         {label}
       </text>
+    </g>
+  );
+}
+
+const CORNER_OFFSET_M = 95;
+
+/** The corner number just outside the apex, on the side away from the centre of the turn. */
+function CornerLabel({ loop, corner }: { loop: [number, number][]; corner: TrackCorner }) {
+  const n = loop.length;
+  const i = Math.min(n - 1, Math.max(0, Math.floor(corner.apex_m / 10)));
+  const a = loop[(i - 6 + n) % n];
+  const p = loop[i];
+  const b = loop[(i + 6) % n];
+  const tx = b[0] - a[0];
+  const tz = b[1] - a[1];
+  const len = Math.hypot(tx, tz) || 1;
+  // Normal to the left of the direction of travel; the turn bends towards the side of the cross product.
+  let nx = -tz / len;
+  let nz = tx / len;
+  const cross = (p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0]);
+  const towardsLeft = cross < 0;
+  if (!towardsLeft) {
+    nx = -nx;
+    nz = -nz;
+  }
+  const x = p[0] + nx * CORNER_OFFSET_M;
+  const z = p[1] + nz * CORNER_OFFSET_M;
+  return (
+    <g>
+      <line x1={p[0]} y1={p[1]} x2={x} y2={z} stroke="#56657a" strokeWidth={3} />
+      <g transform={`translate(${x}, ${z})`}>
+        <circle r={38} fill="#131922" stroke="#56657a" strokeWidth={4} />
+        <text y={12} textAnchor="middle" fontSize={34} fontWeight={700} fill="#e9eef3" className="num">
+          {corner.curva}
+        </text>
+      </g>
     </g>
   );
 }

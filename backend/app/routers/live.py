@@ -79,10 +79,11 @@ async def track_layout(track_id: int, user: User = Depends(get_current_user), db
     live_state = live_store.get(user.tenant_id)
     if live_state is not None and live_state.track_id == track_id and live_state.layout is not None:
         b = live_state.layout  # freshest: includes this session's samples not saved yet
+        row = await db.get(TrackLayout, track_id)
         return {"track_id": track_id, "length_m": b.track_length, "coverage": round(b.coverage, 3),
-                "ready": b.ready, "segments": b.segments()}
+                "ready": b.ready, "segments": b.segments(), "corners": row.corners if row else None}
     row = await db.get(TrackLayout, track_id)
     if row is None:
         raise HTTPException(404, "No outline for this track yet: it is drawn during the first lap")
     return {"track_id": track_id, "length_m": row.track_length_m, "coverage": round(row.coverage, 3),
-            "ready": row.ready, "segments": row.points}
+            "ready": row.ready, "segments": row.points, "corners": row.corners}

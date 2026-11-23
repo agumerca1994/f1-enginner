@@ -113,3 +113,17 @@ def test_mcp_corner_comparison_against_the_fastest_car(client):
     assert _tool(client, pat, "compare_lap_telemetry", session_id=sid, lap=3, against_lap=2)["a"]["lap"] == 2
     assert _tool(client, pat, "compare_lap_telemetry", session_id=sid, against_driver="piastri")["a"]["piloto"] == "PIASTRI"
     assert "error" in _tool(client, pat, "compare_lap_telemetry", session_id=sid, lap=9)
+
+
+@needs(TEXAS)
+def test_stored_corner_map_keeps_the_numbering():
+    from app.engineer import box
+    from app.engineer.review import review
+
+    stored = [{"curva": 1, "sector": 1, "entrada_m": 380, "apex_m": 650, "salida_m": 950},
+              {"curva": 2, "sector": 2, "entrada_m": 2430, "apex_m": 2610, "salida_m": 2820}]
+    r = review([str(TEXAS)], stored)
+    assert [k.number for k in box.corner_map(r)] == [1, 2]
+    assert [k.apex_m for k in r.corners.corners] == [650, 2610]
+    assert r.corners.corner_list()[1]["apex_m"] == 2610
+    assert len(review([str(TEXAS)]).corners.corners) > 2  # without a stored map, its own

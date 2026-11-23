@@ -24,4 +24,6 @@ class TrackLayout(Base):
     points: Mapped[list] = mapped_column(JSONB)
     coverage: Mapped[float] = mapped_column(Float)
     ready: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Corners found from a player's speed trace: [{curva, sector, entrada_m, apex_m, salida_m}].
+    corners: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

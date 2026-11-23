@@ -10,7 +10,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.engineer import box
 from app.engineer.review import SessionReview, review_async
-from app.models import GameSession, SessionCapture, User
+from app.models import GameSession, SessionCapture, TrackLayout, User
 from app.telemetry import constants as c
 
 router = APIRouter(prefix="/api/sessions", tags=["box"])
@@ -25,7 +25,8 @@ async def _review(session_id: int, user: User, db: AsyncSession) -> tuple[GameSe
     paths = list(await db.scalars(select(SessionCapture.path).where(SessionCapture.game_session_id == g.id)))
     if not paths:
         raise HTTPException(404, "This session has no recording")
-    r = await review_async(paths)
+    layout = await db.get(TrackLayout, g.track_id) if g.track_id is not None else None
+    r = await review_async(paths, layout.corners if layout is not None else None)
     if r is None:
         raise HTTPException(422, "The recording could not be read")
     return g, r

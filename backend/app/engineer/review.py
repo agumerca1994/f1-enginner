@@ -43,9 +43,12 @@ class SessionReview:
         return next((pl for pl in self.laps if pl.lap == number), None)
 
 
-def review(paths: list[str]) -> SessionReview | None:
-    """Replay the captures of one session to the end. CPU-bound: run it in a thread."""
-    key = tuple(sorted((p, _mtime(p)) for p in paths))
+def review(paths: list[str], corners: list[dict] | None = None) -> SessionReview | None:
+    """Replay the captures of one session to the end. CPU-bound: run it in a thread.
+
+    `corners` is the corner map stored for the track, so the numbering matches the map and other sessions.
+    """
+    key = (tuple(sorted((p, _mtime(p)) for p in paths)), repr(corners))
     if key in _cache:
         _cache.move_to_end(key)
         return _cache[key]
@@ -58,6 +61,7 @@ def review(paths: list[str]) -> SessionReview | None:
     def observe(packet, live: LiveSession) -> None:
         if state["uid"] != packet.session_uid:  # a capture can hold a menu or a previous session
             state["uid"], state["engineer"], state["traces"] = packet.session_uid, RaceEngineer(), TraceCollector()
+            state["engineer"].history.corners.seed(corners)
         state["engineer"].observe(packet, live)
         state["traces"].observe(packet, live)
 
@@ -82,9 +86,9 @@ def review(paths: list[str]) -> SessionReview | None:
     return result
 
 
-async def review_async(paths: list[str]) -> SessionReview | None:
+async def review_async(paths: list[str], corners: list[dict] | None = None) -> SessionReview | None:
     async with _lock:
-        return await asyncio.to_thread(review, paths)
+        return await asyncio.to_thread(review, paths, corners)
 
 
 def _mtime(path: str) -> float:
