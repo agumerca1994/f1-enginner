@@ -19,7 +19,7 @@ El plan completo, con el estado de cada fase y las decisiones tomadas, está en 
 2. Tocá **Vincular esta Mac**: se abre la web con el código cargado, iniciás sesión con Google y confirmás.
 3. En el juego, activá la telemetría UDP (formato 2024, puerto 20777) y salí a pista: los datos aparecen en el dashboard.
 4. Tus sesiones quedan grabadas: en **Sesiones → Ver repetición** las volvés a ver con todos los datos.
-5. En **Box** comparás tus vueltas en el gráfico de telemetría (velocidad, acelerador, freno y marcha) contra otra tuya o la mejor de cualquier piloto, con el reglaje de cada vuelta y en qué curvas perdés tiempo.
+5. En **Box** comparás tus vueltas en el gráfico de telemetría (velocidad, acelerador, freno y marcha) contra otra tuya o la mejor de cualquier piloto, con el reglaje de cada vuelta, en qué curvas perdés tiempo y qué cambios de reglaje probar en cada tanda. En **Reglaje** ves en un auto 3D qué hace cada ajuste y cuándo conviene tocarlo.
 6. Para hablar de tus carreras con Claude u otra IA, copiá la URL del conector en **Ajustes → Conectar con una IA (MCP)**. Después agregala como conector personalizado en la app y autorizala con tu cuenta. El conector sólo puede leer.
 
 La app y `bridge run` usan el mismo puerto: no los abras a la vez.

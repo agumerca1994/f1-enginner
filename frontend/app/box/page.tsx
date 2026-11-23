@@ -194,6 +194,9 @@ function Box() {
               {loading ? "Actualizando…" : "Actualizar"}
             </button>
           )}
+          <Link href={sid != null ? `/reglaje?s=${sid}` : "/reglaje"} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+            Reglaje
+          </Link>
           <Link href="/" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
             Dashboard
           </Link>
@@ -700,6 +703,9 @@ function RunCard({ run, sessionId, open, onBestLap }: { run: Run; sessionId: num
                   <span className="text-fg">{sug.problema}</span> ({sug.evidencia}). {sug.efecto}
                 </p>
                 <p className="mt-1 text-xs text-muted">A cambio: {sug.compromiso}</p>
+                <Link href={`/reglaje?s=${sessionId}&p=${sug.parametro}`} className="mt-1 inline-block text-xs text-accent underline">
+                  Ver qué hace en el auto
+                </Link>
               </li>
             ))}
           </ul>

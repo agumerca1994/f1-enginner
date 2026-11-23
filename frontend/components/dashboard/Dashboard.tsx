@@ -88,6 +88,9 @@ function TopBar({ status, s }: { status: LiveStatus; s: Snapshot | null }) {
         <Link href="/box" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
           Box
         </Link>
+        <Link href="/reglaje" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+          Reglaje
+        </Link>
         <Link href="/sessions" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
           Sesiones
         </Link>
