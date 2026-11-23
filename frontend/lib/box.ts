@@ -31,6 +31,42 @@ export type BoxRef = {
 
 export type BoxCorner = { curva: number; sector: number; entrada_m: number; apex_m: number; salida_m: number };
 
+export type SetupSuggestion = {
+  problema: string;
+  evidencia: string;
+  parametro: string;
+  valor_actual: number;
+  valor_sugerido: number;
+  efecto: string;
+  compromiso: string;
+  confianza: "alta" | "media";
+};
+
+export type Run = {
+  tanda: number;
+  vueltas: number[];
+  vueltas_limpias: number[];
+  reglaje: string | null;
+  mejor_vuelta: number | null;
+  mejor_vuelta_s: number | null;
+  problemas_pct: Record<string, number>;
+  gomas: {
+    temp_superficie_del_c: number;
+    temp_superficie_tras_c: number;
+    desgaste_por_vuelta_del_pct: number | null;
+    desgaste_por_vuelta_tras_pct: number | null;
+  } | null;
+  velocidad_punta: { tuya_kmh: number; rivales_kmh: number } | null;
+  sugerencias_reglaje: SetupSuggestion[];
+  conduccion: { curva: number; problema: string; texto: string }[];
+  nota?: string;
+  contra_tanda_anterior?: {
+    cambios_de_reglaje: { parametro: string; antes: number; despues: number }[];
+    mejor_vuelta_diferencia_s: number | null;
+    problemas_antes_pct: Record<string, number>;
+  };
+};
+
 export type BoxOverview = {
   sesion: { id: number; pista: string | null; tipo: string | null; inicio: string; en_curso: boolean };
   largo_pista_m: number | null;
@@ -39,6 +75,7 @@ export type BoxOverview = {
   reglajes: { id: string; valores: SetupValues; vueltas: number[] }[];
   referencias: BoxRef[];
   curvas: BoxCorner[];
+  tandas: Run[];
 };
 
 export type Trace = {
@@ -185,4 +222,24 @@ export function secondsText(s: number, sign = true): string {
   const v = num(Math.abs(s), 3);
   if (!sign) return `${v} s`;
   return `${s > 0 ? "+" : s < 0 ? "−" : ""}${v} s`;
+}
+
+const PARAM_EXTRA: Record<string, string> = {
+  presion_del: "Presión delanteras",
+  presion_tras: "Presión traseras",
+  presion_del_izq: "Presión del. izq.",
+  presion_del_der: "Presión del. der.",
+  presion_tras_izq: "Presión tras. izq.",
+  presion_tras_der: "Presión tras. der.",
+  combustible_kg: "Combustible",
+};
+
+export function paramName(key: string): string {
+  return SETUP_ES.find(([k]) => k === key)?.[1] ?? PARAM_EXTRA[key] ?? key;
+}
+
+export function paramValue(key: string, v: number | null | undefined): string {
+  if (v == null) return "—";
+  const unit = key.startsWith("presion_") && !key.startsWith("presion_frenos") ? " psi" : (SETUP_ES.find(([k]) => k === key)?.[2] ?? "");
+  return `${v.toLocaleString("es-AR", { maximumFractionDigits: 2 })}${unit}`;
 }

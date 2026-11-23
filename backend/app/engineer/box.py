@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from app.engineer import analysis
+from app.engineer import analysis, setup_advice
 from app.engineer.corners import BIN_M as CORNER_BIN_M
 from app.engineer.corners import Corner, CornerCoach
 from app.engineer.review import SessionReview
@@ -71,7 +71,7 @@ def _ref(t: LapTrace, names: dict) -> dict[str, Any]:
 def overview(r: SessionReview) -> dict[str, Any]:
     tr = r.traces
     if tr is None or tr.track_length is None:
-        return {"vueltas": [], "reglajes": [], "referencias": [], "curvas": [], "largo_pista_m": None}
+        return {"vueltas": [], "reglajes": [], "referencias": [], "curvas": [], "tandas": [], "largo_pista_m": None}
     setup_list, lap_setup = setups(r)
     info = {pl.lap: pl for pl in r.laps}
     best = tr.best.get(tr.player)
@@ -104,6 +104,7 @@ def overview(r: SessionReview) -> dict[str, Any]:
         "vueltas": laps,
         "reglajes": setup_list,
         "referencias": [_ref(t, tr.names) for t in tr.references()],
+        "tandas": setup_advice.session_advice(r, setup_list, lap_setup),
         "curvas": [{"curva": k.number, "sector": k.sector, "entrada_m": round(k.entry_m),
                     "apex_m": round(k.apex_m), "salida_m": round(k.exit_m)} for k in corner_map(r)],
     }

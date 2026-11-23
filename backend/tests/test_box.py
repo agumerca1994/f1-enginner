@@ -127,3 +127,40 @@ def test_stored_corner_map_keeps_the_numbering():
     assert [k.apex_m for k in r.corners.corners] == [650, 2610]
     assert r.corners.corner_list()[1]["apex_m"] == 2610
     assert len(review([str(TEXAS)]).corners.corners) > 2  # without a stored map, its own
+
+
+@needs(TEXAS)
+def test_setup_advice_per_run():
+    from app.engineer import box, setup_advice
+    from app.engineer.review import review
+
+    r = review([str(TEXAS)])
+    runs = box.overview(r)["tandas"]
+    assert len(runs) == 1 and runs[0]["vueltas"] == [1, 2, 3] and runs[0]["vueltas_limpias"] == [2, 3]
+    advice = runs[0]["sugerencias_reglaje"]
+    assert 1 <= len(advice) <= setup_advice.MAX_SUGGESTIONS
+    first = advice[0]
+    assert first["parametro"] == "barra_antivuelco_del" and first["valor_sugerido"] < first["valor_actual"]
+    assert len({a["parametro"] for a in advice}) == len(advice)  # one change per setting
+    lo, hi, _ = setup_advice.RANGES[first["parametro"]]
+    assert all(lo <= a["valor_sugerido"] <= hi for a in advice if a["parametro"] == first["parametro"])
+
+
+def test_advice_rules_and_ranges():
+    from app.engineer.setup_advice import _change, advise
+
+    setup = {"aleron_delantero": 49, "barra_antivuelco_del": 2, "reparto_frenada_pct": 57,
+             "presiones_psi": {"del_izq": 23.0, "del_der": 23.0, "tras_izq": 21.0, "tras_der": 21.0}}
+    assert _change(setup, "aleron_delantero", 2) == (49, 50)  # clamped to the game's range
+    assert _change(setup, "barra_antivuelco_del", -2) == (2, 1)
+    assert _change(setup, "presion_tras", -0.4) == (21.0, 20.6)
+    assert _change(setup, "aleron_trasero", 2) is None  # unknown value: no suggestion
+
+    beh = {"por_tipo": {"lentas": {"pasadas": 10, "subviraje": 6}},
+           "por_curva": {"subviraje": {1: 2, 2: 2, 3: 2}}}
+    sug, driving = advise(setup, beh, None, None)
+    assert sug[0]["parametro"] == "barra_antivuelco_del" and not driving
+    # The same issue in one corner only is a driving note.
+    beh["por_curva"]["subviraje"] = {4: 6}
+    sug, driving = advise(setup, beh, None, None)
+    assert sug == [] and driving[0]["curva"] == 4

@@ -29,6 +29,11 @@ async def _review(session_id: int, user: User, db: AsyncSession) -> tuple[GameSe
     r = await review_async(paths, layout.corners if layout is not None else None)
     if r is None:
         raise HTTPException(422, "The recording could not be read")
+    # A track opened before corner maps were stored gets this session's, so its numbers stay from now on.
+    if layout is not None and layout.corners is None and r.corners is not None and r.corners.corner_list():
+        if r.corners.track_length and abs(layout.track_length_m - r.corners.track_length) < 1:
+            layout.corners = r.corners.corner_list()
+            await db.commit()
     return g, r
 
 

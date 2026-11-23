@@ -26,6 +26,8 @@ Cómo usarlo:
 - `compare_lap_telemetry` compara la telemetría curva por curva (frenada, velocidad
   mínima, aceleración y tiempo) contra otra vuelta del jugador o la mejor del auto más
   rápido: es la herramienta para "¿dónde pierdo tiempo?" y "¿cómo manejo tal curva?".
+- `get_setup_advice` da, tanda por tanda, cómo se comportó el auto y qué cambios de
+  reglaje probar (con el valor actual y el sugerido), más consejos de manejo.
 - `get_engineer_radio` trae lo que el ingeniero de IA le dijo al jugador por radio.
 - `get_live_session` es la carrera que se está corriendo ahora mismo, si hay una.
 

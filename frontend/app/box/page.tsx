@@ -18,7 +18,10 @@ import {
   type CornerRow,
   ISSUE_ES,
   lapKey,
+  paramName,
+  paramValue,
   PRESSURE_ES,
+  type Run,
   secondsText,
   SETUP_ES,
   type SetupValues,
@@ -250,6 +253,14 @@ function Box() {
             {cmp && <CornersPanel rows={cmp.curvas} />}
           </div>
           <div className="flex min-w-0 flex-col gap-3">
+            <RunsPanel
+              runs={overview.tandas}
+              sessionId={overview.sesion.id}
+              onBestLap={(lap) => {
+                const v = overview.vueltas.find((x) => x.vuelta === lap);
+                if (v) setMine(lapKey(v.car, v.vuelta));
+              }}
+            />
             {cmp && <AdvicePanel cmp={cmp} />}
             <SetupPanel overview={overview} mine={mineLap} other={refLap} />
           </div>
@@ -595,4 +606,129 @@ function lapsText(laps: number[]): string {
   if (laps.length === 1) return `vuelta ${laps[0]}`;
   const contiguous = laps.every((n, i) => i === 0 || n === laps[i - 1] + 1);
   return contiguous ? `vueltas ${laps[0]} a ${laps[laps.length - 1]}` : `vueltas ${laps.join(", ")}`;
+}
+
+const ISSUE_SHORT: Record<string, string> = {
+  subviraje: "subviraje",
+  sobreviraje: "sobreviraje",
+  patinaje_traccion: "patinaje",
+  bloqueo_delantero: "bloqueo adelante",
+  bloqueo_trasero: "bloqueo atrás",
+  fuera_de_pista: "fuera de pista",
+};
+
+/** Every run of the session, newest first: what the car did, what to change and what the last change did. */
+function RunsPanel({ runs, sessionId, onBestLap }: { runs: Run[]; sessionId: number; onBestLap: (lap: number) => void }) {
+  const ordered = [...runs].reverse();
+  return (
+    <Panel title="Tandas y sugerencias de reglaje">
+      {runs.length === 0 && <p className="py-4 text-center text-sm text-muted">Todavía no hay vueltas completas.</p>}
+      <ol className="space-y-3">
+        {ordered.map((run, i) => (
+          <RunCard key={run.tanda} run={run} sessionId={sessionId} open={i === 0} onBestLap={onBestLap} />
+        ))}
+      </ol>
+      <p className="mt-3 text-xs text-muted">
+        Una tanda son las vueltas entre dos pasadas por boxes con el mismo reglaje. Cambiá uno o dos valores por vez y
+        compará la tanda siguiente: así sabés qué cambio sirvió.
+      </p>
+    </Panel>
+  );
+}
+
+function RunCard({ run, sessionId, open, onBestLap }: { run: Run; sessionId: number; open: boolean; onBestLap: (lap: number) => void }) {
+  const prev = run.contra_tanda_anterior;
+  const range = run.vueltas.length > 1 ? `vueltas ${run.vueltas[0]} a ${run.vueltas[run.vueltas.length - 1]}` : `vuelta ${run.vueltas[0]}`;
+  const issues = Object.entries(run.problemas_pct).filter(([, v]) => v >= 0.15).sort((a, b) => b[1] - a[1]);
+  return (
+    <li className="rounded-xl bg-panel-2 p-3">
+      <details open={open}>
+        <summary className="cursor-pointer list-none">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="font-semibold">
+              Tanda {run.tanda} <span className="text-xs font-normal text-muted">{range}{run.reglaje ? ` · reglaje ${run.reglaje}` : ""}</span>
+            </span>
+            <span className="num text-sm">{run.mejor_vuelta_s ? lapTime(ms(run.mejor_vuelta_s)) : "—"}</span>
+          </div>
+          {prev?.mejor_vuelta_diferencia_s != null && (
+            <div className={`num text-right text-xs ${prev.mejor_vuelta_diferencia_s < 0 ? "text-ok" : "text-danger"}`}>
+              {secondsText(prev.mejor_vuelta_diferencia_s)} contra la tanda anterior
+            </div>
+          )}
+        </summary>
+
+        {prev && prev.cambios_de_reglaje.length > 0 && (
+          <div className="mt-2 text-xs">
+            <div className="label mb-1">Qué cambiaste</div>
+            <ul className="space-y-0.5">
+              {prev.cambios_de_reglaje.map((c) => (
+                <li key={c.parametro} className="num">
+                  <span className="font-sans text-muted">{paramName(c.parametro)}:</span> {paramValue(c.parametro, c.antes)} → {paramValue(c.parametro, c.despues)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {issues.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {issues.map(([k, v]) => {
+              const before = prev?.problemas_antes_pct?.[k];
+              return (
+                <span key={k} className="rounded-md border border-line px-1.5 py-0.5 text-xs text-muted">
+                  {ISSUE_SHORT[k] ?? k} <span className="num text-fg">{Math.round(v * 100)}%</span>
+                  {before != null && <span className="num"> (antes {Math.round(before * 100)}%)</span>}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {run.nota && <p className="mt-2 text-xs text-muted">{run.nota}</p>}
+
+        {run.sugerencias_reglaje.length > 0 ? (
+          <ul className="mt-3 space-y-2">
+            {run.sugerencias_reglaje.map((sug) => (
+              <li key={sug.parametro} className="rounded-lg border border-line p-2.5 text-sm">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-semibold">{paramName(sug.parametro)}</span>
+                  <span className="num">
+                    {paramValue(sug.parametro, sug.valor_actual)} → <span className="font-semibold text-accent">{paramValue(sug.parametro, sug.valor_sugerido)}</span>
+                  </span>
+                </div>
+                <p className="mt-1 text-muted">
+                  <span className="text-fg">{sug.problema}</span> ({sug.evidencia}). {sug.efecto}
+                </p>
+                <p className="mt-1 text-xs text-muted">A cambio: {sug.compromiso}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          run.vueltas_limpias.length > 0 && (
+            <p className="mt-2 text-sm text-muted">No aparece ningún problema repetido que pida tocar el reglaje.</p>
+          )
+        )}
+
+        {run.conduccion.length > 0 && (
+          <div className="mt-3">
+            <div className="label mb-1">Manejo</div>
+            <ul className="space-y-1 text-sm text-muted">
+              {run.conduccion.map((d) => (
+                <li key={`${d.problema}-${d.curva}`}>{d.texto}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {run.mejor_vuelta != null && (
+          <button
+            onClick={() => onBestLap(run.mejor_vuelta!)}
+            className="mt-3 rounded-md border border-line px-2 py-1 text-xs text-muted hover:text-fg"
+          >
+            Ver la mejor vuelta de la tanda en el gráfico
+          </button>
+        )}
+      </details>
+    </li>
+  );
 }

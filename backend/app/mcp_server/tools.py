@@ -264,3 +264,27 @@ async def compare_lap_telemetry(
         "(puede no coincidir con la numeración oficial). Con poca recepción algunos puntos quedan en null."
     )
     return out
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_setup_advice(
+    session_id: Annotated[int, Field(description="Id de la sesión, de list_sessions")],
+) -> dict[str, Any]:
+    """Sugerencias de reglaje por tanda (vueltas entre visitas a boxes con un mismo reglaje): el reglaje usado,
+    cómo se comportó el auto (subviraje, sobreviraje, bloqueos y patinaje por tipo de curva, temperatura y
+    desgaste de gomas por eje, velocidad punta contra los más rápidos), los cambios sugeridos con su valor
+    actual y el sugerido, consejos de manejo y la comparación con la tanda anterior."""
+    from app.engineer import box
+
+    caller = await current_caller()
+    g, r = await _review(caller.tenant_id, session_id)
+    ov = box.overview(r)
+    return {
+        "sesion": _session_meta(g),
+        "reglajes": ov["reglajes"],
+        "tandas": ov["tandas"],
+        "nota": "Los reglajes se identifican con letras (A, B…) en el orden en que se usaron. problemas_pct es la "
+                "proporción de pasadas por curva con ese problema. Las sugerencias son de a uno o dos cambios por "
+                "vez: probalos en la tanda siguiente y compará. En clasificación y carrera el reglaje queda "
+                "bloqueado: sirve para las prácticas.",
+    }
