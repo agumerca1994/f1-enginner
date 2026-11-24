@@ -224,6 +224,12 @@ export type EngineerMessage = {
   /** The engineer's voice for `radio` (path on the API), when the voice service is on. */
   audio?: string;
   prioridad: "info" | "importante" | "urgente";
+  /** What the call is about, so the same topic is not repeated. */
+  tema?: string | null;
+  /** The driver's question, when this message answers one. */
+  pregunta?: string;
+  /** Why the radio stayed quiet (silence rules); the pit wall still shows the analysis. */
+  silenciado?: string;
   /** Absent on radio-only calls (the quick lane): only full calls carry the pit-wall analysis. */
   estrategia?: {
     plan: string;

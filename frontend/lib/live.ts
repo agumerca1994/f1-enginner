@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api, liveSocketUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { EngineerState, Snapshot } from "@/lib/types";
+import type { EngineerMessage, EngineerState, Snapshot } from "@/lib/types";
+
+/** Add a message unless it is already there (an answer arrives both from the request and the socket). */
+function addMessage(messages: EngineerMessage[], m: EngineerMessage): EngineerMessage[] {
+  if (messages.some((x) => x.id === m.id)) return messages;
+  return [...messages, m].slice(-40);
+}
 
 export type LiveStatus = "connecting" | "live" | "waiting" | "offline";
 
@@ -59,7 +65,7 @@ export function useLive({ overlayToken }: { overlayToken?: string } = {}) {
             messages: msg.messages ?? e.messages,
           }));
         } else if (msg.type === "engineer_message") {
-          setEngineer((e) => ({ ...e, messages: [...e.messages, msg.message].slice(-40) }));
+          setEngineer((e) => ({ ...e, messages: addMessage(e.messages, msg.message) }));
         }
       };
       ws.onclose = () => {
@@ -91,5 +97,14 @@ export function useLive({ overlayToken }: { overlayToken?: string } = {}) {
     [credentials],
   );
 
-  return { status, snapshot, receivedAt, engineer, engineerBusy, toggleEngineer };
+  const askEngineer = useCallback(
+    async (texto: string) => {
+      const m = await api<EngineerMessage>("/api/engineer/ask", await credentials(), { method: "POST", body: { texto } });
+      setEngineer((e) => ({ ...e, messages: addMessage(e.messages, m) }));
+      return m;
+    },
+    [credentials],
+  );
+
+  return { status, snapshot, receivedAt, engineer, engineerBusy, toggleEngineer, askEngineer };
 }

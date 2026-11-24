@@ -69,6 +69,8 @@ function Settings() {
         </div>
       </section>
 
+      <RadioNameSection />
+
       <section className="mt-4 flex items-center justify-between rounded-2xl border border-line bg-panel p-4">
         <div>
           <h2 className="label">Consumo de IA</h2>
@@ -115,5 +117,73 @@ function Settings() {
       <OverlaySection />
       <McpConnectorSection />
     </main>
+  );
+}
+
+/** How the engineer calls the player on the radio: the game's driver name is the seat they took. */
+function RadioNameSection() {
+  const { credentials } = useAuth();
+  const [name, setName] = useState("");
+  const [saved, setSaved] = useState<string | null>(null);
+  const [state, setState] = useState<"idle" | "saving" | "ok" | "error">("idle");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await api<{ nombre_radio: string | null }>("/api/engineer/settings", await credentials());
+        setName(r.nombre_radio ?? "");
+        setSaved(r.nombre_radio ?? "");
+      } catch {}
+    })();
+  }, [credentials]);
+
+  const save = async () => {
+    setState("saving");
+    try {
+      const r = await api<{ nombre_radio: string | null }>("/api/engineer/settings", await credentials(), {
+        method: "PUT",
+        body: { nombre_radio: name.trim() || null },
+      });
+      setSaved(r.nombre_radio ?? "");
+      setState("ok");
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+      <h2 className="label">Ingeniero de pista</h2>
+      <p className="mt-1 text-sm text-muted">
+        Cómo te llama por radio. Si lo dejás vacío no usa nombre (nunca el del piloto del juego).
+      </p>
+      <form
+        className="mt-3 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <input
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setState("idle");
+          }}
+          maxLength={40}
+          placeholder="Tu nombre para la radio"
+          className="min-w-0 flex-1 rounded-lg border border-line bg-panel-2 px-3 py-1.5 text-sm focus:border-accent focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={state === "saving" || name.trim() === (saved ?? "")}
+          className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm hover:border-accent disabled:opacity-40"
+        >
+          Guardar
+        </button>
+      </form>
+      {state === "ok" && <p className="mt-1 text-xs text-ok">Guardado.</p>}
+      {state === "error" && <p className="mt-1 text-xs text-danger">No se pudo guardar.</p>}
+    </section>
   );
 }

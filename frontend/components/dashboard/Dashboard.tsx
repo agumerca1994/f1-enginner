@@ -19,8 +19,8 @@ import { type LiveStatus, useLive } from "@/lib/live";
 import type { Snapshot } from "@/lib/types";
 
 export function Dashboard() {
-  const { status, snapshot, engineer, engineerBusy, toggleEngineer } = useLive();
-  const panel = <EngineerPanel engineer={engineer} onToggle={toggleEngineer} busy={engineerBusy} />;
+  const { status, snapshot, engineer, engineerBusy, toggleEngineer, askEngineer } = useLive();
+  const panel = <EngineerPanel engineer={engineer} onToggle={toggleEngineer} onAsk={askEngineer} busy={engineerBusy} />;
   return (
     <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
       <TopBar status={status} s={snapshot} />

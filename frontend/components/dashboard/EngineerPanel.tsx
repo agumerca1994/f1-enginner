@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { Panel } from "@/components/dashboard/Panel";
+import { useDictation } from "@/lib/listen";
 import { useEngineerVoice } from "@/lib/voice";
 import { COMPOUND_COLORS } from "@/lib/teams";
 import type { EngineerState } from "@/lib/types";
@@ -24,10 +26,13 @@ const PRIORITY: Record<string, { label: string; border: string; text: string }> 
 export function EngineerPanel({
   engineer,
   onToggle,
+  onAsk,
   busy = false,
 }: {
   engineer: EngineerState;
   onToggle: (active: boolean) => void;
+  /** Live only: the driver talks to the engineer. */
+  onAsk?: (text: string) => Promise<unknown>;
   busy?: boolean;
 }) {
   const voice = useEngineerVoice(engineer.messages);
@@ -71,6 +76,8 @@ export function EngineerPanel({
         </div>
       }
     >
+      {engineer.active && onAsk && <TalkBar onAsk={onAsk} />}
+
       {!engineer.active ? (
         <p className="py-3 text-sm text-muted">
           Activalo para que el ingeniero siga la sesión: te habla por radio cuando hay algo importante, ajusta la
@@ -94,6 +101,7 @@ export function EngineerPanel({
                 </span>
                 {lastRadio.lap != null && <span className="num text-muted">V{lastRadio.lap}</span>}
               </div>
+              {lastRadio.pregunta && <p className="mt-1 text-xs text-muted">Vos: “{lastRadio.pregunta}”</p>}
               <p className="mt-1 text-lg font-medium leading-snug">“{lastRadio.radio}”</p>
             </div>
           )}
@@ -134,7 +142,10 @@ export function EngineerPanel({
                 {history.map((m) => (
                   <li key={m.id} className="flex gap-2">
                     <span className="num shrink-0">V{m.lap ?? "–"}</span>
-                    <span>{m.radio}</span>
+                    <span>
+                      {m.pregunta && <span className="text-fg/70">Vos: “{m.pregunta}” · </span>}
+                      {m.radio}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -192,6 +203,81 @@ function Strategy({ s }: { s: NonNullable<EngineerState["messages"][number]["est
         )}
       </div>
       {s.alternativa && <p className="mt-1 text-xs text-muted">Alternativa: {s.alternativa}</p>}
+    </div>
+  );
+}
+
+/** Push to talk (or type): the driver asks, the engineer answers on the radio at once. */
+function TalkBar({ onAsk }: { onAsk: (text: string) => Promise<unknown> }) {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  const send = async (question: string) => {
+    const q = question.trim();
+    if (!q || sending) return;
+    setSending(true);
+    setFailed(null);
+    try {
+      await onAsk(q);
+      setText("");
+    } catch {
+      setFailed("No llegó la pregunta. Probá de nuevo.");
+    } finally {
+      setSending(false);
+    }
+  };
+  const mic = useDictation(send);
+
+  return (
+    <div className="mb-3">
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(text);
+        }}
+      >
+        {mic.supported && (
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              mic.start();
+            }}
+            onPointerUp={mic.stop}
+            onPointerLeave={() => mic.listening && mic.stop()}
+            onContextMenu={(e) => e.preventDefault()}
+            className={`shrink-0 touch-none select-none rounded-full border px-3 py-2 text-sm font-semibold ${
+              mic.listening ? "border-danger bg-danger/15 text-danger" : "border-accent text-accent"
+            }`}
+            title="Mantené apretado y hablá"
+          >
+            {mic.listening ? "● Te escucho" : "🎙 Hablar"}
+          </button>
+        )}
+        <input
+          value={mic.listening ? mic.interim : text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={mic.supported ? "Mantené Hablar o escribí: estatus, ¿cómo me fue en la 3?" : "Escribí: estatus, ¿cuándo paro?, anotalo…"}
+          className="min-w-0 flex-1 rounded-lg border border-line bg-panel-2 px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none"
+          disabled={sending || mic.listening}
+          maxLength={500}
+        />
+        <button
+          type="submit"
+          disabled={sending || !text.trim()}
+          className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-40"
+        >
+          {sending ? "…" : "Enviar"}
+        </button>
+      </form>
+      {(mic.error || failed) && <p className="mt-1 text-xs text-danger">{mic.error || failed}</p>}
+      {!mic.listening && !sending && (
+        <p className="mt-1 text-[0.65rem] text-muted">
+          “Anotalo: …” guarda lo que sentís para el box · “Alto” lo calla · “Hablame” lo vuelve a activar
+        </p>
+      )}
     </div>
   );
 }

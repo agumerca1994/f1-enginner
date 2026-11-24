@@ -151,6 +151,10 @@ class IngestConnection:
             loaded = await memory.load(db, self.device.tenant_id, live.track_id)
         else:
             loaded = runner.memory
+        if runner.memory.track_id is None:
+            # Reports noted before any session opened (from the MCP or the web) belong to this weekend.
+            for r in runner.memory.data["reportes_piloto"]:
+                loaded.add_report(r["texto"], r.get("zona"), r.get("vuelta"))
         name = await db.scalar(select(User.radio_name).where(User.tenant_id == self.device.tenant_id).limit(1))
         loaded.open_session(game_session_id, memory.session_label(int(session.body["session_type"])))
         runner.set_memory(loaded, name)
