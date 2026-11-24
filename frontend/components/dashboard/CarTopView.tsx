@@ -38,7 +38,8 @@ export function CarTopView({ s }: { s: Snapshot }) {
         st ? (
           <span className="flex items-center gap-2 text-xs text-muted">
             <span className="h-3 w-3 rounded-full" style={{ background: COMPOUND_COLORS[st.tyre] ?? "#7d8996" }} />
-            {COMPOUND_ES[st.tyre] ?? st.tyre} {st.tyre_compound} · {st.tyre_age_laps} v
+            {COMPOUND_ES[st.tyre] ?? st.tyre}
+            {st.tyre_compound !== st.tyre && COMPOUND_ES[st.tyre_compound] == null && ` ${st.tyre_compound}`} · {st.tyre_age_laps} v
           </span>
         ) : null
       }

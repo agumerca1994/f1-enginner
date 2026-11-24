@@ -76,7 +76,7 @@ export function McpConnectorSection() {
   };
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+    <section className="mt-4 card p-4">
       <h2 className="label">Conectar con una IA (MCP)</h2>
       <p className="mt-1 text-sm text-muted">
         Charlá con Claude u otra IA sobre tus carreras: en la app agregá un conector personalizado con esta URL y

@@ -166,7 +166,7 @@ export function EngineerPanel({
   );
 }
 
-function Strategy({ s }: { s: NonNullable<EngineerState["messages"][number]["estrategia"]> }) {
+export function Strategy({ s }: { s: NonNullable<EngineerState["messages"][number]["estrategia"]> }) {
   const window = s.ventana_box?.filter(Boolean) ?? [];
   return (
     <div className="rounded-xl border border-line p-3">

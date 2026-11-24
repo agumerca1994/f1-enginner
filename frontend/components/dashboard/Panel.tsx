@@ -17,7 +17,7 @@ export function Panel({
   const stale = age != null && age > STALE_AFTER_S;
   return (
     <section
-      className={`rounded-2xl border border-line bg-panel p-4 transition-opacity ${stale ? "opacity-60" : ""} ${className}`}
+      className={`card p-4 transition-opacity ${stale ? "opacity-60" : ""} ${className}`}
     >
       <header className="mb-3 flex items-center justify-between gap-2">
         <h2 className="label">{title}</h2>

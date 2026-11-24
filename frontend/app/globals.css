@@ -1,7 +1,14 @@
 @import "tailwindcss";
 
-/* Pit-wall palette: near-black panels, one cyan accent for telemetry, and
-   status colours reserved for meaning (ok / watch / act). */
+/* Three themes share one set of tokens; the player picks one in Ajustes and it
+   lands on <html data-theme>. Status colours keep their meaning in every theme
+   (ok / watch / act), only their shade changes.
+
+   - clasico: the original pit-wall palette, near-black panels and one cyan accent.
+   - carbono: broadcast graphics. Carbon weave, condensed italic type, signal red,
+     cut corners.
+   - volante: a steering-wheel display. Black glass, LCD digits that glow, shift-light
+     green/red/blue. */
 @theme {
   --color-bg: #07090c;
   --color-panel: #0e1217;
@@ -10,9 +17,11 @@
   --color-fg: #e9eef3;
   --color-muted: #7d8996;
   --color-accent: #22d3ee;
+  --color-accent-fg: #07090c;
   --color-ok: #34d399;
   --color-warn: #fbbf24;
   --color-danger: #f43f5e;
+  --color-best: #c084fc;
   --color-soft: #e5484d;
   --color-medium: #f5c542;
   --color-hard: #eef2f6;
@@ -20,16 +29,86 @@
   --color-wet: #3b82f6;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-geist-sans);
+}
+
+:root {
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+  --display-style: normal;
+  --display-weight: 700;
+  --display-transform: none;
+  --display-glow: none;
+  --label-font: var(--font-sans);
+  --label-weight: 400;
+  --label-size: 0.68rem;
+  --bg-texture: none;
+}
+
+[data-theme="carbono"] {
+  --color-bg: #0a0a0b;
+  --color-panel: #141417;
+  --color-panel-2: #1c1c21;
+  --color-line: #2a2a31;
+  --color-fg: #f5f5f5;
+  --color-muted: #a0a0aa;
+  --color-accent: #ff2d1f;
+  --color-accent-fg: #0a0a0b;
+  --color-ok: #4ade80;
+  --color-warn: #ffd400;
+  --color-danger: #ff4d3d;
+  --color-best: #b56cff;
+  --font-sans: var(--font-saira);
+  --font-mono: var(--font-saira-condensed);
+  --font-display: var(--font-saira-condensed);
+  --radius-card: 2px;
+  --radius-control: 2px;
+  --display-style: italic;
+  --display-weight: 900;
+  --display-transform: uppercase;
+  --label-font: var(--font-saira-condensed);
+  --label-weight: 700;
+  --label-size: 0.75rem;
+  --bg-texture: repeating-linear-gradient(45deg, rgb(255 255 255 / 0.025) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.025) 0 2px, transparent 2px 6px);
+}
+
+[data-theme="volante"] {
+  --color-bg: #030405;
+  --color-panel: #0b0d10;
+  --color-panel-2: #121519;
+  --color-line: #23272e;
+  --color-fg: #e8edf2;
+  --color-muted: #7f8893;
+  --color-accent: #7dff6a;
+  --color-accent-fg: #031a00;
+  --color-ok: #7dff6a;
+  --color-warn: #ffb547;
+  --color-danger: #ff5a67;
+  --color-best: #c084fc;
+  --font-sans: var(--font-chakra);
+  --font-mono: var(--font-share-tech);
+  --font-display: var(--font-share-tech);
+  --radius-card: 1.25rem;
+  --radius-control: 999px;
+  --display-weight: 400;
+  --display-glow: 0 0 14px color-mix(in srgb, currentColor 45%, transparent);
+  --label-font: var(--font-chakra);
+  --label-weight: 600;
+  --label-size: 0.7rem;
+  --bg-texture: radial-gradient(120% 60% at 50% 0%, #161a20 0%, transparent 60%);
 }
 
 html,
 body {
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   color: var(--color-fg);
 }
 
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
+  background-image: var(--bg-texture);
+  background-attachment: fixed;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -40,8 +119,84 @@ body {
 }
 
 .label {
-  font-size: 0.68rem;
+  font-family: var(--label-font), system-ui, sans-serif;
+  font-weight: var(--label-weight);
+  font-size: var(--label-size);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-muted);
+}
+
+/* Big numbers: position, gear, speed, delta. */
+.display {
+  font-family: var(--font-display), ui-monospace, sans-serif;
+  font-style: var(--display-style);
+  font-weight: var(--display-weight);
+  text-transform: var(--display-transform);
+  text-shadow: var(--display-glow);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+@utility card {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-line);
+  background-color: var(--color-panel);
+}
+
+[data-theme="carbono"] .card {
+  border-color: transparent;
+  border-top: 2px solid var(--color-line);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+[data-theme="volante"] .card {
+  border-width: 2px;
+  background-color: #000;
+  box-shadow: inset 0 0 0 3px var(--color-panel);
+}
+
+/* The one main action of a screen (talk to the engineer, next step). */
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+  border-radius: var(--radius-control);
+  font-weight: 700;
+}
+
+[data-theme="carbono"] .btn-primary {
+  font-family: var(--font-saira-condensed);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+
+[data-theme="volante"] .btn-primary {
+  background: radial-gradient(circle at 50% 30%, #ff5a3c, #c81e1e);
+  color: #fff;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 3px #000, 0 0 0 5px var(--color-line), 0 6px 24px rgb(200 30 30 / 0.35);
+}
+
+/* Small rounded choices: quick questions, filters. */
+.chip {
+  border: 1px solid var(--color-line);
+  background: var(--color-panel);
+  border-radius: var(--radius-control);
+}
+
+[data-theme="carbono"] .chip {
+  font-family: var(--font-saira-condensed);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* A slanted block, only drawn as such in Carbono. */
+[data-theme="carbono"] .slant {
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+  padding-right: 1.5rem;
 }

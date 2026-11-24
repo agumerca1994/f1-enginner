@@ -51,10 +51,7 @@ function Sessions() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Sesiones</h1>
-        <Link href="/" className="text-sm text-accent underline">
-          Volver al dashboard
-        </Link>
+        <h1 className="display text-3xl">Sesiones</h1>
       </div>
       <p className="mt-1 text-sm text-muted">Cada sesión que corriste con el bridge queda grabada: podés volver a verla con todos los datos.</p>
       <label className="mt-2 flex items-center gap-2 text-xs text-muted">
@@ -71,7 +68,7 @@ function Sessions() {
 
       <ul className="mt-6 space-y-2">
         {sessions?.map((s) => (
-          <li key={s.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-panel p-4">
+          <li key={s.id} className="flex items-center justify-between gap-3 card p-4">
             <div className="min-w-0">
               <div className="truncate font-semibold">{s.track ?? "Pista desconocida"}</div>
               <div className="text-sm text-muted">

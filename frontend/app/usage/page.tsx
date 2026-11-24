@@ -55,8 +55,8 @@ function UsageView() {
     <main className="mx-auto max-w-5xl px-4 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Consumo de IA</h1>
-        <Link href="/" className="text-sm text-accent underline">
-          Volver al dashboard
+        <Link href="/settings" className="text-sm text-accent underline">
+          Volver a Ajustes
         </Link>
       </div>
       <p className="mt-1 text-sm text-muted">
@@ -71,7 +71,7 @@ function UsageView() {
           <section className="mt-6 grid gap-3 sm:grid-cols-3">
             <Tile title="Hoy" b={usage.today} />
             <Tile title="Este mes" b={usage.month} highlight />
-            <div className="rounded-2xl border border-line bg-panel p-4">
+            <div className="card p-4">
               <div className="label">Total histórico</div>
               <div className="num mt-1 text-3xl font-semibold">{usd(usage.total.cost_usd)}</div>
               <div className="mt-1 text-sm text-muted">{usage.total.calls} llamadas a la IA</div>
@@ -82,7 +82,7 @@ function UsageView() {
             </div>
           </section>
 
-          <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+          <section className="mt-4 card p-4">
             <h2 className="label">Gasto por día · últimos 30 días</h2>
             <div className="mt-4 flex h-36 items-end gap-1">
               {usage.by_day.map((d) => (
@@ -101,7 +101,7 @@ function UsageView() {
             </div>
           </section>
 
-          <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+          <section className="mt-4 card p-4">
             <h2 className="label">Por sesión</h2>
             {usage.by_session.length === 0 ? (
               <p className="mt-3 text-sm text-muted">Todavía no hay consumo de IA en los últimos 30 días.</p>
@@ -147,7 +147,7 @@ function UsageView() {
             )}
           </section>
 
-          <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+          <section className="mt-4 card p-4">
             <h2 className="label">Por modelo</h2>
             {usage.by_model.length === 0 ? (
               <p className="mt-3 text-sm text-muted">Sin llamadas a modelos todavía.</p>

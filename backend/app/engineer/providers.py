@@ -417,7 +417,7 @@ def _said_recently(request: EngineerRequest, radio: str) -> bool:
 
 def _summary(f: dict) -> str:
     pl, ri, ne = f["piloto"], f["ritmo"], f["neumaticos"]
-    parts = [f"P{pl.get('posicion')}"]
+    parts = [f"P{pl['posicion']}"] if pl.get("posicion") else []
     if pl.get("gap_adelante_s"):
         parts.append(f"a {pl['gap_adelante_s']:.1f} s del de adelante")
     if ri.get("promedio_ultimas_3_limpias_s"):
@@ -426,7 +426,7 @@ def _summary(f: dict) -> str:
         wear = max((ne.get("desgaste_pct") or {}).values(), default=0)
         compound = c.COMPOUNDS_ES.get(ne["compuesto"], ne["compuesto"])
         parts.append(f"{compound} de {ne.get('edad_vueltas')} vueltas con {wear:.0f}% de desgaste")
-    return ", ".join(parts) + "."
+    return (", ".join(parts) + ".") if parts else "Todavía sin datos suficientes."
 
 
 def _y(items: list[str]) -> str:

@@ -71,7 +71,7 @@ export function OverlaySection() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+    <section className="mt-4 card p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="label">Paneles flotantes</h2>
         <button onClick={create} className="text-sm text-accent underline">

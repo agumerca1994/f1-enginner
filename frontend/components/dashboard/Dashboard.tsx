@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { CarTopView } from "@/components/dashboard/CarTopView";
 import {
@@ -12,28 +13,105 @@ import {
   TelemetryCard,
   TimingCard,
 } from "@/components/dashboard/Cards";
-import { EngineerPanel } from "@/components/dashboard/EngineerPanel";
 import { TrackMap } from "@/components/dashboard/TrackMap";
+import { ConnectGuide } from "@/components/live/ConnectGuide";
+import { LiveHero, PitWall, RadioFeed, Rivals, TalkControls, useEngineerAlwaysOn } from "@/components/live/LiveBlocks";
 import { WakeLockButton } from "@/components/WakeLockButton";
+import { useEngineerVoice } from "@/lib/voice";
 import { type LiveStatus, useLive } from "@/lib/live";
-import type { Snapshot } from "@/lib/types";
+import type { EngineerState, Snapshot } from "@/lib/types";
 
 export function Dashboard() {
   const { status, snapshot, engineer, engineerBusy, toggleEngineer, askEngineer } = useLive();
-  const panel = <EngineerPanel engineer={engineer} onToggle={toggleEngineer} onAsk={askEngineer} busy={engineerBusy} />;
+  const toggle = useEngineerAlwaysOn(snapshot, engineer, toggleEngineer, engineerBusy);
+  const voice = useEngineerVoice(engineer.messages);
+
   return (
-    <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
+    <main className="mx-auto max-w-[1800px] px-3 pb-6 pt-3 sm:px-5">
       <TopBar status={status} s={snapshot} />
-      {snapshot ? (
-        <DashboardGrid s={snapshot} engineer={panel} />
+      {!snapshot ? (
+        <ConnectGuide status={status} />
       ) : (
-        <>
-          {/* The engineer can be switched on before the race starts. */}
-          <div className="mt-3">{panel}</div>
-          <Waiting status={status} />
-        </>
+        <LiveLayout
+          s={snapshot}
+          engineer={engineer}
+          voice={voice}
+          onToggle={toggle}
+          busy={engineerBusy}
+          onAsk={askEngineer}
+        />
       )}
     </main>
+  );
+}
+
+/** The live screen's blocks, shared with session replays (which cannot talk to the engineer). */
+export function LiveLayout({
+  s,
+  engineer,
+  voice,
+  onToggle,
+  busy,
+  onAsk,
+}: {
+  s: Snapshot;
+  engineer: EngineerState;
+  voice: { supported: boolean; enabled: boolean; toggle: () => void };
+  onToggle: (active: boolean) => void;
+  busy: boolean;
+  onAsk?: (text: string) => Promise<unknown>;
+}) {
+  const [more, setMore] = useState(false);
+  return (
+    // One tree for every screen: on a phone the columns dissolve (display: contents) and the
+    // blocks stack by importance; on a tablet or computer they are the three columns of a pit wall.
+    <div className="mt-3 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
+      <div className="contents lg:flex lg:flex-col lg:gap-3">
+        <div className={`order-10 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <SessionCard s={s} />
+        </div>
+        <div className={`order-11 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <RelativesCard s={s} />
+        </div>
+        <div className={`order-12 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <StandingsCard s={s} />
+        </div>
+      </div>
+      <div className="contents lg:flex lg:flex-col lg:gap-3">
+        <div className="order-1 lg:order-none">
+          <LiveHero s={s} />
+        </div>
+        <div className="order-2 lg:order-none">
+          <Rivals s={s} />
+        </div>
+        <div className={`order-7 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <TrackMap s={s} />
+        </div>
+        <div className={`order-8 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <TimingCard s={s} />
+        </div>
+      </div>
+      <div className="contents lg:flex lg:flex-col lg:gap-3">
+        <div className="order-3 lg:order-none">
+          <RadioFeed engineer={engineer} voice={voice} onToggle={onToggle} busy={busy} replay={!onAsk} />
+        </div>
+        <div className="order-4 lg:order-none">
+          {onAsk ? <TalkControls onAsk={onAsk} /> : null}
+        </div>
+        <button onClick={() => setMore((v) => !v)} className="chip order-5 py-3 text-sm text-muted lg:hidden">
+          {more ? "Ocultar el resto" : "Todo lo demás: tiempos, mapa, posiciones, auto"}
+        </button>
+        <div className={`order-6 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <PitWall engineer={engineer} />
+        </div>
+        <div className={`order-9 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <TelemetryCard s={s} />
+        </div>
+        <div className={`order-13 lg:order-none ${more ? "" : "hidden lg:block"}`}>
+          <CarTopView s={s} />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -65,37 +143,19 @@ export function DashboardGrid({ s: snapshot, engineer }: { s: Snapshot; engineer
 function TopBar({ status, s }: { status: LiveStatus; s: Snapshot | null }) {
   const se = s?.session;
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-4 py-3">
-      <div className="min-w-0">
-        <div className="truncate text-lg font-semibold">Ingeniero de carrera</div>
-        <div className="text-sm text-muted">
-          {se ? (
-            <>
-              {s?.driver ? `${s.driver.name} #${s.driver.race_number} · ${s.driver.team}` : sessionName(se.type)}
-              {se.safety_car !== "None" && <span className="ml-2 font-semibold text-warn">{safetyCar(se.safety_car)}</span>}
-              <FlagBadge flag={s?.status?.fia_flag} zones={se.marshal_zones} />
-              {se.paused && <span className="ml-2 text-warn">En pausa</span>}
-            </>
-          ) : (
-            "Esperando la sesión"
-          )}
-        </div>
+    <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+      <div className="label flex min-w-0 flex-wrap items-center gap-x-2 !text-sm">
+        <span className="truncate !text-fg">{se ? `${se.track} · ${sessionName(se.type)}` : "En pista"}</span>
+        {se && se.safety_car !== "None" && <span className="font-semibold text-warn">{safetyCar(se.safety_car)}</span>}
+        {se && <FlagBadge flag={s?.status?.fia_flag} zones={se.marshal_zones} />}
+        {se?.paused && <span className="text-warn">En pausa</span>}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5 whitespace-nowrap text-xs [&>*]:!py-1 [&>*]:!text-xs">
         <LinkBadge reception={s?.link.reception ?? null} />
         <StatusPill status={status} />
         <WakeLockButton />
-        <Link href="/box" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
-          Box
-        </Link>
-        <Link href="/reglaje" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
-          Reglaje
-        </Link>
-        <Link href="/sessions" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
-          Sesiones
-        </Link>
-        <Link href="/settings" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
-          Ajustes
+        <Link href="/volante" className="chip px-3 py-1.5 text-sm text-muted hover:text-fg lg:hidden">
+          Modo volante
         </Link>
       </div>
     </header>
@@ -115,7 +175,7 @@ function FlagBadge({ flag, zones }: { flag?: string | null; zones?: { bandera: s
   if (!key) return null;
   const [label, cls] = FLAGS[key];
   const suffix = !flag && onTrack ? " en pista" : "";
-  return <span className={`ml-2 font-semibold ${cls}`}>⚑ {label}{suffix}</span>;
+  return <span className={`font-semibold ${cls}`}>⚑ {label}{suffix}</span>;
 }
 
 function safetyCar(kind: string): string {
@@ -131,7 +191,7 @@ function StatusPill({ status }: { status: LiveStatus }) {
   };
   const [label, dot] = map[status];
   return (
-    <span className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-sm">
+    <span className="chip flex items-center gap-1.5 px-2.5 py-1.5 text-sm">
       <span className={`h-2 w-2 rounded-full ${dot} ${status === "live" ? "animate-pulse" : ""}`} />
       {label}
     </span>
@@ -145,34 +205,10 @@ function LinkBadge({ reception }: { reception: number | null }) {
   const cls = pct >= 75 ? "text-ok" : pct >= 40 ? "text-warn" : "text-danger";
   return (
     <span
-      className="rounded-lg border border-line px-2.5 py-1.5 text-sm"
+      className="chip px-2.5 py-1.5 text-sm"
       title="Porcentaje de la telemetría del juego que llega al bridge. Con la consola por cable suele ser 100%."
     >
       Señal <span className={`num font-semibold ${cls}`}>{pct}%</span>
     </span>
-  );
-}
-
-function Waiting({ status }: { status: LiveStatus }) {
-  return (
-    <div className="mt-10 rounded-2xl border border-dashed border-line p-8 text-center">
-      <p className="text-lg font-semibold">
-        {status === "offline" ? "Sin conexión con el servidor" : "Todavía no llegan datos de tu consola"}
-      </p>
-      <ol className="mx-auto mt-4 max-w-md space-y-1 text-left text-sm text-muted">
-        <li>1. Abrí el juego y activá la telemetría UDP (formato 2024, puerto 20777).</li>
-        <li>
-          2. En la computadora, corré <code className="num text-fg">bridge run</code>.
-        </li>
-        <li>3. Salí a pista: los datos aparecen acá solos.</li>
-      </ol>
-      <p className="mt-4 text-sm text-muted">
-        ¿Primera vez? Vinculá tu bridge en{" "}
-        <Link className="text-accent underline" href="/pair">
-          /pair
-        </Link>
-        .
-      </p>
-    </div>
   );
 }

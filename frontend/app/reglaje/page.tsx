@@ -203,7 +203,7 @@ function Setup() {
 
   return (
     <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 card px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent">REGLAJE</span>
@@ -234,11 +234,8 @@ function Setup() {
               ))}
             </select>
           )}
-          <Link href={sid != null ? `/box?s=${sid}` : "/box"} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+          <Link href={sid != null ? `/box?s=${sid}` : "/box"} className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
             Box
-          </Link>
-          <Link href="/" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
-            Dashboard
           </Link>
         </div>
       </header>
@@ -259,7 +256,7 @@ function Setup() {
         lastRunNumber={lastRun?.tanda ?? null}
       />
 
-      <section className="mt-3 rounded-2xl border border-line bg-panel p-3">
+      <section className="mt-3 card p-3">
         <div className="label mb-2">¿Qué sentís en el auto?</div>
         <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {SYMPTOMS.map((s, i) => (
@@ -278,7 +275,7 @@ function Setup() {
       </section>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_400px]">
-        <div ref={listRef} className="order-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-line bg-panel p-2 lg:order-1">
+        <div ref={listRef} className="order-2 max-h-[70vh] overflow-y-auto card p-2 lg:order-1">
           {GROUPS.map((g) => (
             <div key={g} className="mb-2">
               <div className="label px-2 py-1.5">{g}</div>
@@ -379,7 +376,7 @@ function AcademyCard({
   onPick: (k: string) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-line bg-panel p-4">
+    <section className="card p-4">
       <header className="mb-3 flex items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold">{entry.title}</h2>
         <span className="num text-sm text-muted">{current != null ? fmt(entry, current) : ""}</span>
@@ -495,7 +492,7 @@ function SourceBar({
     base: base ? `${base.caracteristicas.nota} ${base.nota}` : "",
   };
   return (
-    <section className="mt-3 rounded-2xl border border-line bg-panel p-3">
+    <section className="mt-3 card p-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="label mr-1">Valores</div>
         {(["tanda", "mejor", "base"] as Source[]).map((s) => {

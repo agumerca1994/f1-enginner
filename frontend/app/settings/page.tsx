@@ -8,6 +8,7 @@ import { OverlaySection } from "@/components/OverlaySection";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { THEMES, useTheme } from "@/lib/theme";
 
 type Device = {
   id: number;
@@ -52,14 +53,11 @@ function Settings() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Ajustes</h1>
-        <Link href="/" className="text-sm text-accent underline">
-          Volver al dashboard
-        </Link>
-      </div>
+      <h1 className="display text-3xl">Ajustes</h1>
 
-      <section className="mt-6 rounded-2xl border border-line bg-panel p-4">
+      <AppearanceSection />
+
+      <section className="mt-4 card p-4">
         <h2 className="label">Cuenta</h2>
         <div className="mt-2 flex items-center justify-between">
           <span>{email}</span>
@@ -71,7 +69,7 @@ function Settings() {
 
       <RadioNameSection />
 
-      <section className="mt-4 flex items-center justify-between rounded-2xl border border-line bg-panel p-4">
+      <section className="mt-4 flex items-center justify-between card p-4">
         <div>
           <h2 className="label">Consumo de IA</h2>
           <p className="mt-1 text-sm text-muted">Cuánto usó y costó el ingeniero de pista, por día, sesión y modelo.</p>
@@ -81,15 +79,15 @@ function Settings() {
         </Link>
       </section>
 
-      <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+      <section className="mt-4 card p-4">
         <div className="flex items-center justify-between">
-          <h2 className="label">Bridges vinculados</h2>
+          <h2 className="label">Computadoras con el Bridge</h2>
           <Link href="/pair" className="text-sm text-accent underline">
-            Vincular otro
+            Vincular otra
           </Link>
         </div>
         {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-        {devices?.length === 0 && <p className="mt-3 text-sm text-muted">Todavía no vinculaste ningún bridge.</p>}
+        {devices?.length === 0 && <p className="mt-3 text-sm text-muted">Todavía no vinculaste ninguna computadora.</p>}
         <ul className="mt-3 divide-y divide-line">
           {devices?.map((d) => (
             <li key={d.id} className="flex items-center justify-between gap-3 py-3">
@@ -117,6 +115,42 @@ function Settings() {
       <OverlaySection />
       <McpConnectorSection />
     </main>
+  );
+}
+
+/** The look of the app on this device: Clásico, Carbono or Volante. */
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <section className="mt-6 card p-4">
+      <h2 className="label">Apariencia</h2>
+      <p className="mt-1 text-sm text-muted">Se guarda en este dispositivo: podés usar uno en el teléfono del volante y otro en la tablet.</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTheme(t.id)}
+            aria-pressed={theme === t.id}
+            className={`rounded-[var(--radius-card)] border p-3 text-left ${theme === t.id ? "border-accent bg-accent/10" : "border-line hover:border-muted"}`}
+          >
+            <div className="flex gap-1" aria-hidden="true">
+              {t.swatch.map((c) => (
+                <span key={c} className="h-6 flex-1 rounded-sm border border-black/30" style={{ background: c }} />
+              ))}
+            </div>
+            <div className="mt-2 font-semibold">{t.name}</div>
+            <div className="text-xs text-muted">{t.description}</div>
+          </button>
+        ))}
+      </div>
+      <Link href="/volante" className="mt-3 flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line p-3 text-sm hover:border-accent">
+        <span>
+          <span className="font-semibold">Modo volante</span>
+          <span className="block text-xs text-muted">Teléfono horizontal arriba del volante: marcha, velocidad, luces de cambio y tiempos.</span>
+        </span>
+        <span className="text-accent">Abrir</span>
+      </Link>
+    </section>
   );
 }
 
@@ -152,7 +186,7 @@ function RadioNameSection() {
   };
 
   return (
-    <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
+    <section className="mt-4 card p-4">
       <h2 className="label">Ingeniero de pista</h2>
       <p className="mt-1 text-sm text-muted">
         Cómo te llama por radio. Si lo dejás vacío no usa nombre (nunca el del piloto del juego).

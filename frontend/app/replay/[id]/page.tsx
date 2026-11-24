@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
-import { DashboardGrid } from "@/components/dashboard/Dashboard";
-import { EngineerPanel } from "@/components/dashboard/EngineerPanel";
+import { LiveLayout } from "@/components/dashboard/Dashboard";
 import { sessionName } from "@/components/dashboard/Cards";
 import { RequireAuth } from "@/components/RequireAuth";
 import { REPLAY_SPEEDS, useReplay } from "@/lib/replay";
+import { useEngineerVoice } from "@/lib/voice";
 
 export default function ReplayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -20,11 +20,12 @@ export default function ReplayPage({ params }: { params: Promise<{ id: string }>
 
 function Replay({ sessionId }: { sessionId: number }) {
   const r = useReplay(sessionId);
+  const voice = useEngineerVoice(r.engineer.messages);
   const se = r.snapshot?.session;
 
   return (
     <main className="mx-auto max-w-[1800px] px-3 pb-28 pt-3 sm:px-5">
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 card px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent">REPETICIÓN</span>
@@ -32,14 +33,13 @@ function Replay({ sessionId }: { sessionId: number }) {
           </div>
           <div className="text-sm text-muted">
             {se && sessionName(se.type)}
-            {r.snapshot?.driver && ` · ${r.snapshot.driver.name} #${r.snapshot.driver.race_number} · ${r.snapshot.driver.team}`}
           </div>
         </div>
         <div className="flex gap-2">
-          <Link href="/sessions" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+          <Link href="/sessions" className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
             Sesiones
           </Link>
-          <Link href="/" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+          <Link href="/" className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
             En vivo
           </Link>
         </div>
@@ -48,18 +48,11 @@ function Replay({ sessionId }: { sessionId: number }) {
       {r.status === "error" ? (
         <p className="mt-10 text-center text-danger">{r.error}</p>
       ) : r.snapshot ? (
-        <DashboardGrid s={r.snapshot} engineer={<EngineerPanel engineer={r.engineer} onToggle={r.toggleEngineer} />} />
+        <LiveLayout s={r.snapshot} engineer={r.engineer} voice={voice} onToggle={r.toggleEngineer} busy={false} />
       ) : (
-        <>
-          {r.status === "ready" && (
-            <div className="mx-auto mt-3 max-w-2xl">
-              <EngineerPanel engineer={r.engineer} onToggle={r.toggleEngineer} />
-            </div>
-          )}
-          <p className="mt-10 text-center text-muted">
-            {r.status === "loading" ? "Preparando la repetición…" : "Tocá ▶ o mové la línea de tiempo para empezar."}
-          </p>
-        </>
+        <p className="mt-10 text-center text-muted">
+          {r.status === "loading" ? "Preparando la repetición…" : "Tocá ▶ o mové la línea de tiempo para empezar."}
+        </p>
       )}
 
       {r.status !== "error" && <Transport r={r} />}

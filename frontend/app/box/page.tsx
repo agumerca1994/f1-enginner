@@ -212,7 +212,7 @@ function Box() {
 
   return (
     <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 card px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent">BOX</span>
@@ -249,18 +249,15 @@ function Box() {
             <button
               onClick={() => setRefresh((n) => n + 1)}
               disabled={loading}
-              className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg disabled:opacity-50"
+              className="chip px-3 py-1.5 text-sm text-muted hover:text-fg disabled:opacity-50"
             >
               {loading ? "Actualizando…" : "Actualizar"}
             </button>
           )}
-          <Link href={sid != null ? `/reglaje?s=${sid}` : "/reglaje"} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+          <Link href={sid != null ? `/reglaje?s=${sid}` : "/reglaje"} className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
             Reglaje
           </Link>
-          <Link href="/" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
-            Dashboard
-          </Link>
-          <Link href="/sessions" className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+          <Link href="/sessions" className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
             Sesiones
           </Link>
         </div>

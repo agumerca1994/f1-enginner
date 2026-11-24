@@ -35,10 +35,10 @@ export function WakeLockButton() {
   return (
     <button
       onClick={() => setOn((v) => !v)}
-      className={`rounded-lg border px-3 py-1.5 text-sm ${on ? "border-accent text-accent" : "border-line text-muted hover:text-fg"}`}
+      className={`chip px-3 py-1.5 text-sm ${on ? "!border-accent text-accent" : "text-muted hover:text-fg"}`}
       title="Evita que la pantalla se apague durante la carrera"
     >
-      {on ? "Pantalla fija" : "Mantener pantalla"}
+      {on ? "Pantalla fija" : "Fijar pantalla"}
     </button>
   );
 }

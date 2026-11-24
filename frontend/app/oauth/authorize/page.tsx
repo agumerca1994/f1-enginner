@@ -79,7 +79,7 @@ function Consent() {
           <h1 className="text-2xl font-semibold">{info.client_name}</h1>
           <p className="mt-1 text-sm text-muted">quiere conectarse a tu ingeniero de carrera</p>
 
-          <div className="mt-6 rounded-2xl border border-line bg-panel p-4 text-sm">
+          <div className="mt-6 card p-4 text-sm">
             <p>
               <strong>Va a poder leer</strong> tus sesiones grabadas, la carrera en vivo y lo que te dijo el
               ingeniero por radio.
