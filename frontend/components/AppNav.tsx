@@ -51,7 +51,7 @@ export function AppNav({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <nav className="sticky top-0 z-30 hidden border-b border-line bg-bg/90 backdrop-blur lg:block">
+      <nav className="sticky top-0 z-30 hidden border-b border-line bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur lg:block">
         <div className="mx-auto flex max-w-[1800px] items-center gap-6 px-5 py-2.5">
           <Link href="/" className="label !text-fg !text-sm">
             Ingeniero de pista
@@ -72,6 +72,16 @@ export function AppNav({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
       </nav>
+      {/* Phone header: it also keeps the content clear of the status bar and the notch,
+          since the installed app draws edge to edge (viewport-fit=cover). */}
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/95 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
+        <div className="flex h-12 items-center justify-between px-4">
+          <Link href="/" className="label !text-fg !text-sm">
+            Ingeniero de pista
+          </Link>
+          <span className="label">{TABS.find((t) => t.match(path))?.label ?? ""}</span>
+        </div>
+      </header>
       <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>
       <nav
         className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"

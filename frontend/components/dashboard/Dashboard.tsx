@@ -145,7 +145,7 @@ function TopBar({ status, s }: { status: LiveStatus; s: Snapshot | null }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
       <div className="label flex min-w-0 flex-wrap items-center gap-x-2 !text-sm">
-        <span className="truncate !text-fg">{se ? `${se.track} · ${sessionName(se.type)}` : "En pista"}</span>
+        {se && <span className="truncate !text-fg">{`${se.track} · ${sessionName(se.type)}`}</span>}
         {se && se.safety_car !== "None" && <span className="font-semibold text-warn">{safetyCar(se.safety_car)}</span>}
         {se && <FlagBadge flag={s?.status?.fia_flag} zones={se.marshal_zones} />}
         {se?.paused && <span className="text-warn">En pausa</span>}

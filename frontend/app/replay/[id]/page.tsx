@@ -24,7 +24,7 @@ function Replay({ sessionId }: { sessionId: number }) {
   const se = r.snapshot?.session;
 
   return (
-    <main className="mx-auto max-w-[1800px] px-3 pb-28 pt-3 sm:px-5">
+    <main className="mx-auto max-w-[1800px] px-3 pb-28 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-5">
       <header className="flex flex-wrap items-center justify-between gap-3 card px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -80,7 +80,7 @@ function Transport({ r }: { r: ReturnType<typeof useReplay> }) {
   }, [r]);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-bg/90 px-3 py-3 backdrop-blur sm:px-5">
+    <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-bg/90 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-5">
       <div className="mx-auto flex max-w-[1800px] items-center gap-3">
         <button
           onClick={r.playing ? r.pause : r.play}

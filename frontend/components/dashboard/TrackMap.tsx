@@ -89,7 +89,11 @@ export function TrackMap({ s }: { s: Snapshot }) {
   return (
     <Panel
       title={se ? se.track : "Circuito"}
-      className={full.on ? "!fixed inset-0 z-50 flex flex-col !rounded-none !border-0" : "relative"}
+      className={
+        full.on
+          ? "!fixed inset-0 z-50 flex flex-col !rounded-none !border-0 ![clip-path:none] pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]"
+          : "relative"
+      }
       right={
         <>
           {track && !track.layout_ready && (
