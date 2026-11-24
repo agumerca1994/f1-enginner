@@ -37,6 +37,9 @@ RAIN_ALERT_PERCENT = 40
 # A sector is worth a radio call only on a personal best or a loss of at least this.
 SECTOR_LOSS_MS = 300
 SECTOR_PB_MS = 100  # a new best sector has to beat the old one by this much to be worth a call
+# Beyond this a sector or a corner was an incident (spin, pit lane, traffic), not something to coach.
+SECTOR_MAX_LOSS_MS = 3000
+CORNER_MAX_LOSS_S = 2.0
 # Absolute damage levels worth a call once each, so damage that builds up slowly (a floor
 # worn on the kerbs) is reported even when no single hit adds DAMAGE_STEP.
 DAMAGE_LEVELS = (25, 50, 75)
@@ -247,7 +250,7 @@ class SessionHistory:
         elif packet.name == "lap_data":
             new += self._lap_changes(packet, live)
         note = self.corners.observe(packet, live)
-        if note:
+        if note and (note.get("perdida_s") or 0) <= CORNER_MAX_LOSS_S:
             new.append(Trigger("corner_coaching", t, self._player_lap(live), note))
         self.triggers += new
         return new
@@ -473,7 +476,9 @@ class SessionHistory:
         if pen > self._penalties or warn > self._warnings:
             out.append(Trigger("penalty", packet.session_time, int(me["current_lap_num"]),
                                {"penalties_s": pen, "warnings": warn}))
-        self._penalties, self._warnings = pen, warn
+        # The highest seen, not the last: a flashback takes a warning back and the next lap
+        # earns the same one again, which is not news.
+        self._penalties, self._warnings = max(self._penalties, pen), max(self._warnings, warn)
         return out
 
     def _player_sector_triggers(self, me, t: float, live: LiveSession) -> list[Trigger]:
@@ -494,11 +499,11 @@ class SessionHistory:
 
     def _sector_note(self, idx: int, val: int, invalid: bool, t: float, live: LiveSession) -> list[Trigger]:
         best = self.best_sectors.get(idx)
-        if invalid or best is None:
-            return []  # an invalid sector is not a fair comparison, and with no reference there is none
+        if invalid or best is None or self._lap_pit or self._lap_sc:
+            return []  # an invalid, pit or safety-car sector is not a fair comparison; with no reference there is none
         is_pb = val <= best - SECTOR_PB_MS
         loss = val - best
-        if not (is_pb or loss >= SECTOR_LOSS_MS):
+        if not (is_pb or SECTOR_LOSS_MS <= loss <= SECTOR_MAX_LOSS_MS):
             return []
         return [Trigger("sector_completed", t, self._player_lap(live), {
             "sector": idx, "tiempo_s": round(val / 1000, 3),

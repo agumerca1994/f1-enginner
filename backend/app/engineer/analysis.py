@@ -41,6 +41,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
         "sesion": {
             "pista": session.get("track"),
             "tipo": session.get("type"),
+            "sprint": bool(session.get("sprint")),
             "vuelta_actual": current,
             "vueltas_totales": total or None,
             "vueltas_restantes": max(0, total - current + 1) if total and current else None,
@@ -503,7 +504,8 @@ def _strategy(snap: dict, history: SessionHistory, laps: list[PlayerLap], sessio
         "regla_dos_compuestos": {
             "compuestos_secos_usados": sorted(set(dry)),
             "cumplida": len(set(dry)) >= 2,
-            "aplica": session.get("type", "").startswith("Race") and session.get("weather") in ("Clear", "Light cloud", "Overcast"),
+            "aplica": session.get("type", "").startswith("Race") and not session.get("sprint")
+                     and session.get("weather") in ("Clear", "Light cloud", "Overcast"),
         },
         "juegos_de_neumaticos": _tyre_sets(history),
     }

@@ -312,7 +312,8 @@ def rules_response(request: EngineerRequest) -> dict:
         radio = "Viene lluvia en los próximos 15 minutos: preparate para intermedios."
         priority = "importante"
     elif "penalty" in kinds:
-        radio = f"Ojo con los límites de pista: vas {pl.get('advertencias')} advertencias." if not pl.get("penalizacion_s") else f"Tenemos {pl['penalizacion_s']} segundos de penalización."
+        radio = (f"Ojo con los límites de pista: llevás {_count(pl.get('advertencias'), 'advertencia', 'advertencias')}."
+                 if not pl.get("penalizacion_s") else f"Tenemos {pl['penalizacion_s']} segundos de penalización.")
         priority = "importante"
     elif "rival_overtake" in kinds:
         d = next(t.detail for t in request.triggers if t.kind == "rival_overtake")
@@ -326,16 +327,16 @@ def rules_response(request: EngineerRequest) -> dict:
         priority = "importante" if d["pct"] >= 30 else "info"
     elif "blue_flag" in kinds:
         radio, priority = "Bandera azul: viene el líder a doblarte, dejalo pasar en la próxima recta.", "importante"
+    elif "tyre_overuse" in kinds:  # rarer than a corner tip: it goes first when both come together
+        radio, priority = _overuse_call(next(t.detail for t in request.triggers if t.kind == "tyre_overuse")), "importante"
     elif "corner_coaching" in kinds:
         radio, priority = _corner_call(next(t.detail for t in request.triggers if t.kind == "corner_coaching")), "importante"
-    elif "tyre_overuse" in kinds:
-        radio, priority = _overuse_call(next(t.detail for t in request.triggers if t.kind == "tyre_overuse")), "importante"
     elif "sector_completed" in kinds:
         d = next((t.detail for t in request.triggers if t.kind == "sector_completed"), {})
         if d.get("mejor_personal"):
-            radio = f"Mejor sector {d.get('sector')} de la tanda: {d.get('tiempo_s')}s. Ahí estás."
+            radio = f"Mejor sector {d.get('sector')} de la tanda. Ahí estás."
         else:
-            radio = f"Perdiste {d.get('delta_s')}s en el sector {d.get('sector')}, ahí tenés para buscar."
+            radio = f"Perdiste {_tenths(d.get('delta_s') or 0)} en el sector {d.get('sector')}, ahí tenés para buscar."
     elif "pitted" in kinds:
         radio = "Buena parada. Dos vueltas para darle temperatura a las gomas nuevas."
     elif "session_end" in kinds:
@@ -392,7 +393,7 @@ def _topic(kinds: set[str], radio: str | None) -> str | None:
     if not radio:
         return None
     for kind in ("safety_car", "damage", "rain_forecast", "penalty", "rival_overtake", "overtake_available",
-                 "blisters", "blue_flag", "corner_coaching", "tyre_overuse", "sector_completed", "pitted",
+                 "blisters", "blue_flag", "tyre_overuse", "corner_coaching", "sector_completed", "pitted",
                  "session_end", "session_start", "race_start"):
         if kind in kinds:
             return kind
@@ -470,8 +471,22 @@ CORNER_TIPS = {
 }
 
 
+NUMBERS_ES = {1: "una", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco", 6: "seis", 7: "siete", 8: "ocho", 9: "nueve"}
+
+
+def _count(n, one: str, many: str) -> str:
+    """'una advertencia', 'tres advertencias', as said aloud."""
+    n = int(n or 0)
+    return f"{NUMBERS_ES.get(n, n)} {one if n == 1 else many}"
+
+
 def _tenths(seconds: float) -> str:
-    return f"{round(seconds * 10)} décimas" if seconds < 0.95 else f"{seconds:.1f} segundos".replace(".", ",")
+    if seconds < 0.95:
+        n = max(1, round(seconds * 10))
+        return "una décima" if n == 1 else f"{NUMBERS_ES.get(n, n)} décimas"
+    if round(seconds, 1) == 1.0:
+        return "un segundo"
+    return f"{seconds:.1f} segundos".replace(".", ",")
 
 
 def _corner_call(d: dict) -> str:

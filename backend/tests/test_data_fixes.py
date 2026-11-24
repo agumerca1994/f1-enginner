@@ -133,3 +133,20 @@ def test_final_classification_falls_back_to_the_running_order():
     live.last["lap_data"] = replace(last_lap, body=body)
     rows = classification(live)
     assert rows and any(r["es_el_jugador"] for r in rows) and "orden en pista" in rows[0]["fuente"]
+
+
+def test_radio_numbers_are_said_aloud():
+    from app.engineer.providers import _count, _tenths
+    assert _tenths(0.09) == "una décima" and _tenths(0.613) == "seis décimas" and _tenths(1.004) == "un segundo"
+    assert _tenths(1.31) == "1,3 segundos"
+    assert _count(1, "advertencia", "advertencias") == "una advertencia"
+    assert _count(2, "advertencia", "advertencias") == "dos advertencias"
+
+
+def test_sprint_race_has_no_mandatory_stop():
+    from app.live.snapshot import _is_sprint
+    weekend = [10, 11, 12, 15, 5, 6, 7, 16, 0, 0, 0, 0]
+    assert _is_sprint({"session_type": 15, "weekend_structure": weekend, "num_sessions_in_weekend": 8})
+    assert not _is_sprint({"session_type": 16, "weekend_structure": weekend, "num_sessions_in_weekend": 8})
+    assert not _is_sprint({"session_type": 15, "weekend_structure": [1, 2, 3, 5, 6, 7, 15] + [0] * 5,
+                           "num_sessions_in_weekend": 7})

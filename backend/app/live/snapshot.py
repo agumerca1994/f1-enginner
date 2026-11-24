@@ -52,6 +52,7 @@ def build(live: LiveSession) -> dict[str, Any]:
             "age_s": _age(live, "session"),
             "track": c.TRACKS.get(int(s["track_id"]), f"Track {int(s['track_id'])}"),
             "type": c.SESSION_TYPES.get(int(s["session_type"]), "Unknown"),
+            "sprint": _is_sprint(s),
             "weather": c.WEATHER.get(int(s["weather"]), "Unknown"),
             "track_temperature_c": int(s["track_temperature"]),
             "air_temperature_c": int(s["air_temperature"]),
@@ -418,3 +419,14 @@ def _cars(live: LiveSession, player: int | None) -> list[dict[str, Any]]:
         cars.append(car)
     cars.sort(key=lambda car: car["position"])
     return cars
+
+
+def _is_sprint(s) -> bool:
+    """The sprint race of a sprint weekend: a "Race" followed by a "Race 2" in the weekend.
+
+    It has no mandatory stop, unlike the main race."""
+    try:
+        weekend = [int(x) for x in s["weekend_structure"][: int(s["num_sessions_in_weekend"])]]
+    except (KeyError, ValueError, IndexError):
+        return False
+    return int(s["session_type"]) == 15 and 16 in weekend
