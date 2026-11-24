@@ -23,6 +23,7 @@ export function TrackMap({ s }: { s: Snapshot }) {
   const [layout, setLayout] = useState<TrackLayout | null>(null);
   const bounds = useRef<Bounds | null>(null);
   const trackKey = track ? `${track.id}:${track.layout_coverage}:${track.layout_ready}` : null;
+  const full = useFullscreen();
 
   useEffect(() => {
     if (!track) return;
@@ -88,14 +89,24 @@ export function TrackMap({ s }: { s: Snapshot }) {
   return (
     <Panel
       title={se ? se.track : "Circuito"}
-      className="relative"
+      className={full.on ? "!fixed inset-0 z-50 flex flex-col !rounded-none !border-0" : "relative"}
       right={
-        track && !track.layout_ready ? (
-          <span className="text-xs text-muted">Armando el mapa… {Math.round((layout?.coverage ?? track.layout_coverage) * 100)}%</span>
-        ) : null
+        <>
+          {track && !track.layout_ready && (
+            <span className="text-xs text-muted">Armando el mapa… {Math.round((layout?.coverage ?? track.layout_coverage) * 100)}%</span>
+          )}
+          <button
+            onClick={full.toggle}
+            className="rounded-md border border-line p-1.5 text-muted hover:text-fg"
+            aria-label={full.on ? "Salir de pantalla completa" : "Ver el circuito en pantalla completa"}
+            title={full.on ? "Salir de pantalla completa (Esc)" : "Pantalla completa"}
+          >
+            <FullscreenIcon on={full.on} />
+          </button>
+        </>
       }
     >
-      <div className="relative aspect-[4/3] w-full lg:aspect-[16/10]">
+      <div className={full.on ? "relative min-h-0 w-full flex-1" : "relative aspect-[4/3] w-full lg:aspect-[16/10]"}>
         {view ? (
           <svg
             viewBox={`${view.minX - pad} ${view.minZ - pad} ${view.maxX - view.minX + 2 * pad} ${view.maxZ - view.minZ + 2 * pad}`}
@@ -229,5 +240,51 @@ function CornerLabel({ loop, corner }: { loop: [number, number][]; corner: Track
         </text>
       </g>
     </g>
+  );
+}
+
+/**
+ * Full screen for the map: the browser's own full screen where it exists, and the
+ * map covering the window either way (iPhone Safari has no element full screen).
+ */
+function useFullscreen() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!on) return;
+    const onChange = () => {
+      if (!document.fullscreenElement) setOn(false); // left with Esc or the browser's own control
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOn(false);
+    document.addEventListener("fullscreenchange", onChange);
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [on]);
+  const toggle = () => {
+    if (on) {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      setOn(false);
+    } else {
+      setOn(true);
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {}); // refused: the map still covers the window
+    }
+  };
+  return { on, toggle };
+}
+
+function FullscreenIcon({ on }: { on: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+      {on ? (
+        <path d="M6 1v4H2M10 1v4h4M6 15v-4H2M10 15v-4h4" />
+      ) : (
+        <path d="M1 5V1h4M15 5V1h-4M1 11v4h4M15 11v4h-4" />
+      )}
+    </svg>
   );
 }
