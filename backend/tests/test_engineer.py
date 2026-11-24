@@ -132,9 +132,9 @@ def test_rules_pick_a_different_compound_and_do_not_repeat():
             "perdida_box_s": 22.0, "si_para_ahora": {"posicion_estimada_al_salir": 17},
             "regla_dos_compuestos": {"compuestos_secos_usados": ["Medium"], "cumplida": False, "aplica": True},
             "juegos_de_neumaticos": [
-                {"compuesto": "Medium", "desgaste_pct": 0, "puesto": False, "cantidad": 1, "vida_util_vueltas": 20, "delta_ritmo_s": -0.6},
-                {"compuesto": "Soft", "desgaste_pct": 0, "puesto": False, "cantidad": 3, "vida_util_vueltas": 11, "delta_ritmo_s": -1.2},
-                {"compuesto": "Hard", "desgaste_pct": 0, "puesto": False, "cantidad": 1, "vida_util_vueltas": 39, "delta_ritmo_s": 0.2},
+                {"compuesto": "Medium", "desgaste_pct": 0, "puesto": False, "cantidad": 1, "vida_util_vueltas": 20, "delta_ritmo_vs_puesto_s": -0.6},
+                {"compuesto": "Soft", "desgaste_pct": 0, "puesto": False, "cantidad": 3, "vida_util_vueltas": 11, "delta_ritmo_vs_puesto_s": -1.2},
+                {"compuesto": "Hard", "desgaste_pct": 0, "puesto": False, "cantidad": 1, "vida_util_vueltas": 39, "delta_ritmo_vs_puesto_s": 0.2},
             ],
         },
     }

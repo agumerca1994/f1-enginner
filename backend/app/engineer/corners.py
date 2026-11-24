@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from app.live.laps import is_race, pit_sample
 from app.telemetry import constants as c
 
 BIN_M = 10.0
@@ -30,6 +31,7 @@ MIN_SPEED_DROP_KMH = 25.0  # slowing down less than this is a kink, not a corner
 MAP_MIN_COVERAGE = 0.7  # share of bins with data needed to map the corners...
 MAP_MAX_LAPS = 6  # ...pooled over up to this many laps: on a lossy link one lap is never enough
 CORNER_MIN_SAMPLES = 3
+CORNER_MIN_BINS = 3  # entry to exit spans at least this many 10 m bins, or it is noise
 
 # Thresholds measured on real races (Madrid, PC at 100%): wheel slip ratio p99 ~0.28
 # on the rears, -1 when a wheel locks; rear slip angle p99 ~0.13 rad.
@@ -73,6 +75,13 @@ class CornerPass:
     understeer: int = 0
     off_track: int = 0
     samples: int = 0
+    balance_sum: float = 0.0  # front minus rear slip angle, degrees, summed over cornering samples
+    balance_n: int = 0
+
+    @property
+    def balance_deg(self) -> float | None:
+        """Mean front-minus-rear slip angle while cornering: positive = understeer, negative = oversteer."""
+        return round(self.balance_sum / self.balance_n, 2) if self.balance_n >= 2 else None
 
     def issues(self) -> list[str]:
         """Problems seen in this pass, the most frequent first."""
@@ -98,6 +107,8 @@ class _Bin:
     oversteer: int = 0
     understeer: int = 0
     off_track: int = 0
+    balance_sum: float = 0.0
+    balance_n: int = 0
 
 
 @dataclass
@@ -130,6 +141,7 @@ class CornerCoach:
         self._last_lap_packet = None
         self._last_call_lap: dict[int, int] = {}
         self._map_laps: list[np.ndarray] = []  # speed traces pooled until the corners can be mapped
+        self._race = True
 
     # --- feeding ----------------------------------------------------------------
 
@@ -140,6 +152,8 @@ class CornerCoach:
             b = session.body
             self.track_length = float(b["track_length"])
             self.sector2_m, self.sector3_m = float(b["sector2_lap_distance_start"]), float(b["sector3_lap_distance_start"])
+        if session is not None:
+            self._race = is_race(session)
         if self.track_length is None:
             return None
         player = packet.player_car_index
@@ -193,6 +207,9 @@ class CornerCoach:
         if throttle and max(ratio[0], ratio[1]) > SPIN_RATIO:
             b.spin_rear += 1
         rear, front = max(angle[0], angle[1]), max(angle[2], angle[3])
+        if abs(float(t["steer"])) > 0.1:
+            b.balance_sum += math.degrees(front - rear)
+            b.balance_n += 1
         if rear > OVERSTEER_RAD and rear > front:
             b.oversteer += 1
         elif front > UNDERSTEER_RAD and front > rear + 0.04 and abs(float(t["steer"])) > 0.2:
@@ -205,7 +222,7 @@ class CornerCoach:
             if self._lap is not None and number == self._lap.number + 1:
                 note = self._finish(self._lap, int(lap["last_lap_time_in_ms"]))
             self._lap = _Lap(number)
-        if int(lap["pit_status"]) != 0 or bool(lap["current_lap_invalid"]):
+        if pit_sample(lap, self.track_length, self._race) or bool(lap["current_lap_invalid"]):
             self._lap.clean = False
         d, t = float(lap["lap_distance"]), int(lap["current_lap_time_in_ms"])
         if 0 <= d <= self.track_length and (not self._lap.times or d > self._lap.times[-1][0]):
@@ -275,6 +292,8 @@ class CornerCoach:
             exit_ = next((j for j in range(i + 1, min(len(v), i + 31)) if v[j] >= target), min(len(v) - 1, i + 30))
             apex_m = i * BIN_M
             sector = 1 if apex_m < self.sector2_m else 2 if apex_m < self.sector3_m else 3
+            if not entry < i < exit_ or exit_ - entry < CORNER_MIN_BINS:
+                continue  # squeezed by the corner before, or too short to measure: not a corner of its own
             corners.append(Corner(len(corners) + 1, entry * BIN_M, apex_m, exit_ * BIN_M, sector))
         return corners
 
@@ -302,6 +321,8 @@ class CornerCoach:
             p.oversteer += b.oversteer
             p.understeer += b.understeer
             p.off_track += b.off_track
+            p.balance_sum += b.balance_sum
+            p.balance_n += b.balance_n
         if p.samples < CORNER_MIN_SAMPLES or not speeds:
             return None
         p.entry_kmh = speeds[0][1]
@@ -367,13 +388,19 @@ class CornerCoach:
             "velocidad_mejor_paso_kmh": {"entrada": r(best.entry_kmh), "minima": r(best.min_kmh),
                                          "salida": r(best.exit_kmh)} if best else None,
             "problemas": p.issues() if p else [],
+            # Front minus rear slip angle while turning, degrees: positive = understeer, negative = oversteer.
+            "balance_deg": p.balance_deg if p else None,
+            "balance_mejor_paso_deg": best.balance_deg if best else None,
         }
 
     def seed(self, stored: list[dict] | None) -> None:
         """Start from the corner map stored for the track, so corner N is the same corner every session."""
         if stored and not self.corners:
-            self.corners = [Corner(int(c["curva"]), float(c["entrada_m"]), float(c["apex_m"]), float(c["salida_m"]),
-                                   int(c["sector"])) for c in stored]
+            corners = [Corner(int(c["curva"]), float(c["entrada_m"]), float(c["apex_m"]), float(c["salida_m"]),
+                              int(c["sector"])) for c in stored]
+            # Maps stored before the corners were validated can hold a squeezed corner: drop it.
+            self.corners = [k for k in corners if k.entry_m < k.apex_m < k.exit_m
+                            and k.exit_m - k.entry_m >= CORNER_MIN_BINS * BIN_M]
 
     def corner_list(self) -> list[dict] | None:
         """The corner map for the track map and storage; None until the corners are mapped."""
@@ -403,5 +430,7 @@ class CornerCoach:
             "curvas_detectadas": len(self.corners),
             "peores": rows[:4],
             "nota": "Curvas numeradas por la app en orden desde la largada (puede no coincidir con la numeración "
-                    "oficial): decí 'la curva N' y el sector. Pérdida contra su mejor paso por esa curva en la sesión.",
+                    "oficial): decí 'la curva N' y el sector. Pérdida contra su mejor paso por esa curva en la sesión. "
+                    "balance_deg: ángulo de deslizamiento delantero menos trasero al doblar, en grados (positivo = "
+                    "subviraje, negativo = sobreviraje); sirve para comparar reglajes en la misma curva.",
         }

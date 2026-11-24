@@ -9,6 +9,7 @@ records then simply have gaps, and the analysis works with what exists.
 from dataclasses import dataclass, field
 
 from app.engineer.corners import CornerCoach
+from app.live.laps import is_race, pit_sample
 from app.live.state import LiveSession
 from app.engineer.setup_sheet import setup_values
 from app.telemetry import constants as c
@@ -36,6 +37,17 @@ RAIN_ALERT_PERCENT = 40
 # A sector is worth a radio call only on a personal best or a loss of at least this.
 SECTOR_LOSS_MS = 300
 SECTOR_PB_MS = 100  # a new best sector has to beat the old one by this much to be worth a call
+# Absolute damage levels worth a call once each, so damage that builds up slowly (a floor
+# worn on the kerbs) is reported even when no single hit adds DAMAGE_STEP.
+DAMAGE_LEVELS = (25, 50, 75)
+# After a flashback the car jumps to where it was: the motion samples around the jump read
+# impossible loads (24 g). They are skipped for this long, and loads above MAX_G never count.
+FLASHBACK_SETTLE_S = 1.5
+MAX_G = 7.0
+# A rewind of the game clock bigger than this without a FLBK event is a flashback whose event was lost.
+REWIND_S = 0.5
+# Retired, disqualified or not classified: out of the running order.
+OUT_RESULTS = (4, 5, 6, 7)
 
 
 @dataclass
@@ -152,6 +164,13 @@ class SessionHistory:
         self._started = False
         self.corners = CornerCoach()
         self._overuse_called: dict[int, int] = {}
+        self._damage_levels: dict[str, int] = {}  # part -> highest DAMAGE_LEVELS index already reported
+        self._last_t: float | None = None
+        self._settle_until = -1.0  # motion samples before this game time are skipped (flashback jump)
+        self.retired: set[int] = set()  # car slots out of the race (RTMT or the result status)
+        self.detected_stops = 0  # race stops seen as a tyre change, when the game's counter lags
+        self._tyre_age: int | None = None
+        self._race = False
 
     # --- feeding ------------------------------------------------------------
 
@@ -159,6 +178,9 @@ class SessionHistory:
         """Update the history with one packet; return the moments worth an engineer call."""
         new: list[Trigger] = []
         t = packet.session_time
+        if self._last_t is not None and t < self._last_t - REWIND_S:
+            self._rewind(t)  # a flashback whose event packet was lost
+        self._last_t = t
         if self._pending_damage:
             when, parts = self._pending_damage
             if t < when - 1.0:
@@ -170,18 +192,21 @@ class SessionHistory:
                 new.append(Trigger("damage", when, self._player_lap(live), {"parts": parts}))
         if packet.name == "event":
             code, details = registry.event_details(packet)
-            if code not in ("BUTN", "SPTP"):
-                self.events.append({"code": code, "session_time": round(t, 1), "lap": self._player_lap(live), **details})
             if code == "FLBK":
-                # The game rewound: whatever damage just happened may be undone.
-                self._pending_damage = None
-                self._rebaseline_damage = True
+                # The game rewound: whatever damage just happened may be undone, and the
+                # events after the restored moment never happened.
+                self._rewind(float(details.get("flashback_session_time", t)))
+            self._record_event(code, details, t, live)
+            if code == "RTMT" and details.get("vehicle_idx") is not None:
+                self.retired.add(int(details["vehicle_idx"]))
             if code in ("SEND", "CHQF"):
                 new.append(Trigger("session_end", t, self._player_lap(live), {"code": code}))
         elif packet.name == "session":
+            self._race = is_race(packet)
             new += self._session_changes(packet, live)
         elif packet.name == "car_status":
             self._note_compound(live)
+            new += self._tyre_change(packet, live)
             st = packet.body["car_status_data"][packet.player_car_index]
             self._lap_ers_deployed = max(self._lap_ers_deployed, float(st["ers_deployed_this_lap"]))
             self._lap_ers_harvested = max(
@@ -201,13 +226,14 @@ class SessionHistory:
             self._track_samples += 1
             if any(c.SURFACE_TYPES.get(int(x)) in c.OFF_TRACK_SURFACES for x in tel["surface_type"]):
                 self._offtrack_samples += 1
-        elif packet.name == "motion":
+        elif packet.name == "motion" and t >= self._settle_until:
             m = packet.body["car_motion_data"][packet.player_car_index]
-            self._peak_lat_g = max(self._peak_lat_g, abs(float(m["g_force_lateral"])))
-            lon = float(m["g_force_longitudinal"])
-            if lon < 0:  # negative is deceleration: the braking load
+            lat, lon = abs(float(m["g_force_lateral"])), float(m["g_force_longitudinal"])
+            if lat <= MAX_G:
+                self._peak_lat_g = max(self._peak_lat_g, lat)
+            if -MAX_G <= lon < 0:  # negative is deceleration: the braking load
                 self._peak_brake_g = max(self._peak_brake_g, -lon)
-        elif packet.name == "motion_ex":
+        elif packet.name == "motion_ex" and t >= self._settle_until:
             mx = packet.body
             self._peak_slip_ratio = max(self._peak_slip_ratio, max(abs(float(x)) for x in mx["wheel_slip_ratio"]))
             sa = [abs(float(x)) for x in mx["wheel_slip_angle"]]  # order RL, RR, FL, FR
@@ -225,6 +251,47 @@ class SessionHistory:
             new.append(Trigger("corner_coaching", t, self._player_lap(live), note))
         self.triggers += new
         return new
+
+    def _rewind(self, to: float) -> None:
+        """The game went back in time (a flashback): forget what happened after that moment."""
+        self._pending_damage = None
+        self._rebaseline_damage = True
+        self.events = [e for e in self.events if e["session_time"] <= to + 0.05]
+        self._settle_until = to + FLASHBACK_SETTLE_S
+        self._last_t = to
+
+    def _record_event(self, code: str, details: dict, t: float, live: LiveSession) -> None:
+        if code in ("BUTN", "SPTP"):
+            return
+        if code == "OVTK" and not self._race:
+            return  # in practice and qualifying an "overtake" is the timing table reshuffling
+        # 255 is the game's "no value" in event details (no car, no time, no places).
+        details = {k: v for k, v in details.items() if not (isinstance(v, int) and v == 255)}
+        event = {"code": code, "session_time": round(t, 1), "lap": self._player_lap(live), **details}
+        same = lambda e: {k: v for k, v in e.items() if k != "session_time"} == {  # noqa: E731
+            k: v for k, v in event.items() if k != "session_time"}
+        if any(same(e) and t - e["session_time"] < 5 for e in self.events[-6:]):
+            return  # the same event resent (or replayed by a flashback): keep one
+        self.events.append(event)
+
+    def _tyre_change(self, packet: Packet, live: LiveSession) -> list[Trigger]:
+        """A race stop seen as fresh tyres, for when the game's stop counter (or LapData) lags behind."""
+        st = packet.body["car_status_data"][packet.player_car_index]
+        age = int(st["tyres_age_laps"])
+        before, self._tyre_age = self._tyre_age, age
+        if not self._race or before is None or age >= before or before - age < 2:
+            return []
+        lap = live.last.get("lap_data")
+        game_stops = int(lap.body["lap_data"][lap.player_car_index]["num_pit_stops"]) if lap is not None else 0
+        self.detected_stops += 1
+        if self.detected_stops <= max(game_stops, self._pit_stops):
+            return []  # the game already counted it
+        return [Trigger("pitted", packet.session_time, self._player_lap(live),
+                        {"stops": self.detected_stops, "detectada_por": "cambio de gomas"})]
+
+    @property
+    def pit_stops(self) -> int:
+        return max(self._pit_stops, self.detected_stops)
 
     def _player_lap(self, live: LiveSession) -> int | None:
         lap = live.last.get("lap_data")
@@ -266,9 +333,18 @@ class SessionHistory:
         }
         tyres = [int(v) for v in d["tyres_damage"]]
         if not self._damage or self._rebaseline_damage:
+            if not self._damage:  # damage carried in from before: its levels are not news
+                self._damage_levels = {k: sum(1 for lv in DAMAGE_LEVELS if v >= lv) for k, v in parts.items()}
             self._damage, self._tyre_damage, self._rebaseline_damage = parts, tyres, False
             return []
         grown = {k: v for k, v in parts.items() if v - self._damage.get(k, 0) >= DAMAGE_STEP}
+        for k, v in parts.items():
+            level = sum(1 for lv in DAMAGE_LEVELS if v >= lv)
+            if v < self._damage.get(k, 0):
+                self._damage_levels[k] = level  # repaired: count again from here
+            elif level > self._damage_levels.get(k, 0):
+                self._damage_levels[k] = level
+                grown[k] = v
         # The baseline moves only on what gets reported, or down on a repair, so damage
         # that builds up over several packets in one crash still adds up.
         self._damage = {k: v if k in grown or v < self._damage[k] else self._damage[k] for k, v in parts.items()}
@@ -350,8 +426,12 @@ class SessionHistory:
         player = packet.player_car_index
         laps = packet.body["lap_data"]
         status = live.last.get("car_status")
+        session = live.last.get("session")
+        track_length = float(session.body["track_length"]) if session is not None else 0.0
         for i in live.active_cars():
             lap = laps[i]
+            if int(lap["result_status"]) in OUT_RESULTS:
+                self.retired.add(i)
             num = int(lap["current_lap_num"])
             prev = self._last_lap.get(i)
             self._last_lap[i] = num
@@ -381,14 +461,14 @@ class SessionHistory:
 
         me = laps[player]
         out += self._player_sector_triggers(me, packet.session_time, live)
-        if int(me["pit_status"]) != 0:
+        if pit_sample(me, track_length, self._race):
             self._lap_pit = True
         if int(me["current_lap_invalid"]):
             self._lap_invalid = True
         stops = int(me["num_pit_stops"])
-        if stops > self._pit_stops:
+        if stops > self._pit_stops and stops > self.detected_stops:
             out.append(Trigger("pitted", packet.session_time, int(me["current_lap_num"]), {"stops": stops}))
-        self._pit_stops = stops
+        self._pit_stops = max(self._pit_stops, stops)
         pen, warn = int(me["penalties"]), int(me["total_warnings"])
         if pen > self._penalties or warn > self._warnings:
             out.append(Trigger("penalty", packet.session_time, int(me["current_lap_num"]),

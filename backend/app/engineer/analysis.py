@@ -32,7 +32,9 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
     lap = snap.get("lap") or {}
     player_idx = next((car["index"] for car in snap.get("cars", []) if car["is_player"]), None)
     laps = _dedupe(history.player_laps)
-    total = session.get("total_laps") or 0
+    race = (session.get("type") or "").startswith("Race")
+    # Practice and qualifying run on the clock: the game's lap count there is meaningless (1).
+    total = (session.get("total_laps") or 0) if race else 0
     current = lap.get("lap")
 
     facts: dict[str, Any] = {
@@ -41,7 +43,9 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
             "tipo": session.get("type"),
             "vuelta_actual": current,
             "vueltas_totales": total or None,
-            "vueltas_restantes": (total - current + 1) if total and current else None,
+            "vueltas_restantes": max(0, total - current + 1) if total and current else None,
+            "tiempo_restante_s": session.get("time_left_s") if not race else None,
+            "por_tiempo": not race,
             "safety_car": session.get("safety_car"),
             "clima": session.get("weather"),
             "temp_pista": session.get("track_temperature_c"),
@@ -51,13 +55,13 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
             "zonas_con_bandera": [z for z in session.get("marshal_zones") or [] if z.get("bandera") in ("yellow", "red")],
             "online": session.get("online"),
         },
-        "piloto": _player(snap, history, laps),
+        "piloto": _player(snap, history, laps, race),
         "ritmo": _pace(laps, history, player_idx),
         "sectores": _sectores(snap, history, laps),
         "curvas": history.corners.summary(),
         "neumaticos": _tyres(snap, laps),
         "combustible": _fuel(snap, laps, total, current),
-        "rivales": {**_rivals(snap, history), "alcance": _reach(snap)},
+        "rivales": {**_rivals(snap, history, race), "alcance": _reach(snap) if race else None},
         "reglamento_2026": _regulations_2026(snap, laps),
         "estrategia_calculos": _strategy(snap, history, laps, session, prior),
         "reglaje_actual": _setup(live),
@@ -85,19 +89,38 @@ def _dedupe(laps: list[PlayerLap]) -> list[PlayerLap]:
     return [by_lap[k] for k in sorted(by_lap)]
 
 
-def _player(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dict[str, Any]:
+def running(snap: dict, history: SessionHistory) -> list[dict]:
+    """Cars still in the session, in order: retired ones (RTMT or result status) are out."""
+    return [car for car in snap.get("cars") or []
+            if car["result"] in ("active", "finished") and car["index"] not in history.retired]
+
+
+def _player(snap: dict, history: SessionHistory, laps: list[PlayerLap], race: bool = True) -> dict[str, Any]:
     lap = snap.get("lap") or {}
     st = snap.get("status") or {}
     car = snap.get("car") or {}
     driver = snap.get("driver") or {}
+    cars = running(snap, history)
+    me = next((x for x in cars if x["is_player"]), None)
+    position = lap.get("position")
+    if race and me is not None:
+        # The game can keep a retired car ahead for a while: count only the cars still running.
+        position = 1 + sum(1 for x in cars if not x["is_player"] and x["position"] < me["position"])
+    if race:
+        gap_ahead, gap_leader = _s(lap.get("gap_ahead_ms")), _s(lap.get("gap_leader_ms"))
+    else:
+        # Outside a race the game's gaps are race gaps and read nonsense (15,000 s): use best laps.
+        gap_ahead, gap_leader = _best_lap_gaps(cars, me)
+    game_stops = lap.get("pit_stops")
     return {
         "piloto": driver.get("name"),
         "equipo": driver.get("team"),
-        "posicion": lap.get("position"),
+        "posicion": position,
         "largo": lap.get("grid_position"),
-        "gap_adelante_s": _s(lap.get("gap_ahead_ms")),
-        "gap_lider_s": _s(lap.get("gap_leader_ms")),
-        "paradas": lap.get("pit_stops"),
+        "gap_adelante_s": gap_ahead,
+        "gap_lider_s": gap_leader,
+        "gaps_por": "tiempo de carrera" if race else "diferencia de mejor vuelta",
+        "paradas": max(game_stops or 0, history.pit_stops) if game_stops is not None or history.pit_stops else None,
         "en_boxes": lap.get("pit") != "On track",
         "penalizacion_s": lap.get("penalties_s"),
         "advertencias": lap.get("warnings"),
@@ -120,6 +143,16 @@ def _player(snap: dict, history: SessionHistory, laps: list[PlayerLap]) -> dict[
         "danos_pct": {k: v for k, v in (snap.get("damage") or {}).items()
                       if k not in ("age_s", "tyres_wear_percent", "tyres_damage_percent")},
     }
+
+
+def _best_lap_gaps(cars: list[dict], me: dict | None) -> tuple[float | None, float | None]:
+    """Qualifying and practice: gap to the car ahead and to the fastest, as best-lap differences."""
+    if me is None or not me.get("best_lap_ms"):
+        return None, None
+    bests = sorted(x["best_lap_ms"] for x in cars if x.get("best_lap_ms"))
+    mine = me["best_lap_ms"]
+    faster = [b for b in bests if b < mine]
+    return (_s(mine - faster[-1]) if faster else None), (_s(mine - bests[0]) if bests and bests[0] < mine else None)
 
 
 def _clean(laps: list[PlayerLap]) -> list[PlayerLap]:
@@ -207,12 +240,15 @@ def _tyres(snap: dict, laps: list[PlayerLap]) -> dict[str, Any]:
         rate = [round((b - a) / span, 2) for a, b in zip(stint[0].wear, stint[-1].wear)]
     worst_now = max(wear.values()) if wear else None
     worst_rate = max(rate) if rate else None
+    worst_wheel = WHEELS[rate.index(worst_rate)] if rate else None
     return {
         "compuesto": st.get("tyre"),
         "compuesto_real": st.get("tyre_compound"),
         "edad_vueltas": st.get("tyre_age_laps"),
         "desgaste_pct": {w: round(v, 1) for w, v in zip(WHEELS, wear.values())} if wear else None,
         "desgaste_por_vuelta_pct": dict(zip(WHEELS, rate)) if rate else None,
+        # The tyre that wears fastest decides the stop, not the average of the four.
+        "desgaste_por_vuelta_max": {"rueda": worst_wheel, "pct": worst_rate} if rate else None,
         "vueltas_hasta_60pct": _laps_until(worst_now, worst_rate, 60),
         "vueltas_hasta_70pct": _laps_until(worst_now, worst_rate, 70),
         "temp_superficie_promedio_ultima_vuelta_c": dict(zip(WHEELS, laps[-1].surface_temp_avg)) if laps and laps[-1].surface_temp_avg else None,
@@ -243,7 +279,8 @@ def _fuel(snap: dict, laps: list[PlayerLap], total: int, current: int | None) ->
     green = [pl for pl in laps if pl.fuel_kg is not None and not pl.safety_car]
     per_lap = None
     if len(green) >= 2:
-        pairs = [(a, b) for a, b in zip(green, green[1:]) if b.lap == a.lap + 1]
+        # Fuel never goes up in a race: a pair that gains fuel crossed a flashback.
+        pairs = [(a, b) for a, b in zip(green, green[1:]) if b.lap == a.lap + 1 and b.fuel_kg < a.fuel_kg]
         if pairs:
             per_lap = round(statistics.mean(a.fuel_kg - b.fuel_kg for a, b in pairs), 3)
     spare = st.get("fuel_remaining_laps")
@@ -257,18 +294,22 @@ def _fuel(snap: dict, laps: list[PlayerLap], total: int, current: int | None) ->
     }
 
 
-def _rivals(snap: dict, history: SessionHistory) -> dict[str, Any]:
-    cars = snap.get("cars") or []
+def _rivals(snap: dict, history: SessionHistory, race: bool = True) -> dict[str, Any]:
+    cars = running(snap, history)
     me = next((car for car in cars if car["is_player"]), None)
     if me is None:
         return {}
-    by_pos = {car["position"]: car for car in cars}
+    # Running order without the retired cars: positions are re-counted from it.
+    order = sorted(cars, key=lambda car: car["position"])
+    rank = {car["index"]: n for n, car in enumerate(order, 1)}
+    by_pos = {rank[car["index"]]: car for car in order}
+    my_pos = rank[me["index"]]
 
     def describe(car: dict) -> dict[str, Any]:
         laps = [cl for cl in history.car_laps.get(car["index"], []) if cl.time_ms and cl.lap > 1 and not cl.safety_car]
         recent = laps[-3:]
         return {
-            "pos": car["position"],
+            "pos": rank[car["index"]],
             "piloto": car["name"],
             "equipo": car["team"],
             "gomas": f"{car['tyre']}/{car['tyre_age_laps']}" if car["tyre"] else "desconocido",
@@ -276,15 +317,19 @@ def _rivals(snap: dict, history: SessionHistory) -> dict[str, Any]:
             "en_boxes": car["pit"] != "On track",
             "ultima_s": _s(car["last_lap_ms"]),
             "promedio_ult3_s": _s(statistics.mean(cl.time_ms for cl in recent)) if len(recent) == 3 else None,
-            "gap_al_lider_s": _s(car["gap_leader_ms"]),
-            "tendencia_gap_con_piloto": _gap_trend(history, me, car),
+            "vueltas_con_tiempo": len(laps),
+            "mejor_vuelta_s": _s(car.get("best_lap_ms")),
+            "gap_al_lider_s": _s(car["gap_leader_ms"]) if race else None,
+            "tendencia_gap_con_piloto": _gap_trend(history, me, car) if race else None,
             "adelantamiento_activo": car.get("overtake_active"),  # 2026 format only
         }
 
     return {
-        "adelante": [describe(by_pos[p]) for p in range(me["position"] - 2, me["position"]) if p in by_pos],
-        "atras": [describe(by_pos[p]) for p in range(me["position"] + 1, me["position"] + 3) if p in by_pos],
-        "lider": describe(by_pos[1]) if 1 in by_pos and me["position"] != 1 else None,
+        "adelante": [describe(by_pos[p]) for p in range(my_pos - 2, my_pos) if p in by_pos],
+        "atras": [describe(by_pos[p]) for p in range(my_pos + 1, my_pos + 3) if p in by_pos],
+        "lider": describe(by_pos[1]) if 1 in by_pos and my_pos != 1 else None,
+        "abandonos": [car["name"] for car in snap.get("cars") or []
+                      if car["index"] in history.retired or car["result"] in ("dnf", "dsq", "retired", "not_classified")],
         "paradas_del_resto": {"sin_parar": sum(1 for car in cars if not car["is_player"] and car["pit_stops"] == 0),
                               "con_1_o_mas": sum(1 for car in cars if not car["is_player"] and car["pit_stops"] > 0)},
     }
@@ -367,8 +412,13 @@ def _regulations_2026(snap: dict, laps: list[PlayerLap]) -> dict[str, Any] | Non
 
 def _gap_trend(history: SessionHistory, me: dict, other: dict) -> str | None:
     """How the gap to another car changed over the last laps, from gaps to the leader."""
-    mine = {cl.lap: cl.gap_leader_ms for cl in history.car_laps.get(me["index"], [])}
-    theirs = {cl.lap: cl.gap_leader_ms for cl in history.car_laps.get(other["index"], [])}
+    def since_last_stop(laps: list) -> list:
+        # A stop adds ~20 s to one lap: only the laps after the last stop show a real trend.
+        start = max((n for n in range(1, len(laps)) if laps[n].pit_stops > laps[n - 1].pit_stops), default=0)
+        return laps[start:]
+
+    mine = {cl.lap: cl.gap_leader_ms for cl in since_last_stop(history.car_laps.get(me["index"], []))}
+    theirs = {cl.lap: cl.gap_leader_ms for cl in since_last_stop(history.car_laps.get(other["index"], []))}
     common = sorted(set(mine) & set(theirs))[-4:]
     if len(common) < 2:
         return None
@@ -417,17 +467,19 @@ def _tyre_sets(history: SessionHistory) -> list[dict] | None:
     if body is None:
         return None
     groups: dict[tuple, dict] = {}
-    for ts in body["tyre_set_data"]:
+    for n, ts in enumerate(body["tyre_set_data"]):
         compound = c.VISUAL_COMPOUNDS.get(int(ts["visual_tyre_compound"]))
         if compound is None or not (int(ts["available"]) or int(ts["fitted"])):
             continue
         key = (compound, int(ts["wear"]), bool(ts["fitted"]))
         group = groups.setdefault(key, {
-            "compuesto": compound, "desgaste_pct": key[1], "puesto": key[2], "cantidad": 0,
+            "compuesto": compound, "desgaste_pct": key[1], "puesto": key[2], "cantidad": 0, "ids": [],
             "vida_util_vueltas": int(ts["usable_life"]),
-            "delta_ritmo_s": round(int(ts["lap_delta_time"]) / 1000, 2),
+            # The game gives it against the set fitted now, so it changes whenever that set wears.
+            "delta_ritmo_vs_puesto_s": round(int(ts["lap_delta_time"]) / 1000, 2),
         })
         group["cantidad"] += 1
+        group["ids"].append(n)
     return list(groups.values())
 
 

@@ -12,6 +12,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.live.laps import pit_sample
+
 # A lap counts as a delta reference only if it was seen from start to finish:
 # first and last samples close to the line, and no stretch without data longer than this.
 MAX_TRACE_GAP_M = 300.0
@@ -69,14 +71,14 @@ class LapDelta:
         self._current: list[tuple[float, int]] = []
         self._lap: _Lap | None = None
 
-    def observe(self, lap, track_length: float, safety_car: bool) -> None:
+    def observe(self, lap, track_length: float, safety_car: bool, race: bool = True) -> None:
         number = int(lap["current_lap_num"])
         distance, time_ms = float(lap["lap_distance"]), int(lap["current_lap_time_in_ms"])
         if self._lap is None or number != self._lap.number:
             if self._lap is not None and number == self._lap.number + 1:
                 self._finish(int(lap["last_lap_time_in_ms"]), track_length)
             self._lap, self._current = _Lap(number), []
-        self._lap.pitted |= int(lap["pit_status"]) != 0
+        self._lap.pitted |= pit_sample(lap, track_length, race)
         self._lap.invalid |= bool(lap["current_lap_invalid"])
         self._lap.safety_car |= safety_car
         if not 0 <= distance <= track_length:
@@ -124,7 +126,7 @@ class LiveTiming:
         self.delta = LapDelta()
         self.session_time: float | None = None
 
-    def observe(self, packet, player: int | None, track_length: float, safety_car: bool) -> None:
+    def observe(self, packet, player: int | None, track_length: float, safety_car: bool, race: bool = True) -> None:
         t = float(packet.session_time)
         if self.session_time is not None and t < self.session_time:
             # A flashback or restart rewinds the clock: older passages no longer line up.
@@ -141,7 +143,7 @@ class LiveTiming:
             if int(lap["result_status"]) < 2:
                 continue
             car = self.cars.setdefault(i, _CarTiming())
-            self._track_lap(car, lap, safety_car)
+            self._track_lap(car, lap, safety_car, track_length, race)
             total = float(lap["total_distance"])
             p = car.passages
             if int(lap["driver_status"]) == 0 or (p and total < p[-1][0]):
@@ -151,10 +153,10 @@ class LiveTiming:
             while p and t - p[0][1] > PASSAGE_WINDOW_S:
                 p.popleft()
         if player is not None and 0 <= player < len(laps) and track_length > 0:
-            self.delta.observe(laps[player], track_length, safety_car)
+            self.delta.observe(laps[player], track_length, safety_car, race)
 
     @staticmethod
-    def _track_lap(car: _CarTiming, lap, safety_car: bool) -> None:
+    def _track_lap(car: _CarTiming, lap, safety_car: bool, track_length: float, race: bool) -> None:
         number = int(lap["current_lap_num"])
         if car.lap is not None and number == car.lap.number + 1:
             done, ms = car.lap, int(lap["last_lap_time_in_ms"])
@@ -162,7 +164,7 @@ class LiveTiming:
                 car.clean_laps.append((done.number, ms))
         if car.lap is None or number != car.lap.number:
             car.lap = _Lap(number)
-        car.lap.pitted |= int(lap["pit_status"]) != 0
+        car.lap.pitted |= pit_sample(lap, track_length, race)
         car.lap.invalid |= bool(lap["current_lap_invalid"])
         car.lap.safety_car |= safety_car
 

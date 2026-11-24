@@ -222,7 +222,7 @@ def rules_response(request: EngineerRequest) -> dict:
         used = set(rule["compuestos_secos_usados"])
         options = [s for s in softs if s["compuesto"] in ("Soft", "Medium", "Hard") and s["compuesto"] not in used]
         fits = [s for s in options if left is None or s["vida_util_vueltas"] >= left]
-        pick = min(fits or options, key=lambda s: s["delta_ritmo_s"], default=None)
+        pick = min(fits or options, key=lambda s: s["delta_ritmo_vs_puesto_s"], default=None)
         next_compound = pick["compuesto"] if pick else next(x for x in ("Hard", "Medium", "Soft") if x not in used)
 
     if "safety_car" in kinds and se.get("safety_car") in ("Full safety car", "Virtual safety car"):

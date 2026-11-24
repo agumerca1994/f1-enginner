@@ -110,6 +110,10 @@ def overview(r: SessionReview) -> dict[str, Any]:
     }
 
 
+# A lap with less of the track covered than this cannot be compared corner by corner.
+MIN_COMPARE_COVERAGE = 0.5
+
+
 def comparison(r: SessionReview, a: tuple[int, int], b: tuple[int, int], arrays: bool = True) -> dict[str, Any] | None:
     """Lap B against lap A, each given as (car slot, lap number). None if either has no trace."""
     tr = r.traces
@@ -130,6 +134,13 @@ def comparison(r: SessionReview, a: tuple[int, int], b: tuple[int, int], arrays:
         "diferencia_s": round((tb.time_ms - ta.time_ms) / 1000, 3) if ta.time_ms and tb.time_ms else None,
         "curvas": rows,
     }
+    thin = [side for side, t in (("A", ta), ("B", tb)) if t.coverage < MIN_COMPARE_COVERAGE]
+    if thin:
+        # Too few samples to say where the time goes: keep the lap times, not the corner verdicts.
+        out["datos_insuficientes"] = (f"La vuelta {' y '.join(thin)} tiene menos de la mitad de la pista con datos "
+                                      "(llegó poca telemetría): la comparación curva por curva no es confiable.")
+        for row in rows:
+            row["diferencia_s"] = None
     if arrays:
         out["traza_a"], out["traza_b"] = trace_json(ta), trace_json(tb)
     return out

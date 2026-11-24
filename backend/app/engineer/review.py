@@ -206,7 +206,7 @@ def classification(live: LiveSession) -> list[dict[str, Any]] | None:
     """The game's final result, if the recording reached it."""
     packet = live.last.get("final_classification")
     if packet is None:
-        return None
+        return _classification_from_laps(live)
     participants = live.last.get("participants")
     rows = []
     for i in range(int(packet.body["num_cars"])):
@@ -239,6 +239,39 @@ def classification(live: LiveSession) -> list[dict[str, Any]] | None:
             ],
         })
     return sorted(rows, key=lambda r: r["pos"])
+
+
+def _classification_from_laps(live: LiveSession) -> list[dict[str, Any]] | None:
+    """The game sends its final classification once; on a lossy link it can be lost even
+    though the chequered flag arrived. Then the last running order stands in for it,
+    once the player has finished."""
+    packet = live.last.get("lap_data")
+    if packet is None or packet.player_car_index >= len(packet.body["lap_data"]):
+        return None
+    laps = packet.body["lap_data"]
+    if int(laps[packet.player_car_index]["result_status"]) != 3:  # 3 = finished
+        return None
+    participants = live.last.get("participants")
+    rows = []
+    for i in live.active_cars():
+        lap = laps[i]
+        if int(lap["car_position"]) == 0 or int(lap["result_status"]) < 2:
+            continue
+        pp = participants.body["participants"][i] if participants is not None else None
+        rows.append({
+            "pos": int(lap["car_position"]),
+            "piloto": (pp["name"].decode("utf-8", "replace") or None) if pp is not None else None,
+            "equipo": c.TEAMS.get(int(pp["team_id"])) if pp is not None else None,
+            "es_el_jugador": i == packet.player_car_index,
+            "largo": int(lap["grid_position"]),
+            "vueltas": int(lap["current_lap_num"]),
+            "estado": RESULT_STATUS.get(int(lap["result_status"])),
+            "mejor_vuelta_s": analysis._s(live.best_lap_ms.get(i)),
+            "paradas": int(lap["num_pit_stops"]),
+            "penalizacion_s": int(lap["penalties"]),
+            "fuente": "último orden en pista (no llegó la clasificación oficial del juego)",
+        })
+    return sorted(rows, key=lambda r: r["pos"]) or None
 
 
 def _wheels(values) -> dict[str, float] | None:

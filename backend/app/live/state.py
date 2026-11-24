@@ -13,6 +13,7 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from app.live.laps import is_race
 from app.live.timing import LiveTiming
 from app.live.track_layout import LayoutBuilder
 from app.telemetry import registry
@@ -105,7 +106,7 @@ class LiveSession:
             return  # no track length yet
         player = packet.player_car_index if packet.player_car_index < self.slots() else None
         self.timing.observe(packet, player, float(session.body["track_length"]),
-                            safety_car=int(session.body["safety_car_status"]) != 0)
+                            safety_car=int(session.body["safety_car_status"]) != 0, race=is_race(session))
 
     def _record_best_lap(self, packet: Packet) -> None:
         b = packet.body

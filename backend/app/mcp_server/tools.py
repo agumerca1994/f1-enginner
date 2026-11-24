@@ -216,7 +216,7 @@ async def get_live_session() -> dict[str, Any]:
         "ultimos_mensajes_del_ingeniero": [
             {"vuelta": m["lap"], "radio": m.get("radio"), "prioridad": m.get("prioridad"),
              "estrategia": m.get("estrategia")}
-            for m in list(runner.messages)[-5:]
+            for m in [m for m in runner.messages if m.get("sesion_id") == runner.game_session_id][-5:]
         ],
     }
 
@@ -257,6 +257,9 @@ async def compare_lap_telemetry(
     out = box.comparison(r, ref, (tr.player, lap), arrays=False)
     if out is None:
         raise ToolError(f"No hay traza de la vuelta {against_lap}. Vueltas con traza: {sorted(tr.player_laps)}.")
+    if out.get("datos_insuficientes"):
+        good = sorted(n for n, t in tr.player_laps.items() if t.coverage >= box.MIN_COMPARE_COVERAGE)
+        out["datos_insuficientes"] += f" Vueltas del jugador con datos suficientes: {good or 'ninguna'}."
     out["nota"] = (
         "A es la referencia y B la vuelta del jugador. diferencia_s positiva = el jugador pierde ese tiempo. "
         "b_frena_mas_tarde_m negativo = el jugador frena antes; b_acelera_mas_tarde_m positivo = acelera a fondo "

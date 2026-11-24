@@ -82,6 +82,7 @@ class EngineerRunner:
         self._pending = self._pending_radio = None
         self._outbox.clear()
         self._last_deep_lap = None
+        self.messages.clear()  # another session's radio must never show up in this one
 
     def discard_pending(self) -> None:
         """Forget moments collected while jumping through a replay: only playback speaks."""
@@ -225,6 +226,7 @@ class EngineerRunner:
     def _message(self, request: EngineerRequest, advice: Advice) -> dict:
         return {
             "id": next(_ids),
+            "sesion_id": self.game_session_id,
             "session_time": round(request.session_time, 1),
             "lap": request.lap,
             "triggers": [t.kind for t in request.triggers],
