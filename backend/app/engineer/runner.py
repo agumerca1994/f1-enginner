@@ -25,6 +25,7 @@ from collections import deque
 
 from app.core.database import AsyncSessionLocal
 from app.engineer.engine import EngineerRequest, RaceEngineer, merge
+from app.engineer.traces import TraceCollector
 from app.engineer.providers import Advice, RulesProvider, get_provider, rules_response
 from app.engineer.voice import voice_cache
 from app.live.state import LiveSession
@@ -47,6 +48,8 @@ class EngineerRunner:
         self.game_session_id = game_session_id
         self.provider = provider or get_provider()
         self.engineer = RaceEngineer()
+        # Live only: every lap's speed/throttle/brake trace, kept as it arrives so BOX never re-reads the capture.
+        self.traces: TraceCollector | None = TraceCollector() if mode == "live" else None
         # track id -> the corner map stored for it, so the corners keep their numbers across sessions
         self.stored_corners: dict[int, list[dict]] = {}
         self.session_uid: int | None = None
@@ -74,6 +77,8 @@ class EngineerRunner:
     def reset(self) -> None:
         """Start over (a new game session, or a replay rewound)."""
         self.engineer = RaceEngineer()
+        if self.traces is not None:
+            self.traces = TraceCollector()
         self._pending = self._pending_radio = None
         self._outbox.clear()
         self._last_deep_lap = None
@@ -100,6 +105,8 @@ class EngineerRunner:
         if not coach.corners and track_id in self.stored_corners:
             coach.seed(self.stored_corners[track_id])
         request = self.engineer.observe(packet, live)
+        if self.traces is not None:
+            self.traces.observe(packet, live)
         if request is not None and self.active:
             self._queue(request)
         self._flush_outbox()

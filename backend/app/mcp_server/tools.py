@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
 from app.engineer import analysis
-from app.engineer.review import SessionReview, lap_row, review_async
+from app.engineer.review import SessionReview, lap_row, review_for
 from app.engineer.runner import engineer_hub
 from app.live.state import live_store
 from app.mcp_server.context import current_caller
@@ -65,9 +65,9 @@ async def _review(tenant_id: int, session_id: int) -> tuple[GameSession, Session
         g = await _own_session(db, tenant_id, session_id)
         paths = list(await db.scalars(select(SessionCapture.path).where(SessionCapture.game_session_id == g.id)))
         layout = await db.get(TrackLayout, g.track_id) if g.track_id is not None else None
-    if not paths:
+    if not paths and engineer_hub.runner(tenant_id).game_session_id != g.id:
         raise ToolError("Esa sesión no tiene grabación: sólo se guardan las que llegaron por el bridge.")
-    result = await review_async(paths, layout.corners if layout is not None else None)
+    result = await review_for(tenant_id, g.id, paths, layout.corners if layout is not None else None)
     if result is None:
         raise ToolError("No se pudo leer la grabación de esa sesión.")
     return g, result

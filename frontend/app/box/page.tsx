@@ -25,6 +25,7 @@ import {
   secondsText,
   SETUP_ES,
   type SetupValues,
+  type Trace,
 } from "@/lib/box";
 import { lapTime } from "@/lib/format";
 
@@ -45,6 +46,8 @@ export default function BoxPage() {
   );
 }
 
+const LIVE = "live"; // the lap being driven now, drawn as it arrives
+const LIVE_POLL_MS = 2000;
 const ms = (s: number | null | undefined) => (s == null ? null : Math.round(s * 1000));
 const when = (iso: string) =>
   new Date(iso).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short", hour12: false });
@@ -60,6 +63,9 @@ function Box() {
   const [ref, setRef] = useState<string | null>(null);
   const [cmp, setCmp] = useState<Comparison | null>(null);
   const [refresh, setRefresh] = useState(0);
+  const [liveTrace, setLiveTrace] = useState<(Trace & { ultima_completa: number | null }) | null>(null);
+  const [refTrace, setRefTrace] = useState<Trace | null>(null);
+  const [bestKey, setBestKey] = useState<string | null>(null);
 
   // Sessions with a recording; the one in the URL (?s=) or the newest.
   useEffect(() => {
@@ -96,14 +102,17 @@ function Box() {
         ]);
         const best = ov.vueltas.find((v) => v.mejor) ?? ov.vueltas[ov.vueltas.length - 1];
         const mineKey = best ? lapKey(best.car, best.vuelta) : null;
-        setMine((m) => (m && keys.has(m) ? m : mineKey));
+        setBestKey(mineKey);
+        // While the session is being driven the chart starts on the lap in progress.
+        setMine((m) => (m && (keys.has(m) || m === LIVE) ? m : ov.sesion.en_curso ? LIVE : mineKey));
         const fallbackRef = ov.referencias[0]
           ? lapKey(ov.referencias[0].car, ov.referencias[0].lap)
           : ov.vueltas
               .filter((v) => lapKey(v.car, v.vuelta) !== mineKey && v.tiempo_s)
               .sort((a, b) => (a.tiempo_s ?? 1e9) - (b.tiempo_s ?? 1e9))
               .map((v) => lapKey(v.car, v.vuelta))[0] ?? null;
-        setRef((r) => (r && keys.has(r) ? r : fallbackRef));
+        // Live, the natural reference is the player's own best lap; afterwards, the fastest car.
+        setRef((r) => (r && keys.has(r) ? r : ov.sesion.en_curso && mineKey ? mineKey : fallbackRef));
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Error");
       } finally {
@@ -115,8 +124,55 @@ function Box() {
     };
   }, [sid, refresh, credentials]);
 
+  // The lap in progress, polled while the chart shows it; a lap completed refreshes the laps and runs.
   useEffect(() => {
-    if (sid == null || !mine || !ref || mine === ref) {
+    if (sid == null || mine !== LIVE) {
+      setLiveTrace(null);
+      return;
+    }
+    let cancelled = false;
+    let lastDone: number | null | undefined;
+    const tick = async () => {
+      try {
+        const t = await api<Trace & { ultima_completa: number | null }>(`/api/sessions/${sid}/box/live`, await credentials());
+        if (cancelled) return;
+        setLiveTrace(t);
+        if (lastDone !== undefined && t.ultima_completa !== lastDone) setRefresh((n) => n + 1);
+        lastDone = t.ultima_completa;
+      } catch {
+        // Not being driven any more (or not yet a lap): go back to the best lap.
+        if (!cancelled) setMine((m) => (m === LIVE ? bestKey : m));
+      }
+    };
+    tick();
+    const timer = setInterval(tick, LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [sid, mine, bestKey, credentials]);
+
+  useEffect(() => {
+    if (sid == null || mine !== LIVE || !ref) {
+      setRefTrace(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const t = await api<Trace>(`/api/sessions/${sid}/box/trace?lap=${ref}`, await credentials());
+        if (!cancelled) setRefTrace(t);
+      } catch {
+        if (!cancelled) setRefTrace(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sid, mine, ref, refresh, credentials]);
+
+  useEffect(() => {
+    if (sid == null || !mine || !ref || mine === ref || mine === LIVE) {
       setCmp(null);
       return;
     }
@@ -141,14 +197,18 @@ function Box() {
 
   const refLabel = useCallback(
     (key: string | null) => {
+      if (key === LIVE) return liveTrace ? `Vuelta ${liveTrace.lap} en curso` : "Vuelta en curso";
       if (!overview || !key) return "—";
       const own = overview.vueltas.find((v) => lapKey(v.car, v.vuelta) === key);
       if (own) return `Vuelta ${own.vuelta} · ${lapTime(ms(own.tiempo_s))}`;
       const r = overview.referencias.find((x) => lapKey(x.car, x.lap) === key);
       return r ? `${r.piloto ?? `Auto ${r.car}`} (V${r.lap}) · ${lapTime(ms(r.tiempo_s))}` : "—";
     },
-    [overview],
+    [overview, liveTrace],
   );
+  const lastDoneKey = overview?.vueltas.length
+    ? lapKey(overview.vueltas[overview.vueltas.length - 1].car, overview.vueltas[overview.vueltas.length - 1].vuelta)
+    : null;
 
   return (
     <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
@@ -214,22 +274,58 @@ function Box() {
       )}
       {loading && !overview && <p className="mt-8 text-center text-sm text-muted">Leyendo la telemetría de la sesión…</p>}
 
-      {overview && overview.vueltas.length === 0 && (
+      {overview && overview.vueltas.length === 0 && mine !== LIVE && (
         <p className="mt-8 rounded-2xl border border-dashed border-line p-6 text-center text-muted">
           Esta sesión no tiene vueltas completas grabadas. Hace falta cruzar la línea al menos dos veces.
         </p>
       )}
 
-      {overview && overview.vueltas.length > 0 && (
+      {overview && (overview.vueltas.length > 0 || mine === LIVE) && (
         <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-3">
             <Panel
               title="Telemetría"
               right={
-                <RefPicker overview={overview} mine={mine} value={ref} onChange={setRef} label={refLabel} />
+                <div className="flex flex-wrap items-center gap-2">
+                  {mine === LIVE ? (
+                    <>
+                      <span className="flex items-center gap-1.5 text-xs text-ok">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-ok" aria-hidden /> En vivo
+                      </span>
+                      {lastDoneKey && (
+                        <button onClick={() => setMine(lastDoneKey)} className="rounded-lg border border-line px-2.5 py-1 text-xs text-muted hover:text-fg">
+                          Comparar la última vuelta
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    overview.sesion.en_curso && (
+                      <button onClick={() => setMine(LIVE)} className="rounded-lg border border-line px-2.5 py-1 text-xs text-muted hover:text-fg">
+                        Ver en vivo
+                      </button>
+                    )
+                  )}
+                  <RefPicker overview={overview} mine={mine} value={ref} onChange={setRef} label={refLabel} />
+                </div>
               }
             >
-              {cmp && overview.largo_pista_m ? (
+              {mine === LIVE && overview.largo_pista_m ? (
+                liveTrace && refTrace ? (
+                  <TelemetryChart
+                    mine={liveTrace}
+                    reference={refTrace}
+                    corners={overview.curvas}
+                    sectors={overview.sectores_m}
+                    trackLength={overview.largo_pista_m}
+                    mineLabel={`Vos · ${refLabel(LIVE)}`}
+                    refLabel={`Referencia · ${refLabel(ref)}`}
+                  />
+                ) : (
+                  <p className="py-10 text-center text-sm text-muted">
+                    {liveTrace ? "Elegí una referencia para comparar mientras manejás." : "Esperando la vuelta en curso…"}
+                  </p>
+                )
+              ) : cmp && overview.largo_pista_m ? (
                 <TelemetryChart
                   mine={cmp.traza_b}
                   reference={cmp.traza_a}
@@ -244,6 +340,12 @@ function Box() {
                   {mine && ref && mine !== ref
                     ? "Cargando las vueltas…"
                     : "Para comparar hace falta otra vuelta tuya o la de otro piloto."}
+                </p>
+              )}
+              {mine === LIVE && (
+                <p className="mt-2 text-xs text-muted">
+                  Se dibuja mientras manejás. La comparación curva por curva, las tandas y las sugerencias se calculan
+                  al terminar cada vuelta: tocá &quot;Comparar la última vuelta&quot;.
                 </p>
               )}
               {cmp && (cmp.traza_a.coverage < 0.8 || cmp.traza_b.coverage < 0.8) && (

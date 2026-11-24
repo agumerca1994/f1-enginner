@@ -221,6 +221,20 @@ class TraceCollector:
 
     # --- reading ------------------------------------------------------------------
 
+    def current(self, car: int | None = None) -> LapTrace | None:
+        """The lap a car is on right now, as far as it has been driven (the player's by default)."""
+        car = self.player if car is None else car
+        rows = self._rows
+        if rows is None or car is None or car >= rows.n or not self._lap[car]:
+            return None
+        ts = list(rows.times[car])
+        if ts and ts[0][0] <= 200:
+            ts.insert(0, (0.0, 0))
+        return LapTrace(
+            car=car, lap=int(self._lap[car]), time_ms=None, valid=not self._invalid[car], pitted=bool(self._pitted[car]),
+            times=np.array(ts, np.float64).reshape(-1, 2), **rows.take(car),
+        )
+
     def trace(self, car: int, lap: int) -> LapTrace | None:
         if car == self.player:
             return self.player_laps.get(lap)

@@ -86,6 +86,41 @@ def review(paths: list[str], corners: list[dict] | None = None) -> SessionReview
     return result
 
 
+def live_review(runner, live: LiveSession | None) -> SessionReview | None:
+    """The session being driven now, from what the live runner already holds in memory: no capture to re-read."""
+    traces = runner.traces
+    if traces is None or traces.track_length is None:
+        return None
+    history = runner.engineer.history
+    laps = analysis._dedupe(history.player_laps)
+    return SessionReview(
+        facts=analysis.build(live, history) if live is not None else {},
+        laps=laps,
+        stints=stints(laps),
+        classification=classification(live) if live is not None else None,
+        # The game clock: the live state's own clock is the server's, not the session's.
+        duration_s=round(max((p.session_time for p in live.last.values()), default=0.0), 1) if live is not None else 0.0,
+        traces=traces,
+        corners=history.corners,
+    )
+
+
+async def review_for(tenant_id: int, session_id: int, paths: list[str], corners: list[dict] | None) -> SessionReview | None:
+    """The live session from memory when it is the one asked for and memory holds it from the start; else the capture.
+
+    After a server restart memory only has the laps since then, so the capture is read instead.
+    """
+    from app.engineer.runner import engineer_hub
+    from app.live.state import live_store
+
+    runner = engineer_hub.runner(tenant_id)
+    if runner.game_session_id == session_id:
+        r = live_review(runner, live_store.get(tenant_id))
+        if r is not None and (not r.traces.player_laps or min(r.traces.player_laps) <= 2):
+            return r
+    return await review_async(paths, corners) if paths else None
+
+
 async def review_async(paths: list[str], corners: list[dict] | None = None) -> SessionReview | None:
     async with _lock:
         return await asyncio.to_thread(review, paths, corners)

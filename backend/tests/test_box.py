@@ -164,3 +164,33 @@ def test_advice_rules_and_ranges():
     beh["por_curva"]["subviraje"] = {4: 6}
     sug, driving = advise(setup, beh, None, None)
     assert sug == [] and driving[0]["curva"] == 4
+
+
+@needs(TEXAS)
+def test_live_session_is_served_from_memory():
+    """Driving now: BOX reads the runner's in-memory traces, the same numbers as the capture, without re-reading it."""
+    from app.engineer import box
+    from app.engineer.review import live_review, review
+    from app.engineer.runner import EngineerRunner
+    from app.replay.player import ReplayPlayer, ReplaySource
+
+    runner = EngineerRunner(1, "live")
+    player = ReplayPlayer(ReplaySource([str(TEXAS)]), on_packet=runner.observe)
+    player.seek(float("inf"))
+    live = live_review(runner, player.live)
+    recorded = review([str(TEXAS)])
+    assert sorted(live.traces.player_laps) == sorted(recorded.traces.player_laps) == [1, 2, 3]
+    assert live.traces.player_laps[2].time_ms == recorded.traces.player_laps[2].time_ms
+    a = box.comparison(live, (21, 2), (21, 3))
+    b = box.comparison(recorded, (21, 2), (21, 3))
+    assert a["diferencia_s"] == b["diferencia_s"]
+    assert box.overview(live)["tandas"][0]["vueltas"] == [1, 2, 3]
+    assert live.facts  # the engineer's summary is there for the MCP
+
+    # Mid-lap: the lap in progress is drawn as far as it has been driven.
+    runner2 = EngineerRunner(1, "live")
+    player2 = ReplayPlayer(ReplaySource([str(TEXAS)]), on_packet=runner2.observe)
+    player2.seek(player.t * 0.5)
+    cur = runner2.traces.current()
+    assert cur is not None and cur.time_ms is None and 0 < cur.coverage < 1
+    assert EngineerRunner(1, "replay").traces is None  # replays do not pay for it

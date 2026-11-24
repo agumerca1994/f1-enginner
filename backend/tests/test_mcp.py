@@ -143,7 +143,8 @@ def test_session_tools_on_a_recorded_race(client):
     review = _tool(client, pat, "get_session_review", session_id=session_id)
     assert review["sesion"]["pista"] == "Baku (Azerbaijan)"
     assert review["analisis_al_cierre"]["piloto"]["piloto"] == "GASLY"
-    assert 100 < review["grabacion_s"] < 120
+    # Just ingested, so it is served from memory on the game clock (88 s) rather than the capture's wall clock (111 s).
+    assert 80 < review["grabacion_s"] < 120
     assert "error" in _tool(client, pat, "compare_laps", session_id=session_id, lap_a=3, lap_b=4)
 
     # Another player's token cannot read this session.
