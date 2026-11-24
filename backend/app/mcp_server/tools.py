@@ -19,7 +19,7 @@ from app.engineer.review import SessionReview, lap_row, review_for
 from app.engineer.runner import engineer_hub
 from app.live.state import live_store
 from app.mcp_server.context import current_caller
-from app.mcp_server.instance import READ_ONLY, mcp
+from app.mcp_server.instance import NOTE_ONLY, READ_ONLY, mcp
 from app.models import EngineerMessage, GameSession, SessionCapture, TrackLayout, meaningful_session
 from app.telemetry import constants as c
 
@@ -291,3 +291,98 @@ async def get_setup_advice(
                 "vez: probalos en la tanda siguiente y compará. En clasificación y carrera el reglaje queda "
                 "bloqueado: sirve para las prácticas.",
     }
+
+
+# --- small live tools: the same ones the web engineer uses when the driver asks ----------------
+
+def _live_or_error(tenant_id: int):
+    live = live_store.get(tenant_id)
+    if live is None:
+        raise ToolError("No llega telemetría: el juego o el bridge no están corriendo.")
+    return engineer_hub.runner(tenant_id), live
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_live_status() -> dict[str, Any]:
+    """Estatus de la sesión en vivo en poco texto: posición, vuelta, gaps adelante y atrás con su tendencia,
+    gomas (la más gastada y cuánto se gasta por vuelta), batería, combustible, clima próximo, daños, alertas ya
+    priorizadas (P0 crítico a P3 información) y la antigüedad del dato."""
+    from app.engineer import talk
+
+    caller = await current_caller()
+    runner, live = _live_or_error(caller.tenant_id)
+    out = talk.brief_status(runner, live)
+    out["alertas"] = analysis.alerts(analysis.build(live, runner.engineer.history))
+    out["nombre_radio"] = runner.radio_name
+    return out
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_corner_analysis(
+    numero: Annotated[int, Field(ge=1, description="Número de curva, como lo numera la app")],
+    vueltas: Annotated[int, Field(ge=1, le=10, description="Cuántas de las últimas vueltas")] = 3,
+) -> dict[str, Any]:
+    """Una curva en las últimas vueltas de la sesión en vivo contra el mejor paso propio: velocidad de entrada,
+    mínima y salida, pérdida, dónde la pierde, problemas (bloqueos, patinaje, sub/sobreviraje) y balance."""
+    from app.engineer import talk
+
+    caller = await current_caller()
+    runner, _ = _live_or_error(caller.tenant_id)
+    return talk.corner_analysis(runner, numero, vueltas)
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_tyres() -> dict[str, Any]:
+    """Gomas en vivo: desgaste y temperaturas por goma, desgaste por vuelta y la que más se gasta, vueltas hasta
+    60 y 70% y los juegos disponibles."""
+    from app.engineer import talk
+
+    caller = await current_caller()
+    runner, live = _live_or_error(caller.tenant_id)
+    return talk.tyres(runner, live)
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_strategy(
+    vuelta_parada: Annotated[int | None, Field(description="Vuelta en la que se piensa parar, para el cálculo")] = None,
+) -> dict[str, Any]:
+    """Estrategia en vivo: pérdida en boxes medida (y de dónde sale), dónde sale si para ahora y contra quién,
+    rivales con gaps y tendencias, regla de dos compuestos, juegos de gomas y el plan acordado."""
+    from app.engineer import talk
+
+    caller = await current_caller()
+    runner, live = _live_or_error(caller.tenant_id)
+    return talk.strategy(runner, live, vuelta_parada)
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_setup_status() -> dict[str, Any]:
+    """Reglaje leído del juego ahora, los cambios acordados que faltan aplicar y el historial de cambios del fin
+    de semana (con los que no coinciden con lo acordado)."""
+    from app.engineer import talk
+
+    caller = await current_caller()
+    runner, live = _live_or_error(caller.tenant_id)
+    return talk.setup_status(runner, live)
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_engineer_memory() -> dict[str, Any]:
+    """La memoria del ingeniero para este fin de semana: reportes del piloto, historial de reglaje, plan de
+    carrera, lo último que se le dijo por radio, si pidió silencio y cómo llamarlo (nombre_radio)."""
+    caller = await current_caller()
+    runner = engineer_hub.runner(caller.tenant_id)
+    return {**runner.memory.summary(runner.radio_name), "conversacion_en_la_web": runner.conversation[-10:]}
+
+
+@mcp.tool(annotations=NOTE_ONLY)
+async def save_driver_report(
+    texto: Annotated[str, Field(min_length=2, max_length=300, description="Lo que siente el piloto, tal cual lo dijo")],
+    zona: Annotated[str | None, Field(max_length=80, description="Dónde: 'curva 1', 'fin del sector 2'…")] = None,
+) -> dict[str, Any]:
+    """Anota en la memoria del ingeniero lo que siente el piloto en el auto ("se va de cola en la 1"). El ingeniero
+    de la web lo cruza con la telemetría y lo tiene en cuenta en sus próximos mensajes y sugerencias."""
+    caller = await current_caller()
+    runner = engineer_hub.runner(caller.tenant_id)
+    return {"guardado": runner.memory.add_report(texto, zona, runner._lap or None),
+            "nota": "Se guarda con la sesión en curso; queda para todo el fin de semana en esta pista."}

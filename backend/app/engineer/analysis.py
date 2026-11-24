@@ -72,6 +72,7 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
             "nota": "Con recepción baja algunos valores pueden tener segundos de antigüedad y faltar vueltas.",
         },
     }
+    facts["alertas"] = alerts(facts)
     if prior:
         facts["conocimiento_previo"] = {
             **prior,
@@ -79,6 +80,58 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
                     "para planificar; validá con el ritmo real de esta carrera.",
         }
     return facts
+
+
+DAMAGE_ALERT_PARTS = ("front_left_wing", "front_right_wing", "rear_wing", "floor", "diffuser", "sidepod")
+
+
+def alerts(f: dict[str, Any]) -> list[dict[str, Any]]:
+    """What deserves attention now, already prioritised by code (P0 critical .. P3 information),
+    so neither the engineer nor a model reading the facts can miss a 52% floor."""
+    out: list[dict[str, Any]] = []
+    se, pl, ne, co = f["sesion"], f["piloto"], f["neumaticos"], f["combustible"]
+    race = not se.get("por_tiempo")
+
+    def add(level: str, topic: str, text: str) -> None:
+        out.append({"prioridad": level, "tema": topic, "texto": text})
+
+    for part, value in (pl.get("danos_pct") or {}).items():
+        # Engine and gearbox wear carry over between sessions: only bodywork damage is news.
+        if part in DAMAGE_ALERT_PARTS and isinstance(value, (int, float)) and value >= 25:
+            name = c.DAMAGE_PARTS_ES.get(part, part)
+            add("P0" if value >= 50 else "P1", f"daño {name}", f"{name} al {value:.0f}%")
+    for wheel in ne.get("pinchazos") or []:
+        add("P0", "pinchazo", f"pinchazo en {wheel}")
+    if se.get("safety_car") in ("Full safety car", "Virtual safety car"):
+        add("P0", "safety car", se["safety_car"])
+    if se.get("zonas_con_bandera"):
+        add("P0", "bandera", f"bandera en {len(se['zonas_con_bandera'])} zona(s) de la pista")
+    rain = [p for p in se.get("pronostico") or [] if p.get("in_minutes", 99) <= 10 and p.get("rain_percent", 0) >= 40]
+    if rain and se.get("clima") in ("Clear", "Light cloud", "Overcast"):
+        add("P0", "lluvia", f"{rain[0]['rain_percent']}% de lluvia en {rain[0]['in_minutes']} minutos")
+    if (pl.get("advertencias") or 0) >= 2:
+        add("P0", "límites de pista", f"{pl['advertencias']} advertencias")
+    behind = (f.get("rivales") or {}).get("atras") or []
+    reach = ((f.get("rivales") or {}).get("alcance") or {}).get("atras") or {}
+    if race and behind and reach.get("gap_s") is not None and reach["gap_s"] < 0.5:
+        add("P0", "rival atrás", f"{behind[0]['piloto']} a {reach['gap_s']:.1f} s atrás")
+    rule = (f.get("estrategia_calculos") or {}).get("regla_dos_compuestos") or {}
+    left = se.get("vueltas_restantes")
+    if race and rule.get("aplica") and not rule.get("cumplida") and left is not None and left <= 5:
+        add("P1", "parada", f"falta la parada obligatoria y quedan {left} vueltas")
+    wear = max((ne.get("desgaste_pct") or {}).values(), default=0)
+    to60 = ne.get("vueltas_hasta_60pct")
+    if wear >= 60 or (to60 is not None and to60 < 3):
+        add("P1", "gomas", f"goma más gastada al {wear:.0f}%" + (f", 60% en {to60} vueltas" if to60 else ""))
+    if co.get("vueltas_de_sobra") is not None and co["vueltas_de_sobra"] < 0:
+        add("P1", "combustible", f"faltan {abs(co['vueltas_de_sobra']):.1f} vueltas de combustible")
+    ers = (pl.get("ers") or {}).get("bateria_pct")
+    if ers is not None and ers < 15:
+        add("P2", "batería", f"batería al {ers:.0f}%")
+    for c_ in ((f.get("curvas") or {}).get("peores") or [])[:1]:
+        if (c_.get("perdida_media_s") or 0) >= 0.3:
+            add("P2", f"curva {c_['curva']}", f"pierde {c_['perdida_media_s']:.1f} s de media en la curva {c_['curva']}")
+    return sorted(out, key=lambda a: a["prioridad"])
 
 
 def _dedupe(laps: list[PlayerLap]) -> list[PlayerLap]:

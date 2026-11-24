@@ -99,6 +99,9 @@ def test_radio_waits_for_the_straight_unless_urgent_or_too_long():
     assert [m["id"] for m in runner.messages] == [2, 1]
 
     runner._deliver({"id": 3, "radio": "otra", "prioridad": "info"})
+    runner.observe(_telemetry(11.25, throttle=1.0), live)
+    assert runner.messages[-1]["id"] == 1  # one call per sector, even on a straight
+    runner._sector = 1
     runner.observe(_telemetry(11.3, throttle=0.2, brake=0.9, steer=0.4), live)
     runner.observe(_telemetry(11.3 + RADIO_HOLD_S, throttle=0.2, brake=0.9, steer=0.4), live)
     assert runner.messages[-1]["id"] == 3  # a twisty bit never blocks the radio for long
@@ -162,3 +165,39 @@ def test_a_call_is_not_held_once_the_session_goes_quiet():
     assert not runner.messages  # mid-corner: it waits
     runner._last_packet_wall -= 5  # nothing arrived for a while: the race is over or paused
     assert [m["id"] for m in runner.messages_after(0)] == [7]
+
+
+def test_silence_rules():
+    runner = _runner(TwoLaneAI())
+    runner._lap = 7
+    runner._in_pits = True  # the pits release at once, so only the rules decide here
+    runner._deliver({"id": 1, "lap": 7, "radio": "Perdés dos décimas en la 3.", "prioridad": "importante",
+                     "tema": "corner_coaching", "triggers": ["corner_coaching"]})
+    runner._deliver({"id": 2, "lap": 7, "radio": "De nuevo la 3.", "prioridad": "importante",
+                     "tema": "corner_coaching", "triggers": ["corner_coaching"]})
+    assert [m["radio"] for m in runner.messages] == ["Perdés dos décimas en la 3.", None]
+    assert runner.messages[-1]["silenciado"] == "ya se dijo hace poco"
+
+    runner.memory.set_silence(True)  # "no me hables ahora"
+    runner._deliver({"id": 3, "lap": 7, "radio": "Sector dos, tres décimas.", "prioridad": "info",
+                     "tema": "sector_completed", "triggers": ["sector_completed"]})
+    runner._deliver({"id": 4, "lap": 7, "radio": "Safety car, box.", "prioridad": "importante",
+                     "tema": "safety_car", "triggers": ["safety_car"]})
+    assert runner.messages[-2]["radio"] is None and runner.messages[-1]["radio"] == "Safety car, box."
+
+    # A question from the driver is always answered.
+    runner._deliver({"id": 5, "lap": 7, "radio": "Vas P5.", "prioridad": "info", "tema": "vuelta"}, asked=True)
+    assert runner.messages[-1]["radio"] == "Vas P5."
+
+
+def test_a_flying_qualifying_lap_only_hears_urgent_calls():
+    runner = _runner(TwoLaneAI())
+    runner._flying_quali = True
+    runner._last_packet_wall = 10**12  # packets keep coming
+    runner._deliver({"id": 1, "lap": 3, "radio": "La 5 fue tu mejor paso.", "prioridad": "info", "tema": "x"})
+    runner._deliver({"id": 2, "lap": 3, "radio": "Bandera roja.", "prioridad": "urgente", "tema": "y"})
+    assert [m["id"] for m in runner.messages] == [2]
+    runner._flying_quali = False
+    runner._in_pits = True
+    runner._flush_outbox()
+    assert [m["id"] for m in runner.messages] == [2, 1]

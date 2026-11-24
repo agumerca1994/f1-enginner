@@ -14,7 +14,8 @@ INSTRUCTIONS = """\
 Ingeniero de carrera: telemetría de las sesiones de un jugador de un juego de
 autos de carrera (compatible con la telemetría de EA SPORTS F1® 24). Un bridge en
 la computadora del jugador manda los datos del juego; acá podés leer la sesión en
-vivo y las sesiones grabadas. Es sólo lectura.
+vivo y las sesiones grabadas. Todo es lectura, salvo anotar lo que siente el
+piloto en la memoria del ingeniero (`save_driver_report`).
 
 Cómo usarlo:
 - `list_sessions` trae las sesiones (pista, tipo, fecha, si tiene grabación) con su id.
@@ -29,7 +30,17 @@ Cómo usarlo:
 - `get_setup_advice` da, tanda por tanda, cómo se comportó el auto y qué cambios de
   reglaje probar (con el valor actual y el sugerido), más consejos de manejo.
 - `get_engineer_radio` trae lo que el ingeniero de IA le dijo al jugador por radio.
-- `get_live_session` es la carrera que se está corriendo ahora mismo, si hay una.
+- En vivo, preferí las herramientas chicas, que responden rápido y con poco texto:
+  `get_live_status` ("estatus": posición, gaps con tendencia, gomas, batería,
+  combustible, clima, daños y `alertas` ya priorizadas), `get_corner_analysis`
+  (una curva contra el mejor paso propio), `get_tyres`, `get_strategy` (pérdida en
+  boxes, dónde sale si para, rivales) y `get_setup_status` (reglaje leído del juego
+  contra el acordado). `get_live_session` trae todo junto y es mucho más largo.
+- `get_engineer_memory` es la memoria del fin de semana: lo que reportó el piloto,
+  el historial de reglaje, el plan de carrera y lo que ya se le dijo por radio.
+  `save_driver_report` anota una sensación del piloto ("se va de cola en la 1") para
+  que el ingeniero de la web también la use. Si el piloto tiene `nombre_radio`,
+  llamalo así, nunca por el nombre del piloto del juego.
 
 Cómo interpretar los datos:
 - El PS4 del jugador suele ir por Wi-Fi y llega sólo una parte de la telemetría
@@ -42,6 +53,8 @@ Cómo interpretar los datos:
 - Los neumáticos van en el orden tras_izq, tras_der, del_izq, del_der.
 - Una degradación negativa en un stint corto suele ser el combustible bajando,
   no gomas mejorando.
+- Cada dato en vivo trae `antiguedad_s`: si es alta, decí que tu dato puede estar
+  atrasado y creele al piloto sobre lo que ve en pantalla.
 - Respondé en español rioplatense, con el tono de un ingeniero de pista: claro,
   concreto y sin dramatizar.
 """
@@ -62,5 +75,7 @@ mcp = FastMCP(
     ),
 )
 
-# Every tool only reads, so clients need not ask before calling one.
+# Every tool but one only reads, so clients need not ask before calling them.
 READ_ONLY = ToolAnnotations(readOnlyHint=True, openWorldHint=False)
+# Writes only to the player's own engineer memory, and adding the same note twice is harmless.
+NOTE_ONLY = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)

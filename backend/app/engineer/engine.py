@@ -9,6 +9,7 @@ import json
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
+from typing import Any
 
 from app.engineer import analysis
 from app.engineer.history import WHEEL_OF_PUNCTURE, SessionHistory, Trigger
@@ -137,6 +138,9 @@ class RaceEngineer:
     recent_radio: list[dict] = field(default_factory=list)
     # What the player learned at this track before (loaded when a race opens).
     prior_knowledge: dict | None = None
+    # The weekend memory (driver reports, setup history, plan, what was said) and the radio name.
+    memory: Any = None
+    radio_name: str | None = None
     _last_call: dict[str, float] = field(default_factory=dict)
 
     def observe(self, packet: Packet, live: LiveSession) -> EngineerRequest | None:
@@ -155,6 +159,8 @@ class RaceEngineer:
 
     def build_request(self, triggers: list[Trigger], live: LiveSession) -> EngineerRequest:
         facts = analysis.build(live, self.history, prior=self.prior_knowledge)
+        if self.memory is not None:
+            facts["memoria"] = self.memory.summary(self.radio_name)
         return EngineerRequest(
             triggers=triggers,
             session_time=triggers[-1].session_time,
@@ -168,4 +174,4 @@ class RaceEngineer:
         """Keep what the engineer said, so it does not repeat itself."""
         if response.get("radio"):
             self.recent_radio.append({"vuelta": request.lap, "radio": response["radio"],
-                                      "prioridad": response.get("prioridad")})
+                                      "prioridad": response.get("prioridad"), "tema": response.get("tema")})

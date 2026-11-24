@@ -95,8 +95,9 @@ def test_oauth_flow_tools_and_refresh_rotation(client):
 
     names = {t["name"] for t in _call(client, tokens["access_token"], "tools/list").json()["result"]["tools"]}
     assert names == {"list_sessions", "get_session_review", "compare_laps", "compare_lap_telemetry", "get_engineer_radio",
-                     "get_setup_advice",
-                     "get_live_session"}
+                     "get_setup_advice", "get_live_session", "get_live_status", "get_corner_analysis",
+                     "get_tyres", "get_strategy", "get_setup_status", "get_engineer_memory",
+                     "save_driver_report"}
     assert _tool(client, tokens["access_token"], "list_sessions")["sesiones"] == []
     assert _tool(client, tokens["access_token"], "get_live_session")["en_vivo"] is False
 

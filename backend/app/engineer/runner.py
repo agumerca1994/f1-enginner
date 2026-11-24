@@ -14,7 +14,15 @@ With an AI provider there are two lanes, each with one request in flight
 
 Radio calls are not read out at once: like a real engineer they wait for the
 next straight (full throttle, no brake, wheel straight), at most RADIO_HOLD_S.
-Urgent ones go out immediately.
+Urgent ones go out immediately. On top of that, the silence rules:
+
+1. on a qualifying flying lap only urgent calls go out; the rest waits for the cool-down lap;
+2. at most one call per sector (in the pits the engineer may talk more);
+3. no repeating a topic said in the last laps;
+4. when the driver asked for quiet, only decisions (box, safety car, rain, damage) go out;
+5. at most two unrequested calls per race lap.
+
+A question from the driver is always answered, at once.
 """
 
 import asyncio
@@ -25,6 +33,9 @@ from collections import deque
 
 from app.core.database import AsyncSessionLocal
 from app.engineer.engine import EngineerRequest, RaceEngineer, merge
+from app.engineer.history import Trigger
+from app.engineer.memory import WeekendMemory
+from app.engineer.setup_sheet import setup_values
 from app.engineer.traces import TraceCollector
 from app.engineer.providers import Advice, RulesProvider, get_provider, rules_response
 from app.engineer.voice import voice_cache
@@ -39,6 +50,12 @@ RADIO_HOLD_S = 15.0  # longest a non-urgent call waits for a straight (game seco
 QUIET_RELEASE_S = 2.0  # no packets for this long (pause, session over, link down): nothing to disturb
 STRAIGHT_S = 0.6  # this long flat out and straight counts as a straight
 DEEP_EVERY_LAPS = 3  # the quiet pit-wall refresh on routine laps
+MAX_UNASKED_PER_LAP = 2  # race laps: unrequested non-urgent calls
+STALE_INFO_S = 45.0  # an info call still waiting after this long (game seconds) is old news
+QUALI_TYPES = range(5, 15)
+# Moments that are decisions: they still go out when the driver asked for quiet.
+DECISION_TRIGGERS = ("safety_car", "rain_forecast", "damage", "pitted", "penalty", "race_start", "session_end",
+                     "rival_overtake", "blue_flag")
 
 
 class EngineerRunner:
@@ -65,6 +82,19 @@ class EngineerRunner:
         self._straight_since: float | None = None
         self._game_time = 0.0
         self._last_packet_wall = 0.0
+        # Where the car is, for the silence rules.
+        self._lap = 0
+        self._sector = 0
+        self._flying_quali = False
+        self._in_pits = False
+        self._released: tuple[int, int] | None = None  # (lap, sector) of the last non-urgent call
+        self._unasked: dict[int, int] = {}  # lap -> unrequested non-urgent calls delivered
+        self._last_setup: dict | None = None
+        # The weekend memory and how to call the driver; loaded by the ingest when the session opens.
+        self.memory: WeekendMemory = WeekendMemory()
+        self.radio_name: str | None = None
+        self.conversation: list[dict] = []  # the driver's questions and the answers, this session
+        self.engineer.memory = self.memory
 
     @property
     def provider_name(self) -> str:
@@ -83,6 +113,16 @@ class EngineerRunner:
         self._outbox.clear()
         self._last_deep_lap = None
         self.messages.clear()  # another session's radio must never show up in this one
+        self._released = None
+        self._unasked.clear()
+        self._last_setup = None
+        self.conversation = []
+        self.engineer.memory = self.memory
+        self.engineer.radio_name = self.radio_name
+
+    def set_memory(self, memory: WeekendMemory, radio_name: str | None) -> None:
+        self.memory = self.engineer.memory = memory
+        self.radio_name = self.engineer.radio_name = radio_name
 
     def discard_pending(self) -> None:
         """Forget moments collected while jumping through a replay: only playback speaks."""
@@ -101,6 +141,10 @@ class EngineerRunner:
         self._last_packet_wall = time.monotonic()
         if packet.name == "car_telemetry":
             self._track_straight(packet)
+        elif packet.name == "lap_data":
+            self._track_position(packet, live)
+        elif packet.name == "car_setups":
+            self._track_setup(packet)
         coach = self.engineer.history.corners
         track_id = getattr(live, "track_id", None)
         if not coach.corners and track_id in self.stored_corners:
@@ -141,32 +185,86 @@ class EngineerRunner:
         else:
             self._straight_since = None
 
+    def _track_position(self, packet: Packet, live: LiveSession) -> None:
+        laps = packet.body["lap_data"]
+        if packet.player_car_index >= len(laps):
+            return
+        me = laps[packet.player_car_index]
+        self._lap, self._sector = int(me["current_lap_num"]), int(me["sector"])
+        self._in_pits = int(me["pit_status"]) != 0 or int(me["driver_status"]) == 0
+        session = live.last.get("session")
+        quali = session is not None and int(session.body["session_type"]) in QUALI_TYPES
+        self._flying_quali = quali and int(me["driver_status"]) == 1 and not self._in_pits
+
+    def _track_setup(self, packet: Packet) -> None:
+        values = setup_values(packet)
+        if values is None or values == self._last_setup:
+            return
+        if self._last_setup is not None:
+            self.memory.note_setup(self._last_setup, values, self._lap or None)
+        self._last_setup = values
+
     def _on_straight(self) -> bool:
         return self._straight_since is not None and self._game_time - self._straight_since >= STRAIGHT_S
 
     def _flush_outbox(self) -> None:
         if not self._outbox:
             return
+        # Old news is dropped rather than read late.
+        self._outbox = [(t, m) for t, m in self._outbox
+                        if not (m.get("prioridad") == "info" and self._game_time - t > STALE_INFO_S)]
+        if not self._outbox:
+            return
         quiet = time.monotonic() - self._last_packet_wall >= QUIET_RELEASE_S
-        if self._on_straight() or quiet or self._game_time - self._outbox[0][0] >= RADIO_HOLD_S:
-            for _, message in self._outbox:
-                self.messages.append(message)
-            self._outbox.clear()
+        if self._flying_quali and not quiet:
+            return  # a flying lap: everything waits for the cool-down lap
+        if not self._in_pits and not quiet and self._released == (self._lap, self._sector):
+            return  # one call per sector
+        if self._on_straight() or quiet or self._in_pits or self._game_time - self._outbox[0][0] >= RADIO_HOLD_S:
+            # The most important waiting call goes out; the rest wait for the next sector.
+            rank = {"importante": 0, "info": 1}
+            best = min(range(len(self._outbox)), key=lambda i: (rank.get(self._outbox[i][1].get("prioridad"), 1), i))
+            _, message = self._outbox.pop(best)
+            self._released = (self._lap, self._sector)
+            self._publish(message)
 
-    def _deliver(self, message: dict) -> None:
-        """Hand a message to the dashboard: at once if urgent or silent, else on the next straight.
+    def _publish(self, message: dict) -> None:
+        self.messages.append(message)
+        if message.get("radio"):
+            self.memory.said(message.get("tema"), message["radio"], message.get("lap"))
+
+    def _deliver(self, message: dict, asked: bool = False) -> None:
+        """Hand a message to the dashboard: at once if urgent, asked for or silent, else
+        on the next straight once the silence rules allow it.
 
         The voice starts being made right away, so it is ready when the straight comes.
         """
+        if message.get("radio") and not asked and message.get("prioridad") != "urgente":
+            reason = self._hold_back(message)
+            if reason:
+                message["silenciado"] = reason
+                message["radio"] = None  # the pit wall keeps the analysis; the driver hears nothing
         if message.get("radio"):
             key = voice_cache.request(message["radio"])
             if key:
                 message["audio"] = f"/api/engineer/radio/{key}.mp3"
-        if not message.get("radio") or message.get("prioridad") == "urgente":
-            self.messages.append(message)
+        if not message.get("radio") or asked or message.get("prioridad") == "urgente":
+            self._publish(message)
             return
+        self._unasked[self._lap] = self._unasked.get(self._lap, 0) + 1
         self._outbox.append((self._game_time, message))
         self._flush_outbox()
+
+    def _hold_back(self, message: dict) -> str | None:
+        """Why a non-urgent call should not be said, if it should not."""
+        decision = any(k in DECISION_TRIGGERS for k in message.get("triggers", []))
+        if self.memory.silenced and not decision:
+            return "el piloto pidió silencio"
+        if self.memory.said_recently(message.get("tema"), message.get("lap")):
+            return "ya se dijo hace poco"
+        if not decision and self._unasked.get(self._lap, 0) >= MAX_UNASKED_PER_LAP and not self._in_pits:
+            return "ya hubo dos mensajes en esta vuelta"
+        return None
 
     # --- asking -----------------------------------------------------------------------
 
@@ -217,11 +315,45 @@ class EngineerRunner:
             return
         if request.quiet:
             advice.response["radio"] = None  # a pit-wall refresh: the radio lane already spoke
+        plan = advice.response.get("estrategia")
+        if plan and any(t.kind == "race_start" for t in request.triggers) or (
+                plan and plan.get("vuelta_box") is not None):
+            self.memory.set_plan({**plan, "vuelta": request.lap})
         self.engineer.remember(request, advice.response)
         self._deliver(self._message(request, advice))
         await self._store(request, advice)
         self._busy = False
         self.dispatch()
+
+    async def ask(self, question: str, live: LiveSession | None) -> dict:
+        """The driver asks; the answer goes out on the radio at once, whatever the silence rules."""
+        from app.engineer import talk
+
+        question = question.strip()[:500]
+        started = time.monotonic()
+        quick = talk.quick_answer(self, question)
+        if quick is not None:
+            advice = Advice({"radio": quick, "prioridad": "info", "tema": "respuesta"}, "aviso inmediato",
+                            int((time.monotonic() - started) * 1000))
+        elif hasattr(self.provider, "talk") and live is not None:
+            try:
+                advice = await self.provider.talk(self, live, question)
+            except Exception as e:
+                logger.warning("engineer talk failed", extra={"tenant_id": self.tenant_id, "error": str(e)})
+                advice = Advice({"radio": "No te pude responder, repetime.", "prioridad": "info",
+                                 "tema": "respuesta"}, "reglas", 0)
+        else:
+            advice = Advice({"radio": talk.rules_answer(self, live, question) if live is not None
+                             else "No me llegan datos tuyos ahora.", "prioridad": "info", "tema": "respuesta"},
+                            "reglas", int((time.monotonic() - started) * 1000))
+        self.conversation.append({"pregunta": question, "respuesta": advice.response.get("radio"),
+                                  "vuelta": self._lap or None})
+        request = EngineerRequest([Trigger("pregunta", self._game_time, self._lap or None)], self._game_time,
+                                  self._lap or None, [question], "", "")
+        message = {**self._message(request, advice), "pregunta": question}
+        self._deliver(message, asked=True)
+        await self._store(request, advice)
+        return message
 
     def _message(self, request: EngineerRequest, advice: Advice) -> dict:
         return {

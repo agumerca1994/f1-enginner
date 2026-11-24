@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.engineer.runner import engineer_hub
 from app.engineer.voice import voice_cache
+from app.live.state import live_store
 from app.models import EngineerMessage, GameSession, User
 from app.telemetry import constants as c
 
@@ -22,6 +23,14 @@ router = APIRouter(prefix="/api/engineer", tags=["engineer"])
 
 class ToggleIn(BaseModel):
     active: bool
+
+
+class AskIn(BaseModel):
+    texto: str = Field(min_length=1, max_length=500)
+
+
+class SettingsIn(BaseModel):
+    nombre_radio: str | None = Field(default=None, max_length=40)
 
 
 @router.get("/live")
@@ -37,6 +46,39 @@ async def toggle_live_engineer(body: ToggleIn, user: User = Depends(get_current_
     if not body.active:
         runner.discard_pending()
     return runner.state()
+
+
+@router.post("/ask")
+async def ask_engineer(body: AskIn, user: User = Depends(get_current_user)):
+    """The driver talks to the engineer (by voice in the browser, or typed). Answered on the radio."""
+    runner = engineer_hub.runner(user.tenant_id)
+    message = await runner.ask(body.texto, live_store.get(user.tenant_id))
+    return message
+
+
+@router.get("/memory")
+async def engineer_memory(user: User = Depends(get_current_user)):
+    """What the engineer remembers of this weekend: reports, setup history, plan."""
+    runner = engineer_hub.runner(user.tenant_id)
+    return {"nombre_radio": user.radio_name, "pista_id": runner.memory.track_id, **runner.memory.data,
+            "conversacion": runner.conversation[-20:]}
+
+
+@router.get("/settings")
+async def get_settings(user: User = Depends(get_current_user)):
+    return {"nombre_radio": user.radio_name}
+
+
+@router.put("/settings")
+async def put_settings(body: SettingsIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """How the engineer calls the player on the radio (the game's name is the seat they took)."""
+    name = (body.nombre_radio or "").strip() or None
+    db_user = await db.get(User, user.id)
+    db_user.radio_name = name
+    await db.commit()
+    runner = engineer_hub.runner(user.tenant_id)
+    runner.set_memory(runner.memory, name)
+    return {"nombre_radio": name}
 
 
 def _empty() -> dict:

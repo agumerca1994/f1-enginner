@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     ENGINEER_FAST_MODEL: str = ""  # per-lap radio; empty = the tier's default
     ENGINEER_DEEP_MODEL: str = ""  # strategy and important moments; empty = the tier's default
     ENGINEER_RADIO_MODEL: str = ""  # the quick radio lane; empty = Claude Haiku 5.5
+    ENGINEER_TALK_MODEL: str = ""  # answers to the driver's questions; empty = Claude Sonnet 5.5
     # The engineer's voice service (tts/); empty = the dashboard uses the browser's speech.
     TTS_URL: str = ""
 

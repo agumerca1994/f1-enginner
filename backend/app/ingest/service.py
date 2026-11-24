@@ -16,11 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import utcnow
 from app.core.config import settings
-from app.engineer import knowledge
+from app.engineer import knowledge, memory
 from app.engineer.runner import engineer_hub
 from app.ingest.protocol import ProtocolError, decode_batch
 from app.live.state import LiveStore
-from app.models import Device, GameSession, SessionCapture, TrackLayout
+from app.models import Device, GameSession, SessionCapture, TrackLayout, User
 from app.telemetry import capture, registry
 
 logger = logging.getLogger(__name__)
@@ -132,9 +132,28 @@ class IngestConnection:
             open_session.last_packet_at = datetime.fromtimestamp(received_ns / 1e9, timezone.utc)
             self._apply_metadata(open_session, packet)
             await self._maybe_prime_knowledge(db, live)
+            await self._maybe_load_memory(db, live, open_session.game_session.id)
 
         engineer_hub.runner(self.device.tenant_id).dispatch()
         await self.maybe_flush(db)
+
+    async def _maybe_load_memory(self, db: AsyncSession, live, game_session_id: int) -> None:
+        """When a session opens at a track, give the engineer this weekend's memory there."""
+        if getattr(self, "_memory_uid", None) == live.session_uid:
+            return
+        session = live.last.get("session")
+        if session is None or live.track_id is None:
+            return
+        self._memory_uid = live.session_uid
+        runner = engineer_hub.runner(self.device.tenant_id)
+        if runner.memory.track_id != live.track_id or runner.memory.row_id is None:
+            await memory.save(db, self.device.tenant_id, runner.memory)  # the previous track's, if pending
+            loaded = await memory.load(db, self.device.tenant_id, live.track_id)
+        else:
+            loaded = runner.memory
+        name = await db.scalar(select(User.radio_name).where(User.tenant_id == self.device.tenant_id).limit(1))
+        loaded.open_session(game_session_id, memory.session_label(int(session.body["session_type"])))
+        runner.set_memory(loaded, name)
 
     async def _maybe_prime_knowledge(self, db: AsyncSession, live) -> None:
         """At the start of a race, feed the engineer what the player learned at this track."""
@@ -270,6 +289,7 @@ class IngestConnection:
             s.received = 0
         self.rejected.clear()
         await self._save_knowledge(db)
+        await memory.save(db, self.device.tenant_id, engineer_hub.runner(self.device.tenant_id).memory)
         await self._save_layout(db)
         await self._save_corners(db)
         await db.commit()

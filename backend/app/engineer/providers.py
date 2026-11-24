@@ -29,6 +29,7 @@ RESPONSE_SCHEMA = {
     "properties": {
         "radio": {"type": ["string", "null"]},
         "prioridad": {"type": "string", "enum": ["info", "importante", "urgente"]},
+        "tema": {"type": ["string", "null"]},
         "estrategia": {
             "type": "object",
             "properties": {
@@ -54,7 +55,7 @@ RESPONSE_SCHEMA = {
         },
         "analisis": {"type": "string"},
     },
-    "required": ["radio", "prioridad", "estrategia", "manejo", "reglaje", "analisis"],
+    "required": ["radio", "prioridad", "tema", "estrategia", "manejo", "reglaje", "analisis"],
     "additionalProperties": False,
 }
 
@@ -63,8 +64,9 @@ RADIO_SCHEMA = {
     "properties": {
         "radio": {"type": ["string", "null"]},
         "prioridad": {"type": "string", "enum": ["info", "importante", "urgente"]},
+        "tema": {"type": ["string", "null"]},
     },
-    "required": ["radio", "prioridad"],
+    "required": ["radio", "prioridad", "tema"],
     "additionalProperties": False,
 }
 
@@ -92,6 +94,8 @@ RADIO_MODEL = "claude-haiku-5-5"
 # Models that take the server-side refusal fallback (Haiku has none).
 FALLBACK_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5")
 RADIO_PROMPT = Path(__file__).parent / "prompts" / "radio_es.md"
+# The driver's questions: quick, but it reasons over tools and memory, so Sonnet at low effort.
+TALK_MODEL = "claude-sonnet-5-5"
 
 
 @cache
@@ -119,11 +123,12 @@ class RulesProvider:
 
 class AnthropicProvider:
     def __init__(self, api_key: str, tier: str = "standard", fast_model: str = "", deep_model: str = "",
-                 radio_model: str = ""):
+                 radio_model: str = "", talk_model: str = ""):
         default_fast, default_deep = TIERS.get(tier, TIERS["standard"])
         self.fast_model = fast_model or default_fast
         self.deep_model = deep_model or default_deep
         self.radio_model = radio_model or RADIO_MODEL
+        self.talk_model = talk_model or TALK_MODEL
         self.client = anthropic.AsyncAnthropic(api_key=api_key, timeout=60.0, max_retries=2)
         self.name = f"claude ({tier})"
 
@@ -151,6 +156,58 @@ class AnthropicProvider:
             effort="low",
             max_tokens=600,
         )
+
+    async def talk(self, runner, live, question: str) -> Advice:
+        """Answer the driver's question: the model may look things up with the small tools
+        (and note reports or agreed changes in the memory) before answering in one radio line."""
+        from app.engineer import talk
+
+        messages = talk.history_messages(runner.conversation) + [
+            {"role": "user", "content": talk.user_message(runner, live, question)}]
+        usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
+        started = time.monotonic()
+        used: list[str] = []
+        response = None
+        for _ in range(talk.MAX_TOOL_ROUNDS + 1):
+            params: dict = {
+                "model": self.talk_model,
+                "max_tokens": 2000,
+                "system": [{"type": "text", "text": talk.talk_system(), "cache_control": {"type": "ephemeral"}}],
+                "tools": talk.TOOLS,
+                "messages": messages,
+                "output_config": {"effort": "low"},
+            }
+            if self.talk_model.startswith(FALLBACK_MODELS):
+                response = await self.client.beta.messages.create(
+                    betas=["server-side-fallback-2026-07-01"], extra_body={"fallbacks": "default"}, **params)
+            else:
+                response = await self.client.messages.create(**params)
+            for k, attr in (("input", "input_tokens"), ("output", "output_tokens"),
+                            ("cache_read", "cache_read_input_tokens"), ("cache_write", "cache_creation_input_tokens")):
+                usage[k] += getattr(response.usage, attr, 0) or 0
+            if response.stop_reason == "refusal":
+                raise RuntimeError("the model declined the question")
+            calls = [b for b in response.content if b.type == "tool_use"]
+            if response.stop_reason != "tool_use" or not calls:
+                break
+            messages.append({"role": "assistant", "content": response.content})
+            results = []
+            for call in calls:
+                used.append(call.name)
+                try:
+                    out = talk.run_tool(runner, live, call.name, dict(call.input or {}))
+                    results.append({"type": "tool_result", "tool_use_id": call.id,
+                                    "content": json.dumps(out, ensure_ascii=False, default=str)})
+                except Exception as e:  # a broken tool must not lose the answer
+                    logger.warning("talk tool failed", extra={"tool": call.name, "error": str(e)})
+                    results.append({"type": "tool_result", "tool_use_id": call.id, "is_error": True,
+                                    "content": f"No se pudo: {e}"})
+            messages.append({"role": "user", "content": results})
+        text = "".join(b.text for b in response.content if b.type == "text") if response else ""
+        model = response.model if response else self.talk_model
+        return Advice({"radio": talk.clean_answer(text), "prioridad": "info", "tema": "respuesta",
+                       "herramientas": used or None},
+                      model, int((time.monotonic() - started) * 1000), usage, cost(model, usage))
 
     async def _call(self, model: str, *, system: list, user: str, schema: dict, effort: str, max_tokens: int) -> Advice:
         params: dict = {
@@ -191,7 +248,7 @@ def get_provider():
     if settings.ANTHROPIC_API_KEY:
         return AnthropicProvider(settings.ANTHROPIC_API_KEY, settings.ENGINEER_TIER,
                                  settings.ENGINEER_FAST_MODEL, settings.ENGINEER_DEEP_MODEL,
-                                 settings.ENGINEER_RADIO_MODEL)
+                                 settings.ENGINEER_RADIO_MODEL, settings.ENGINEER_TALK_MODEL)
     return RulesProvider()
 
 
@@ -313,6 +370,7 @@ def rules_response(request: EngineerRequest) -> dict:
     return {
         "radio": radio,
         "prioridad": priority,
+        "tema": _topic(kinds, radio),
         "estrategia": {
             "plan": ("Parada obligatoria pendiente" + (f": falta poner {c.COMPOUNDS_ES.get(next_compound, next_compound)}"
                                                         if next_compound else "")) if owes_stop
@@ -327,6 +385,23 @@ def rules_response(request: EngineerRequest) -> dict:
         "reglaje": [],
         "analisis": _summary(f),
     }
+
+
+def _topic(kinds: set[str], radio: str | None) -> str | None:
+    """A short key for what the call is about, so the same topic is not repeated."""
+    if not radio:
+        return None
+    for kind in ("safety_car", "damage", "rain_forecast", "penalty", "rival_overtake", "overtake_available",
+                 "blisters", "blue_flag", "corner_coaching", "tyre_overuse", "sector_completed", "pitted",
+                 "session_end", "session_start", "race_start"):
+        if kind in kinds:
+            return kind
+    head = radio.split(":")[0].lower()
+    for word, topic in (("batería", "bateria"), ("combustible", "combustible"), ("gomas", "gomas"),
+                        ("parada", "parada"), ("ventana", "parada"), ("descont", "alcance")):
+        if word in head:
+            return topic
+    return "vuelta"
 
 
 def _said_recently(request: EngineerRequest, radio: str) -> bool:
