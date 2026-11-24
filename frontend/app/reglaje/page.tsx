@@ -101,7 +101,7 @@ function Setup() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const p = q.get("p");
-    if (p) {
+    if (p && academyEntry(keyOf(p))) {
       setSelected(keyOf(p));
       setOpen(true);
     }
@@ -234,7 +234,8 @@ function Setup() {
     return () => window.removeEventListener("keydown", onKey);
   }, [move]);
 
-  const entry = academyEntry(selected)!;
+  // An unknown or old setting name in the link falls back to the first setting instead of breaking the page.
+  const entry = academyEntry(selected) ?? academyEntry(order[0])!;
   const detail = (
     <Detail
       entry={entry}
