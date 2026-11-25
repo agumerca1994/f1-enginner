@@ -80,7 +80,7 @@ def runs(r: SessionReview, lap_setup: dict[int, str]) -> list[Run]:
         new = (
             not out
             or garage_changed
-            or (prev is not None and prev.pitted and t.pitted)  # in-lap, then out of the pits again
+            or (prev is not None and prev.pit_lane and t.pit_lane)  # in-lap, then out of the pits again
             or n != out[-1].laps[-1] + 1
         )
         if new:

@@ -21,3 +21,9 @@ def pit_sample(lap, track_length: float, race: bool) -> bool:
     if race or status == 2:
         return True
     return track_length > 0 and float(lap["lap_distance"]) > track_length / 2
+
+
+def pit_mask(status, distance, track_length: float, race: bool):
+    """`pit_sample` for every car at once (numpy arrays of pit_status and lap_distance)."""
+    in_lane = status != 0
+    return in_lane & ((status == 2) | race | (distance > track_length / 2))

@@ -19,6 +19,8 @@ from typing import Any
 
 import numpy as np
 
+from app.live.laps import pit_mask
+
 from app.engineer.setup_sheet import setup_values
 
 BIN_M = 5.0
@@ -37,13 +39,15 @@ class LapTrace:
     lap: int
     time_ms: int | None
     valid: bool
-    pitted: bool
+    pitted: bool  # a pit lap: a stop in the box, or (outside races) the pit lane in the second half
     speed: np.ndarray  # km/h per bin, NaN where no sample arrived
     throttle: np.ndarray  # 0..1
     brake: np.ndarray  # 0..1
     gear: np.ndarray
     times: np.ndarray  # (n, 2): exact lap distance m, lap time ms, increasing
     setup: dict[str, Any] | None = None
+    # Any time in the pit lane, even the exit at the start of a flying lap: only for telling runs apart.
+    pit_lane: bool = False
 
     @property
     def coverage(self) -> float:
@@ -102,7 +106,8 @@ class TraceCollector:
         self.names: dict[int, tuple[str | None, str | None]] = {}  # car -> (driver, team)
         self._rows: _Rows | None = None
         self._lap = self._dist = self._time_at = None  # per car: lap number, distance, session time
-        self._invalid = self._pitted = None
+        self._invalid = self._pitted = self._pit_lane = None
+        self._race = False
         self._setup: dict[str, Any] | None = None
 
     # --- feeding ----------------------------------------------------------------
@@ -114,6 +119,9 @@ class TraceCollector:
                 return
             self.track_length = float(session.body["track_length"])
         self.player = packet.player_car_index
+        session = live.last.get("session")
+        if session is not None:
+            self._race = int(session.body["session_type"]) in (15, 16, 17)
         if packet.name == "lap_data":
             self._on_lap_data(packet)
         elif packet.name == "car_telemetry" and self._rows is not None:
@@ -132,6 +140,7 @@ class TraceCollector:
         self._time_at = np.full(n, np.nan)
         self._invalid = np.zeros(n, bool)
         self._pitted = np.zeros(n, bool)
+        self._pit_lane = np.zeros(n, bool)
 
     def _on_lap_data(self, packet) -> None:
         laps = packet.body["lap_data"]
@@ -150,7 +159,7 @@ class TraceCollector:
                 self._finish(car, int(laps["last_lap_time_in_ms"][car]))
             rows.clear(car)
             rows.times[car] = []
-            self._invalid[car] = self._pitted[car] = False
+            self._invalid[car] = self._pitted[car] = self._pit_lane[car] = False
             self._lap[car] = lap[car]
 
         back = active & np.isfinite(self._dist) & (dist < self._dist - FLASHBACK_M) & (lap == self._lap)
@@ -160,7 +169,11 @@ class TraceCollector:
             rows.times[car] = [pt for pt in rows.times[car] if pt[0] <= dist[car]]
 
         self._invalid |= active & (laps["current_lap_invalid"] != 0)
-        self._pitted |= active & (laps["pit_status"] != 0)
+        # Same rule as the radio and live timing (app.live.laps.pit_sample): in practice and qualifying
+        # many pit exits sit after the line, so leaving the pits does not make a flying lap a pit lap.
+        status = laps["pit_status"]
+        self._pit_lane |= active & (status != 0)
+        self._pitted |= active & pit_mask(status, dist, self.track_length, self._race)
         self._dist = np.where(active, dist, np.nan)
         self._time_at[:] = packet.session_time
         for car in np.flatnonzero(active & (dist >= 0) & (dist <= self.track_length)):
@@ -207,7 +220,7 @@ class TraceCollector:
         channels = rows.take(car)
         trace = LapTrace(
             car=car, lap=int(self._lap[car]), time_ms=lap_ms or None,
-            valid=not self._invalid[car], pitted=bool(self._pitted[car]),
+            valid=not self._invalid[car], pitted=bool(self._pitted[car]), pit_lane=bool(self._pit_lane[car]),
             times=np.array(ts, np.float64).reshape(-1, 2), **channels,
         )
         if car == self.player:

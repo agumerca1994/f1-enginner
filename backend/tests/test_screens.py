@@ -83,3 +83,35 @@ def test_the_players_tyre_sets_stay_in_the_snapshot():
     player = ReplayPlayer(ReplaySource(sorted(glob.glob("../fixtures/captures/texas*.zst"))), on_packet=observe)
     player.seek(600)
     assert seen["with"] > 0 and seen["without"] == 0
+
+
+def test_a_flying_lap_from_the_pit_exit_is_not_a_pit_lap_in_telemetry():
+    """Practice and qualifying: the pit exit can sit after the line. Telemetry, runs and setup advice
+    must agree with the radio: only a stop or the pit lane in the second half makes a pit lap."""
+    import numpy as np
+
+    from app.engineer.review import SessionReview
+    from app.engineer.setup_advice import runs
+    from app.engineer.traces import LapTrace, TraceCollector
+    from app.live.laps import pit_mask, pit_sample
+
+    status = np.array([0, 1, 1, 2, 1])
+    dist = np.array([100.0, 300.0, 4000.0, 300.0, 300.0])
+    for race in (False, True):
+        mask = pit_mask(status, dist, 5000.0, race)
+        assert list(mask) == [pit_sample({"pit_status": s, "lap_distance": d}, 5000.0, race) for s, d in zip(status, dist)]
+    assert list(pit_mask(status, dist, 5000.0, False)) == [False, False, True, True, False]
+
+    def lap(n, pitted=False, pit_lane=False):
+        z = np.zeros(4)
+        return LapTrace(car=0, lap=n, time_ms=90000, valid=True, pitted=pitted, pit_lane=pit_lane,
+                        speed=z, throttle=z, brake=z, gear=z, times=np.zeros((0, 2)))
+
+    tr = TraceCollector()
+    tr.player = 0
+    # 1-2 a run, 2 the in-lap; 3 starts at the pit exit but is a flying lap; 4 another flying lap.
+    tr.player_laps = {1: lap(1), 2: lap(2, pitted=True, pit_lane=True), 3: lap(3, pit_lane=True), 4: lap(4)}
+    r = SessionReview(facts={}, laps=[], stints=[], classification=None, duration_s=0, traces=tr)
+    out = runs(r, {})
+    assert [x.laps for x in out] == [[1, 2], [3, 4]]
+    assert out[1].clean_laps == [3, 4]  # the lap from the pit exit counts
