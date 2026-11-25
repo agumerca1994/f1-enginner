@@ -215,7 +215,7 @@ function Box() {
       <header className="flex flex-wrap items-center justify-between gap-3 card px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent">BOX</span>
+            <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent-ink">TELEMETRÍA</span>
             <span className="truncate text-lg font-semibold">{overview?.sesion.pista ?? "Telemetría por vuelta"}</span>
           </div>
           <div className="text-sm text-muted">

@@ -260,7 +260,7 @@ function Setup() {
         </div>
         {sid != null && (
           <Link href={`/box?s=${sid}`} className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
-            Ver la tanda en el análisis
+            Ver la telemetría de la tanda
           </Link>
         )}
       </header>
@@ -645,9 +645,16 @@ function Detail({
         </div>
       </header>
 
-      <div className="relative h-[260px] overflow-hidden rounded-[var(--radius-card)] border border-line bg-[radial-gradient(ellipse_at_center,#0f1a24_0%,#07090c_75%)] sm:h-[360px] xl:h-[440px]">
-        <CarViewer focus={entry.key} bias={bias} />
-        <p className="pointer-events-none absolute bottom-2 left-3 text-xs text-muted">Arrastrá para girar el auto</p>
+      <div className="relative h-[260px] overflow-hidden rounded-[var(--radius-card)] border border-line bg-[radial-gradient(ellipse_at_center,#1a1d22_0%,#0b0c0e_75%)] sm:h-[360px] xl:h-[440px]">
+        <CarViewer focus={entry.key} bias={bias} setting={{ value: current ?? null, suggested: suggestion?.valor_sugerido ?? null, range: entry.range }} />
+        <p className="pointer-events-none absolute bottom-2 left-3 right-3 flex flex-wrap justify-between gap-x-3 text-xs text-muted">
+          <span>Arrastrá para girar el auto</span>
+          {current != null && entry.range && (
+            <span className="text-soft-fg">
+              {suggestion ? `Se mueve entre tu valor (${fmt(entry, current)}) y el sugerido (${fmt(entry, suggestion.valor_sugerido)})` : `Así está con tu valor: ${fmt(entry, current)}`}
+            </span>
+          )}
+        </p>
       </div>
 
       <section className="card p-4">

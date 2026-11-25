@@ -106,9 +106,15 @@ type Wheel = { group: THREE.Group; camber: THREE.Group; spin: THREE.Group; front
 type Link = { mesh: THREE.Mesh; inboard: THREE.Vector3; wheel: number; outboard: THREE.Vector3 };
 type Owned = { mesh: THREE.Mesh; lines: THREE.LineSegments; part: Part; base: THREE.Material; glow?: boolean };
 
-export function CarViewer({ focus, bias }: { focus: string; bias?: number | null }) {
+/** The setting being shown: the player's value, the engineer's suggestion and the game's range. */
+export type ViewerSetting = { value: number | null; suggested: number | null; range?: [number, number] };
+
+// Settings whose effect grows as the number goes down (more negative camber, softer springs mean more movement).
+const INVERTED = new Set(["camber_del", "camber_tras", "suspension_del", "suspension_tras", "barra_antivuelco_del", "barra_antivuelco_tras", "diferencial_acelerando_pct", "diferencial_soltando_pct"]);
+
+export function CarViewer({ focus, bias, setting }: { focus: string; bias?: number | null; setting?: ViewerSetting }) {
   const host = useRef<HTMLDivElement>(null);
-  const api = useRef<{ setFocus: (k: string) => void; setBias: (b: number | null) => void } | null>(null);
+  const api = useRef<{ setFocus: (k: string) => void; setBias: (b: number | null) => void; setSetting: (v: ViewerSetting | null) => void } | null>(null);
 
   useEffect(() => {
     const el = host.current;
@@ -150,9 +156,9 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
       visor: new THREE.MeshPhysicalMaterial({ color: 0x0a0d12, metalness: 0.9, roughness: 0.1 }),
       metal: new THREE.MeshStandardMaterial({ color: 0x55667a, metalness: 0.9, roughness: 0.35 }),
       black: new THREE.MeshBasicMaterial({ color: 0x030405 }),
-      hl: new THREE.MeshStandardMaterial({ color: 0x0e7490, emissive: 0x22d3ee, emissiveIntensity: 0.6, metalness: 0.3, roughness: 0.35 }),
+      hl: new THREE.MeshStandardMaterial({ color: 0x9a2410, emissive: 0xff4b2b, emissiveIntensity: 0.55, metalness: 0.3, roughness: 0.35 }),
       line: new THREE.LineBasicMaterial({ color: 0x4f7a96, transparent: true, opacity: 0.55 }),
-      hlLine: new THREE.LineBasicMaterial({ color: 0xa5f3fc }),
+      hlLine: new THREE.LineBasicMaterial({ color: 0xffb3a3 }),
     };
     const owned: Owned[] = [];
     const brakeMats: { front: boolean; mat: THREE.MeshStandardMaterial }[] = [];
@@ -349,6 +355,15 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
     let focus: Focus = FOCUS.overview;
     let focusStart = performance.now();
     let biasValue: number | null = null;
+    let focusKey = "overview";
+    let shown: ViewerSetting | null = null;
+    // Where a value sits in its range, 0..1, flipped for settings that act the other way round.
+    const norm = (v: number | null | undefined): number | null => {
+      const r = shown?.range;
+      if (v == null || !r || r[1] === r[0]) return null;
+      const n = Math.min(1, Math.max(0, (v - r[0]) / (r[1] - r[0])));
+      return INVERTED.has(focusKey) ? 1 - n : n;
+    };
     const pivot = new THREE.Vector3(0, 0.35, 0);
     const camTarget = new THREE.Vector3(...focus.target);
     const sph = new THREE.Spherical().setFromVector3(new THREE.Vector3(...focus.cam).sub(pivot));
@@ -374,12 +389,17 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
     api.current = {
       setFocus(k: string) {
         focus = FOCUS[k] ?? FOCUS.overview;
+        focusKey = k;
         focusStart = performance.now();
         userYaw = 0;
         applyHighlight();
       },
       setBias(v) {
         biasValue = v;
+      },
+      setSetting(v) {
+        shown = v;
+        focusStart = performance.now();
       },
     };
     applyHighlight();
@@ -432,7 +452,12 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const t = (now - focusStart) / 1000;
-      const s = (Math.sin(t * 2.4 - Math.PI / 2) + 1) / 2; // 0..1, starting at 0
+      const wave = (Math.sin(t * 1.6 - Math.PI / 2) + 1) / 2; // 0..1, starting at 0
+      // With the player's value the part sits where their setup puts it; with a suggestion
+      // it moves between the two, so the change can be seen. Without either, the generic swing.
+      const mine = norm(shown?.value);
+      const sug = norm(shown?.suggested);
+      const s = mine == null ? (Math.sin(t * 2.4 - Math.PI / 2) + 1) / 2 : sug == null || Math.abs(sug - mine) < 0.005 ? mine + Math.sin(t * 2) * 0.02 : mine + (sug - mine) * wave;
       const k = 1 - Math.exp(-dt * 3.2);
 
       // Camera: swing round the car in spherical coordinates, like a turntable.
@@ -478,7 +503,7 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
         body.rotation.z = s * 0.03;
         body.position.y = -s * 0.02;
       }
-      if (anim === "roll") body.rotation.x = Math.sin(t * 2.4) * 0.05;
+      if (anim === "roll") body.rotation.x = Math.sin(t * 2.4) * (mine == null ? 0.05 : 0.012 + s * 0.06);
       if (anim === "height_front") {
         body.rotation.z = (s - 0.5) * 0.045;
         body.position.y = (s - 0.5) * 0.04;
@@ -499,7 +524,9 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
       if (anim === "diff" || anim === "engine_brake" || anim === "brake_pressure") {
         for (const w of wheels) {
           // Diff: in a corner the outer rear wheel turns faster than the inner one.
-          const rate = anim === "diff" && !w.front ? (w.side > 0 ? 7 : 4.5) : 5;
+          // A more open diff (lower %) lets them differ more.
+          const split = mine == null ? 1 : 0.15 + s * 1.2;
+          const rate = anim === "diff" && !w.front ? 5.75 + (w.side > 0 ? 1 : -1) * 1.25 * split : 5;
           w.spin.rotation.z -= rate * dt;
         }
       }
@@ -538,6 +565,14 @@ export function CarViewer({ focus, bias }: { focus: string; bias?: number | null
   useEffect(() => {
     api.current?.setBias(bias ?? null);
   }, [bias]);
+
+  const value = setting?.value ?? null;
+  const suggested = setting?.suggested ?? null;
+  const lo = setting?.range?.[0];
+  const hi = setting?.range?.[1];
+  useEffect(() => {
+    api.current?.setSetting(value == null && suggested == null ? null : { value, suggested, range: lo != null && hi != null ? [lo, hi] : undefined });
+  }, [value, suggested, lo, hi, focus]);
 
   return <div ref={host} className="h-full w-full cursor-grab active:cursor-grabbing" aria-label="Monoplaza en 3D" role="img" />;
 }
