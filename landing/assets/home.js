@@ -33,8 +33,8 @@ if (!intro || html.classList.contains("no-intro")) {
 } else {
   const video = intro.querySelector("video");
   const portrait = innerHeight > innerWidth;
-  video.poster = `/assets/intro/poster-${portrait ? "v" : "h"}.jpg?v=5`;
-  video.src = `/assets/intro/intro-${portrait ? "v" : "h"}.mp4?v=5`; // H.264: what every phone plays
+  video.poster = `/assets/intro/poster-${portrait ? "v" : "h"}.jpg?v=6`;
+  video.src = `/assets/intro/intro-${portrait ? "v" : "h"}.mp4?v=6`; // H.264: what every phone plays
   const flash = intro.querySelector(".intro-flash");
   const title = intro.querySelector(".intro-title");
   // A browser that will not autoplay (or a slow network) gets the page straight away.
@@ -45,17 +45,29 @@ if (!intro || html.classList.contains("no-intro")) {
   });
   video.addEventListener("ended", () => setTimeout(() => endIntro(false), 500));
   video.addEventListener("error", () => endIntro(true));
-  // With sound when the browser allows it; otherwise muted, with a button to turn it on.
+  // With sound by default. Browsers only allow it after the visitor has touched the page, so when
+  // they refuse it starts muted and the first tap on the intro turns the sound on.
   const sound = intro.querySelector(".intro-sound");
-  video.muted = false;
+  const label = sound.querySelector("span");
+  const setSound = (on) => {
+    video.muted = !on;
+    sound.setAttribute("aria-pressed", String(on));
+    label.textContent = on ? "Silenciar" : "Activar sonido";
+  };
+  let blocked = false; // muted by the browser, not by the visitor
+  setSound(true);
   video.play().catch(() => {
-    video.muted = true;
-    sound.hidden = false;
+    blocked = true;
+    setSound(false);
     return video.play();
   }).catch(() => endIntro(true));
-  sound.addEventListener("click", () => { video.muted = false; sound.hidden = true; });
+  sound.addEventListener("click", () => { blocked = false; setSound(video.muted); });
   intro.querySelector(".intro-skip")?.addEventListener("click", () => endIntro(true));
-  intro.addEventListener("pointerdown", (e) => { if (!e.target.closest(".intro-skip, .intro-sound")) endIntro(true); });
+  intro.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".intro-skip, .intro-sound")) return;
+    if (blocked) { blocked = false; setSound(true); } // the first tap brings the sound; the next one skips
+    else endIntro(true);
+  });
   addEventListener("keydown", () => endIntro(true), { once: true });
 }
 
