@@ -59,34 +59,40 @@ export function Boxes({ s, sid, messages }: { s: Snapshot; sid: number | null; m
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_330px]">
       <section className="flex min-w-0 flex-col gap-3" aria-label="Tu última tanda">
         {report ? <RunHero report={report} position={s.lap?.position} /> : <NoRun loading={loading && sid != null} />}
-        {report && report.perdidas.length > 0 && (
-          <>
-            <h2 className="eyebrow mt-2">Dónde se te fue el tiempo</h2>
-            {report.perdidas.map((l) => (
-              <Link
-                key={l.curva}
-                href={`/box?s=${sid}`}
-                className="card grid grid-cols-[72px_1fr_auto] items-center gap-3 px-3 py-3 hover:bg-panel-2 sm:grid-cols-[96px_1fr_auto] sm:gap-4"
-              >
-                <CornerThumb trackId={s.track?.id} corner={l.curva} corners={s.track?.corners} className="h-12 w-[72px] sm:h-16 sm:w-24" />
-                <span className="min-w-0">
-                  <span className="title block text-[1.35rem] sm:text-[1.5rem]">Curva {l.curva}</span>
-                  <span className="mt-0.5 block text-[0.92rem] leading-snug text-soft-fg">{l.texto}</span>
+        <h2 className="eyebrow mt-2">Dónde se te fue el tiempo</h2>
+        {[0, 1, 2].map((i) => {
+          const l = report?.perdidas[i];
+          if (!l)
+            return (
+              <div key={i} className="card grid min-h-[86px] grid-cols-[72px_1fr] items-center gap-3 px-3 py-3 sm:grid-cols-[96px_1fr] sm:gap-4">
+                <span className="h-12 w-[72px] rounded-[8px] bg-panel-2 sm:h-16 sm:w-24" aria-hidden="true" />
+                <span className="text-[0.9rem] text-dim">
+                  {i === 0 ? (report ? "No hay datos suficientes de esta tanda para comparar curva por curva." : "Cuando completes una tanda te muestro las curvas donde perdiste tiempo.") : ""}
                 </span>
-                <span className="text-right">
-                  <span className="display block text-[1.5rem] whitespace-nowrap text-accent-ink sm:text-[1.8rem]">−{dec(l.perdida_s)}</span>
-                  <span className="text-[0.8rem] whitespace-nowrap text-accent-ink">Ver la vuelta ›</span>
-                </span>
-              </Link>
-            ))}
-          </>
-        )}
-        {report && (
-          <Link href={`/box?s=${sid}`} className="btn mt-1 flex items-center justify-between px-4 py-3 text-[0.95rem]">
-            <span>Toda la telemetría: velocidad, acelerador, freno y marcha, vuelta contra vuelta</span>
-            <span aria-hidden="true">›</span>
-          </Link>
-        )}
+              </div>
+            );
+          return (
+            <Link
+              key={i}
+              href={`/box?s=${sid}`}
+              className="card grid min-h-[86px] grid-cols-[72px_1fr_auto] items-center gap-3 px-3 py-3 hover:bg-panel-2 sm:grid-cols-[96px_1fr_auto] sm:gap-4"
+            >
+              <CornerThumb trackId={s.track?.id} corner={l.curva} corners={s.track?.corners} className="h-12 w-[72px] sm:h-16 sm:w-24" />
+              <span className="min-w-0">
+                <span className="title block text-[1.35rem] sm:text-[1.5rem]">Curva {l.curva}</span>
+                <span className="mt-0.5 block text-[0.92rem] leading-snug text-soft-fg">{l.texto}</span>
+              </span>
+              <span className="text-right">
+                <span className="display block text-[1.5rem] whitespace-nowrap text-accent-ink sm:text-[1.8rem]">−{dec(l.perdida_s)}</span>
+                <span className="text-[0.8rem] whitespace-nowrap text-accent-ink">Ver la vuelta ›</span>
+              </span>
+            </Link>
+          );
+        })}
+        <Link href={sid != null ? `/box?s=${sid}` : "/box"} className="btn mt-1 flex items-center justify-between px-4 py-3 text-[0.95rem]">
+          <span>Toda la telemetría: velocidad, acelerador, freno y marcha, vuelta contra vuelta</span>
+          <span aria-hidden="true">›</span>
+        </Link>
       </section>
 
       <section className="flex min-w-0 flex-col gap-3" aria-label="Para la próxima tanda">
@@ -94,8 +100,11 @@ export function Boxes({ s, sid, messages }: { s: Snapshot; sid: number | null; m
         {next ? (
           <NextChange x={next} sid={sid} onDone={() => mark(next.parametro)} />
         ) : (
-          <div className="card px-4 py-4 text-[0.95rem] text-soft-fg">
-            {report ? "No aparece ningún problema repetido que pida tocar el reglaje. Seguí girando." : "Cuando hagas una tanda te digo qué tocar."}
+          <div className="card flex min-h-[240px] flex-col justify-center gap-2 px-5 py-5">
+            <span className="title text-[1.4rem] text-muted">{report ? "Nada para tocar" : "Todavía sin tanda"}</span>
+            <span className="text-[0.95rem] text-soft-fg">
+              {report ? "No aparece ningún problema repetido que pida tocar el reglaje. Seguí girando." : "Cuando hagas una tanda te digo qué tocar, de a un cambio por vez."}
+            </span>
           </div>
         )}
         {todo.length > 1 && (
@@ -123,12 +132,10 @@ export function Boxes({ s, sid, messages }: { s: Snapshot; sid: number | null; m
       <aside className="flex min-w-0 flex-col gap-3" aria-label="Condiciones">
         <WeatherCard s={s} />
         <TyreSets s={s} />
-        {plan && (
-          <div className="card px-4 py-4">
-            <h2 className="eyebrow">El plan</h2>
-            <p className="mt-2 text-[0.92rem] leading-snug text-soft-fg">{plan}</p>
-          </div>
-        )}
+        <div className="card min-h-[96px] px-4 py-4">
+          <h2 className="eyebrow">El plan</h2>
+          <p className={`mt-2 text-[0.92rem] leading-snug ${plan ? "text-soft-fg" : "text-dim"}`}>{plan ?? "El ingeniero arma el plan al largar o después de tu primera tanda."}</p>
+        </div>
       </aside>
     </div>
   );
@@ -136,7 +143,7 @@ export function Boxes({ s, sid, messages }: { s: Snapshot; sid: number | null; m
 
 function NoRun({ loading }: { loading: boolean }) {
   return (
-    <div className="card px-5 py-5">
+    <div className="card flex min-h-[230px] flex-col justify-center px-5 py-5">
       <span className="eyebrow">Tu tanda</span>
       <p className="mt-2 text-[1rem] text-soft-fg">
         {loading ? "Buscando tus vueltas…" : "Todavía no diste vueltas en esta sesión. Salí a pista: cuando vuelvas te muestro cómo te fue y qué tocar."}
@@ -157,8 +164,10 @@ function Stat({ value, label, tone }: { value: string; label: string; tone?: str
 function RunHero({ report, position }: { report: RunReport; position?: number }) {
   const gapToBest = report.mas_rapido_s != null && report.mejor_vuelta_s != null ? report.mejor_vuelta_s - report.mas_rapido_s : null;
   const diff = report.contra_tanda_anterior?.mejor_vuelta_diferencia_s;
+  // The first lap is never a clean one; until there is one, show the fastest lap driven.
+  const shownBest = report.mejor_vuelta_s ?? (report.vueltas.map((v) => v.tiempo_s).filter((t): t is number => t != null).sort((a, b) => a - b)[0] ?? null);
   return (
-    <div className="card flex flex-col gap-4 px-5 py-4">
+    <div className="card flex min-h-[230px] flex-col gap-4 px-5 py-4">
       <span className="eyebrow flex flex-wrap items-center gap-x-2">
         Tu tanda {report.tanda} · {report.vueltas.length} {report.vueltas.length === 1 ? "vuelta" : "vueltas"}
         {report.compuesto && (
@@ -169,12 +178,12 @@ function RunHero({ report, position }: { report: RunReport; position?: number })
       </span>
       <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
         <div>
-          <div className="display text-[3.2rem] sm:text-[4.2rem]">{lapS(report.mejor_vuelta_s)}</div>
-          <div className="mt-1 text-[0.82rem] text-dim">tu mejor vuelta</div>
+          <div className="display text-[3.2rem] sm:text-[4.2rem]">{lapS(shownBest)}</div>
+          <div className="mt-1 text-[0.82rem] text-dim">{report.mejor_vuelta_s != null ? "tu mejor vuelta" : "tu vuelta más rápida (todavía sin vuelta limpia)"}</div>
         </div>
         <div className="flex gap-7">
-          {position != null && <Stat value={`P${position}`} label="en la sesión" />}
-          {gapToBest != null && gapToBest > 0.005 && <Stat value={`+${dec(gapToBest)}`} label="al más rápido" tone="text-warn" />}
+          <Stat value={position != null ? `P${position}` : "—"} label="en la sesión" tone={position == null ? "text-dim" : undefined} />
+          <Stat value={gapToBest == null ? "—" : gapToBest > 0.005 ? `+${dec(gapToBest)}` : "el mejor"} label="al más rápido" tone={gapToBest == null ? "text-dim" : gapToBest > 0.005 ? "text-warn" : "text-ok"} />
           {diff != null && <Stat value={`${diff < 0 ? "−" : "+"}${dec(Math.abs(diff))}`} label="contra tu tanda anterior" tone={diff < 0 ? "text-ok" : "text-warn"} />}
         </div>
       </div>
@@ -221,9 +230,15 @@ function NextChange({ x, sid, onDone }: { x: SetupSuggestion; sid: number | null
 
 function WeatherCard({ s }: { s: Snapshot }) {
   const ses = s.session;
-  if (!ses) return null;
+  if (!ses)
+    return (
+      <div className="card min-h-[150px] px-4 py-4">
+        <h2 className="eyebrow">Clima</h2>
+        <p className="mt-2 text-[0.92rem] text-dim">Esperando los datos del clima.</p>
+      </div>
+    );
   return (
-    <div className="card px-4 py-4">
+    <div className="card min-h-[150px] px-4 py-4">
       <h2 className="eyebrow">Clima</h2>
       <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3">
         <span className="title text-[1.5rem]">{WEATHER_ES[ses.weather] ?? ses.weather}</span>
@@ -244,11 +259,11 @@ function WeatherCard({ s }: { s: Snapshot }) {
 }
 
 function TyreSets({ s }: { s: Snapshot }) {
-  const sets = s.tyre_sets;
-  if (!sets?.length) return null;
+  const sets = s.tyre_sets ?? [];
   return (
-    <div className="card flex flex-col gap-2.5 px-4 py-4">
+    <div className="card flex min-h-[120px] flex-col gap-2.5 px-4 py-4">
       <h2 className="eyebrow">Gomas que te quedan</h2>
+      {sets.length === 0 && <p className="text-[0.92rem] text-dim">El juego manda tus juegos de gomas al entrar a boxes.</p>}
       {sets.map((t, i) => (
         <div key={i} className="flex items-center gap-2.5 text-[0.95rem]">
           <TyreDot compound={t.compound} filled={t.fitted || !t.new} size={15} />

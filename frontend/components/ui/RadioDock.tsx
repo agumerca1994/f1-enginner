@@ -6,8 +6,9 @@ import { useDictation } from "@/lib/listen";
 import { useSharedLive } from "@/lib/liveContext";
 import { playRadio, stopRadio } from "@/lib/voice";
 
-/** Sits above the phone's tab bar and at the foot of the page on a computer. */
-const DOCK = "sticky z-20 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] lg:bottom-4";
+/** Pinned to the bottom of the screen, above the phone's tab bar, whatever the page's height. */
+const DOCK =
+  "fixed z-20 left-1/2 -translate-x-1/2 w-[calc(100%-2*max(1rem,env(safe-area-inset-left)))] max-w-[1546px] bottom-[calc(4.25rem+env(safe-area-inset-bottom))] lg:bottom-4 lg:w-[calc(100%-3.5rem)]";
 
 /**
  * The engineer at the foot of every screen. In a session you talk to them (hold to
@@ -16,7 +17,15 @@ const DOCK = "sticky z-20 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] lg:
  */
 export function RadioDock({ text, label, compact = false, inline = false }: { text?: string | null; label?: string; compact?: boolean; inline?: boolean }) {
   const place = inline ? "" : DOCK;
-  return text !== undefined ? <PresentDock text={text} label={label} compact={compact} place={place} /> : <TalkDock compact={compact} place={place} />;
+  const dock = text !== undefined ? <PresentDock text={text} label={label} compact={compact} place={place} /> : <TalkDock compact={compact} place={place} />;
+  if (inline) return dock;
+  // The dock floats over the page: this keeps the end of the page clear of it.
+  return (
+    <>
+      <div aria-hidden="true" className="h-32 shrink-0 sm:h-20" />
+      {dock}
+    </>
+  );
 }
 
 function Dot() {
@@ -82,7 +91,7 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
   if (sending) line = "Consultando…";
 
   return (
-    <div className={`${place} paper flex items-center gap-3 py-2 pl-4 pr-2 shadow-[0_10px_30px_rgb(0_0_0/0.45)]`}>
+    <div className={`${place} paper flex flex-wrap items-center gap-x-3 gap-y-2 py-2 pl-4 pr-2 shadow-[0_10px_30px_rgb(0_0_0/0.45)] sm:flex-nowrap`}>
       <Dot />
       {!compact && <span className="title hidden text-[1.05rem] lg:inline">Ingeniero</span>}
       {typing ? (
@@ -109,7 +118,7 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
           </button>
         </form>
       ) : (
-        <span className="min-w-0 flex-1 truncate text-[0.95rem] font-medium" aria-live="polite">
+        <span className="line-clamp-2 min-w-0 flex-1 basis-[calc(100%-2rem)] text-[0.95rem] font-medium leading-snug sm:line-clamp-1 sm:basis-auto" aria-live="polite">
           {paused ? (
             <>
               El ingeniero está en pausa.{" "}
@@ -122,6 +131,7 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
           )}
         </span>
       )}
+      {!typing && <span className="flex-1 sm:hidden" aria-hidden="true" />}
       {!typing && voice.supported && (
         <button
           type="button"
