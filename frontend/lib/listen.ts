@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { holdRadio, stopRadio } from "@/lib/voice";
 
 // The Web Speech API's recognition object; not in TypeScript's DOM types everywhere.
 type Recognition = {
@@ -40,6 +41,9 @@ export function useDictation(onFinal: (text: string) => void) {
   const start = useCallback(() => {
     const Cls = recognitionClass();
     if (!Cls || rec.current) return;
+    // The driver keys the radio: the engineer stops talking and waits until they let go.
+    stopRadio();
+    holdRadio(true);
     const r = new Cls();
     r.lang = "es-AR";
     r.interimResults = true;
@@ -66,6 +70,7 @@ export function useDictation(onFinal: (text: string) => void) {
     };
     r.onend = () => {
       rec.current = null;
+      holdRadio(false);
       setListening(false);
       const text = (heard.current || "").trim();
       setInterim("");
@@ -77,6 +82,7 @@ export function useDictation(onFinal: (text: string) => void) {
       setListening(true);
     } catch {
       rec.current = null;
+      holdRadio(false);
     }
   }, []);
 
@@ -86,7 +92,13 @@ export function useDictation(onFinal: (text: string) => void) {
     if (r) setTimeout(() => r.stop(), 250);
   }, []);
 
-  useEffect(() => () => rec.current?.abort(), []);
+  useEffect(
+    () => () => {
+      if (rec.current) holdRadio(false);
+      rec.current?.abort();
+    },
+    [],
+  );
 
   return { supported, listening, interim, error, start, stop };
 }

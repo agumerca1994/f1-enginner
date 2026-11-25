@@ -73,6 +73,12 @@ function radioChain(ctx: AudioContext, input: AudioNode): void {
 let queue: Promise<void> = Promise.resolve();
 let generation = 0; // bumped by an urgent call: everything queued before it is dropped
 let current: AudioBufferSourceNode | null = null;
+let held = false; // the driver is talking: calls wait
+
+/** While the driver holds the talk button, queued calls wait instead of talking over them. */
+export function holdRadio(on: boolean): void {
+  held = on;
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -119,6 +125,7 @@ export function playRadio(text: string, audio: string | null | undefined, urgent
       : Promise.reject(new Error("no server voice"));
   decoded.catch(() => {}); // handled below; avoid an unhandled rejection meanwhile
   queue = queue.then(async () => {
+    while (held && gen === generation) await sleep(100);
     if (gen !== generation) return;
     await sleep(radioTones(OPEN_TONES) + 60);
     try {
@@ -141,6 +148,8 @@ export function stopRadio(): void {
   queue = Promise.resolve();
 }
 
+let lastSpoken = -1; // the newest call this page has said (or skipped), across screens
+
 /**
  * Reads the engineer's radio calls aloud, between radio keying tones. Urgent calls cut whatever is being said.
  * Browsers only allow speech after a user gesture, so it starts off and is turned
@@ -149,7 +158,7 @@ export function stopRadio(): void {
 export function useEngineerVoice(messages: EngineerMessage[], { alwaysOn = false }: { alwaysOn?: boolean } = {}) {
   const [supported, setSupported] = useState(false);
   const [enabled, setEnabled] = useState(false);
-  const spoken = useRef<number>(0);
+  const spoken = useRef<number | null>(null);
 
   useEffect(() => {
     const ok = typeof window !== "undefined" && ("AudioContext" in window || "speechSynthesis" in window);
@@ -165,18 +174,30 @@ export function useEngineerVoice(messages: EngineerMessage[], { alwaysOn = false
     }
   }, [alwaysOn]);
 
-  // Speak radio calls that arrive while the voice is on; never replay old ones.
+  // Speak radio calls that arrive while the voice is on; never replay old ones. The history a
+  // screen loads when it opens (or comes back) counts as already said, and the last call said
+  // is shared by every screen of the page, so moving between them repeats nothing.
   useEffect(() => {
     const latest = messages.slice(-1)[0];
     if (!latest) return;
+    // The server restarted and numbers its calls from 1 again.
+    if (spoken.current !== null && latest.id < spoken.current) spoken.current = lastSpoken = 0;
+    if (spoken.current === null) {
+      // First batch on this screen: only calls newer than what the page already said.
+      spoken.current = lastSpoken >= 0 && lastSpoken <= latest.id ? lastSpoken : latest.id;
+      if (!enabled || spoken.current === latest.id) {
+        spoken.current = lastSpoken = latest.id;
+        return;
+      }
+    }
     if (!enabled) {
-      spoken.current = latest.id;
+      spoken.current = lastSpoken = latest.id;
       return;
     }
     for (const m of messages) {
-      if (m.id > spoken.current && m.radio) playRadio(m.radio, m.audio, m.prioridad === "urgente");
+      if (m.id > spoken.current && m.id > lastSpoken && m.radio) playRadio(m.radio, m.audio, m.prioridad === "urgente");
     }
-    spoken.current = latest.id;
+    spoken.current = lastSpoken = Math.max(lastSpoken, latest.id);
   }, [messages, enabled]);
 
   const toggle = useCallback(() => {
