@@ -11,7 +11,7 @@ function asphalt() {
   const c = document.createElement("canvas");
   c.width = c.height = 512;
   const g = c.getContext("2d");
-  g.fillStyle = "#141518";
+  g.fillStyle = "#3a3c41";
   g.fillRect(0, 0, 512, 512);
   const img = g.getImageData(0, 0, 512, 512);
   for (let i = 0; i < img.data.length; i += 4) {
@@ -74,110 +74,112 @@ function band(r1, r2, a0, a1, y, segs = 48, uvScale = 0) {
 }
 
 
+// A telephoto shot from the outside of a long, fast corner: a train of cars comes from far away
+// towards the lens, the long lens compressing them into a column, until the leader fills the frame.
 export async function buildScene(canvas, W, H) {
   const portrait = H > W;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(1);
   renderer.setSize(W, H, false);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.95;
+  renderer.toneMappingExposure = 1.35;
 
   const scene = new THREE.Scene();
   scene.background = sky();
-  scene.fog = new THREE.Fog(0x141722, 40, 140);
-  const camera = new THREE.PerspectiveCamera(portrait ? 72 : 52, W / H, 0.05, 400);
-  // Floodlit night: a cool sky fill, a high key light and warm light from the stands.
-  scene.add(new THREE.HemisphereLight(0x8a96b8, 0x15161a, 0.9));
-  const key = new THREE.DirectionalLight(0xffffff, 2.4);
-  key.position.set(14, 30, -10);
-  scene.add(key);
-  const warm = new THREE.DirectionalLight(0xffb48a, 1.6);
-  warm.position.set(40, 6, -30);
-  scene.add(warm);
-  // Light from the camera's side, so the cars read as shapes, not silhouettes.
-  const fill = new THREE.DirectionalLight(0xdde6ff, 2.2);
-  fill.position.set(-6, 5, 8);
-  scene.add(fill);
+  scene.fog = new THREE.Fog(0x1a1e2a, 60, 320); // floodlit haze: the far cars fade in
+  const camera = new THREE.PerspectiveCamera(portrait ? 22 : 13, W / H, 0.5, 2000);
 
-  // The corner: asphalt, the red and white kerb at the apex, white edge lines, dark run-off.
-  const tex = asphalt();
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: 0x050607, roughness: 1 }));
+  scene.add(new THREE.HemisphereLight(0xb4bfd8, 0x2a2c33, 2.4));
+  const key = new THREE.DirectionalLight(0xffffff, 3.6);
+  key.position.set(200, 120, 260);
+  scene.add(key);
+  const warm = new THREE.DirectionalLight(0xffd8c0, 0.6);
+  warm.position.set(-300, 60, -100);
+  scene.add(warm);
+
+  // The corner: centre of curvature at the origin, radius 300 m, 15 m wide.
+  const RC = 300, IN = RC - 7.5, OUT = RC + 7.5;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshStandardMaterial({ color: 0x1a3a2a, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.01;
+  ground.position.y = -0.02;
   scene.add(ground);
-  const road = new THREE.Mesh(band(20.4, 32, -Math.PI, Math.PI, 0, 160, 6), new THREE.MeshStandardMaterial({ map: tex, color: 0x777777, roughness: 0.95, metalness: 0 }));
-  scene.add(road);
-  scene.add(new THREE.Mesh(band(31.7, 31.95, -Math.PI, Math.PI, 0.004, 160), new THREE.MeshStandardMaterial({ color: 0x9c9c9c, roughness: 0.8 })));
-  const red = new THREE.MeshStandardMaterial({ color: 0x8e1a12, roughness: 0.85 });
-  const white = new THREE.MeshStandardMaterial({ color: 0x8f8f8f, roughness: 0.85 });
-  const step = 1.1 / 20; // ~1.1 m per kerb block
-  for (let i = 0, a = -Math.PI; a < Math.PI; i++, a += step) {
-    const k = new THREE.Mesh(band(19.3, 20.4, a, a + step, 0.035, 2), i % 2 ? red : white);
-    scene.add(k);
+  const tex = asphalt();
+  scene.add(new THREE.Mesh(band(IN, OUT, -1.6, 0.4, 0, 900, 6), new THREE.MeshStandardMaterial({ map: tex, color: 0xb4b4b4, roughness: 0.6, metalness: 0.05 })));
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.7 });
+  scene.add(new THREE.Mesh(band(OUT - 0.35, OUT - 0.1, -1.6, 0.4, 0.01, 900), lineMat));
+  scene.add(new THREE.Mesh(band(IN + 0.1, IN + 0.35, -1.6, 0.4, 0.01, 900), lineMat));
+  // Red and white kerb on the inside, and a dark green run-off outside.
+  const red = new THREE.MeshStandardMaterial({ color: 0x9a1c13, roughness: 0.8 });
+  const white = new THREE.MeshStandardMaterial({ color: 0x9a9a9a, roughness: 0.8 });
+  const step = 1.6 / IN;
+  for (let i = 0, a = -1.4; a < 0.3; i++, a += step) scene.add(new THREE.Mesh(band(IN - 1.3, IN, a, a + step, 0.03, 1), i % 2 ? red : white));
+  scene.add(new THREE.Mesh(band(OUT, OUT + 12, -1.6, 0.4, 0.005, 400), new THREE.MeshStandardMaterial({ color: 0x24523b, roughness: 1 })));
+  // A wall with floodlights along the outside.
+  scene.add(new THREE.Mesh(band(OUT + 12, OUT + 12.4, -1.6, 0.4, 0.6, 400), new THREE.MeshStandardMaterial({ color: 0x1d2a44, roughness: 0.8 })));
+  // A grandstand and catch fence across the back, so the skyline is the circuit, not the night.
+  const stand = (r, h, color) => {
+    const g = new THREE.CylinderGeometry(r, r, h, 300, 1, true, Math.PI / 2 - 0.4, 2.0);
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color, roughness: 0.9, side: THREE.DoubleSide }));
+    m.position.y = h / 2;
+    scene.add(m);
+  };
+  stand(OUT + 16, 3.2, 0x2a3b5c);
+  stand(OUT + 45, 16, 0x1b2233);
+  const crowd = new THREE.MeshStandardMaterial({ color: 0x2a3147, roughness: 1 });
+  for (let a = -1.5; a < 0.35; a += 0.0105) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(3.4, 5, 0.4), crowd);
+    m.position.set((OUT + 44) * Math.cos(a), 9 + (Math.sin(a * 97) > 0 ? 0.6 : 0), (OUT + 44) * Math.sin(a));
+    m.lookAt(0, m.position.y, 0);
+    scene.add(m);
   }
-  // Floodlight towers far away: glowing dots the bloom turns into lamps.
   const lamp = new THREE.MeshBasicMaterial({ color: 0xfff1dc });
-  for (let i = 0; i < 14; i++) {
-    const a = -1.0 + i * 0.13, r = 95;
-    const m = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.2), lamp);
-    m.position.set(r * Math.cos(a), 18, r * Math.sin(a));
-    m.lookAt(0, 18, 0);
+  for (let a = -1.4; a < 0.3; a += 0.05) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.3), lamp);
+    m.position.set((OUT + 46) * Math.cos(a), 22, (OUT + 46) * Math.sin(a));
+    m.lookAt(0, 22, 0);
     scene.add(m);
   }
 
-  // Three cars, three liveries: the app's red, white and a cold teal.
   const liveries = [
-    { body: 0xd8301c, accent: 0x15171b, helmet: 0xf2f3f5 },
-    { body: 0xe9ecef, accent: 0xff4b2b, helmet: 0x15171b },
-    { body: 0x13606e, accent: 0x3ddc97, helmet: 0xf2f3f5 },
+    { body: 0xd8301c, accent: 0x15171b },
+    { body: 0xe9ecef, accent: 0xff4b2b },
+    { body: 0x13606e, accent: 0x3ddc97 },
+    { body: 0x23272e, accent: 0xff4b2b },
   ];
   const built = await Promise.all(liveries.map((l) => loadCar(l)));
-  const cars = liveries.map((l, i) => {
-    const c = built[i];
-    c.car.visible = false;
+  const SPEED = 62 / RC; // rad/s, about 220 km/h
+  const cars = built.map((c, i) => {
     scene.add(c.car);
-    return { ...c, start: 0.45 + i * 0.42, r: [21.4, 22.3, 21.8][i], dur: 1.0 - i * 0.05 };
+    return { ...c, a0: -0.95 - i * 0.075, r: [RC + 1.2, RC - 1.4, RC + 2.4, RC - 0.4][i], weave: i * 1.7 };
   });
 
-  // The camera sits on the kerb at the apex, a hand off the ground, looking across the corner.
-  const camR = 18.85, camA = 0;
-  const camBase = new THREE.Vector3(camR * Math.cos(camA), 0.16, camR * Math.sin(camA));
-  const look = new THREE.Vector3(27 * Math.cos(-0.42), 0.42, 27 * Math.sin(-0.42));
+  // The camera stands just inside the kerb, a long lens looking up the corner at the oncoming cars.
+  const camA = 0.0, camR = IN - 2.5;
+  const camBase = new THREE.Vector3(camR * Math.cos(camA), 1.1, camR * Math.sin(camA));
+  const look = new THREE.Vector3(RC * Math.cos(-0.2), -0.55, RC * Math.sin(-0.2));
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.55, 0.4, 0.93));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.45, 0.4, 0.93));
   composer.addPass(new OutputPass());
 
   return function renderAt(t) {
-    let shake = 0;
-    let aim = null, aimW = 0;
+    let lead = null;
     for (const c of cars) {
-      const p = (t - c.start) / c.dur;
-      c.car.visible = p > -0.05 && p < 1.05;
-      if (!c.car.visible) continue;
-      const a = -1.15 + p * 2.3;
-      const x = c.r * Math.cos(a), z = c.r * Math.sin(a);
-      const tx = -Math.sin(a), tz = Math.cos(a);
-      c.car.position.set(x, 0, z);
-      c.car.rotation.y = Math.atan2(-tz, tx) - 0.06;
-      for (const s of c.spinners) s.rotation.z = -t * 150;
-      const d = c.car.position.distanceTo(camBase);
-      shake = Math.max(shake, Math.max(0, 1 - d / 9));
-      // The camera operator follows the car that is closest, then lets it go.
-      const w = Math.max(0, 1 - d / 16) ** 1.5;
-      if (w > aimW) { aimW = w; aim = c.car.position.clone().add(new THREE.Vector3(0, 0.45, 0)); }
+      const a = c.a0 + SPEED * t;
+      const r = c.r + Math.sin(t * 1.3 + c.weave) * 0.4; // drivers moving on the line
+      c.car.visible = a < camA + 0.03;
+      c.car.position.set(r * Math.cos(a), 0, r * Math.sin(a));
+      c.car.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)) - 0.02;
+      for (const s of c.spinners) s.rotation.z = -t * 172; // 62 m/s on a 0.36 m tyre
+      if (c.car.visible && (!lead || a > lead.a)) lead = { a, pos: c.car.position };
     }
-    const drift = Math.min(1, t / 2.4);
-    camera.position.copy(camBase);
-    camera.position.y += Math.sin(t * 40) * 0.012 * shake;
-    camera.position.x += Math.sin(t * 53) * 0.03 * shake;
+    // The operator keeps the leader in frame as it closes in.
     const target = look.clone();
-    target.applyAxisAngle(new THREE.Vector3(0, 1, 0), drift * 0.12 + (portrait ? -0.05 : 0));
-    if (aim) target.lerp(aim, Math.min(0.55, aimW * 0.7));
-    target.y += Math.cos(t * 47) * 0.05 * shake;
+    if (lead) target.lerp(new THREE.Vector3(lead.pos.x, 0.5, lead.pos.z), Math.min(0.6, Math.max(0, (lead.a + 0.2) / 0.25) * 0.6));
+    camera.position.copy(camBase);
+    camera.position.y += Math.sin(t * 9) * 0.004; // a hand-held breath
     camera.lookAt(target);
-    camera.rotateZ(Math.sin(t * 31) * 0.01 * shake);
     composer.render();
   };
 }
