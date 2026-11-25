@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { McpConnectorSection } from "@/components/McpConnectorSection";
 import { OverlaySection } from "@/components/OverlaySection";
 import { RequireAuth } from "@/components/RequireAuth";
+import { ScreensSection, StatusBarSection } from "@/components/settings/ScreensSection";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { THEMES, useTheme } from "@/lib/theme";
@@ -52,8 +53,13 @@ function Settings() {
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6">
-      <h1 className="display text-3xl">Ajustes</h1>
+    <main className="mx-auto max-w-2xl px-[max(1rem,env(safe-area-inset-left))] py-6">
+      <h1 className="display text-[2.4rem] uppercase">Ajustes</h1>
+
+      <div className="mt-5 flex flex-col gap-6">
+        <ScreensSection />
+        <StatusBarSection />
+      </div>
 
       <AppearanceSection />
 
@@ -118,7 +124,7 @@ function Settings() {
   );
 }
 
-/** The look of the app on this device: Clásico, Carbono or Volante. */
+/** The look of the app on this device: Carbono, Clásico or Volante. */
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   return (
@@ -143,13 +149,6 @@ function AppearanceSection() {
           </button>
         ))}
       </div>
-      <Link href="/volante" className="mt-3 flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line p-3 text-sm hover:border-accent">
-        <span>
-          <span className="font-semibold">Modo volante</span>
-          <span className="block text-xs text-muted">Teléfono horizontal arriba del volante: marcha, velocidad, luces de cambio y tiempos.</span>
-        </span>
-        <span className="text-accent">Abrir</span>
-      </Link>
     </section>
   );
 }

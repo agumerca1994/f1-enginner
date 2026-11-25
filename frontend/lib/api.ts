@@ -11,6 +11,14 @@ export class ApiError extends Error {
   }
 }
 
+let screen: string | null = null;
+
+/** A linked screen (a TV, a tablet) asks with its own read-only token instead of an account. */
+export function setScreenToken(token: string | null) {
+  screen = token;
+}
+export const screenToken = () => screen;
+
 export async function api<T>(
   path: string,
   creds: Credentials | null,
@@ -19,6 +27,7 @@ export async function api<T>(
   const headers: Record<string, string> = {};
   if (creds?.token) headers.Authorization = `Bearer ${creds.token}`;
   if (creds?.devUser) headers["X-Dev-User"] = creds.devUser;
+  if (!creds && screen) headers["X-Screen-Token"] = screen;
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
 
   const res = await fetch(`${API_URL}${path}`, {

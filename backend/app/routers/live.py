@@ -78,7 +78,12 @@ async def sessions(all: bool = False, user: User = Depends(get_current_user), db
 @router.get("/tracks/{track_id}/layout")
 async def track_layout(track_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """The circuit outline built from telemetry, as polylines of [x, z] world coordinates."""
-    live_state = live_store.get(user.tenant_id)
+    return await layout_for(user.tenant_id, track_id, db)
+
+
+async def layout_for(tenant_id: int, track_id: int, db: AsyncSession) -> dict:
+    """The outline as `track_layout` serves it, for the player's account or one of their linked screens."""
+    live_state = live_store.get(tenant_id)
     if live_state is not None and live_state.track_id == track_id and live_state.layout is not None:
         b = live_state.layout  # freshest: includes this session's samples not saved yet
         row = await db.get(TrackLayout, track_id)

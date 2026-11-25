@@ -172,6 +172,17 @@ async def this_screen(x_screen_token: str | None = Header(default=None), db: Asy
     return {**_screen_out(row), "cockpit": cockpit}
 
 
+@router.get("/tracks/{track_id}/layout")
+async def screen_track_layout(track_id: int, x_screen_token: str | None = Header(default=None), db: AsyncSession = Depends(get_db)):
+    """The track outline for a linked screen (the map and the corner numbers)."""
+    from app.routers.live import layout_for
+
+    row = await overlay_from_token(db, x_screen_token)
+    if row is None:
+        raise HTTPException(401, "This screen is not linked")
+    return await layout_for(row.tenant_id, track_id, db)
+
+
 class CockpitsIn(BaseModel):
     cockpits: list[dict] = Field(max_length=MAX_COCKPITS)
 

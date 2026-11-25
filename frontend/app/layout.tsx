@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Chakra_Petch, Geist, Geist_Mono, Saira, Saira_Condensed, Share_Tech_Mono } from "next/font/google";
+import { Barlow, JetBrains_Mono, Saira_Condensed, Share_Tech_Mono } from "next/font/google";
 
 import { AppNav } from "@/components/AppNav";
 import { ErrorReporter } from "@/components/ErrorReporter";
@@ -9,16 +9,14 @@ import { THEME_BOOT } from "@/lib/theme";
 
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-// Carbono and Volante themes.
-const saira = Saira({ variable: "--font-saira", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const barlow = Barlow({ variable: "--font-barlow", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 const sairaCondensed = Saira_Condensed({
   variable: "--font-saira-condensed",
   subsets: ["latin"],
-  weight: ["600", "700", "800", "900"], // no italic cut exists: the browser slants it
+  weight: ["600", "700", "800"], // no italic cut exists: the browser slants it
 });
-const chakra = Chakra_Petch({ variable: "--font-chakra", subsets: ["latin"], weight: ["500", "600", "700"] });
+const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["500"] });
+// The Volante skin's LCD digits.
 const shareTech = Share_Tech_Mono({ variable: "--font-share-tech", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
@@ -29,13 +27,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07090c",
+  themeColor: "#0b0c0e",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
 };
 
-const fonts = [geistSans, geistMono, saira, sairaCondensed, chakra, shareTech].map((f) => f.variable).join(" ");
+const fonts = [barlow, sairaCondensed, jetbrains, shareTech].map((f) => f.variable).join(" ");
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

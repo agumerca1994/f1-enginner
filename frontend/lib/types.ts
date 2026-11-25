@@ -52,6 +52,10 @@ export type Snapshot = {
     delta_best_ms: number | null;
     delta_reference_lap: number | null;
   };
+  /** Where the player's car is: in the garage the app shows the box, anywhere else the track. */
+  car_state?: "garage" | "pista";
+  /** The player's sets still available or fitted, identical ones grouped. */
+  tyre_sets?: { compound: string; wear_percent: number; fitted: boolean; new: boolean; count: number }[];
   relatives?: { ahead: RelativeRow[]; behind: RelativeRow[] };
   /** Race only: catch forecasts against the cars right ahead and behind in position. */
   pace?: { my_pace_s: number | null; ahead: PaceSide | null; behind: PaceSide | null };
