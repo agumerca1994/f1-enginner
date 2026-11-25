@@ -33,21 +33,29 @@ if (!intro || html.classList.contains("no-intro")) {
 } else {
   const video = intro.querySelector("video");
   const portrait = innerHeight > innerWidth;
-  video.poster = `/assets/intro/poster-${portrait ? "v" : "h"}.jpg?v=4`;
-  video.src = `/assets/intro/intro-${portrait ? "v" : "h"}.mp4?v=4`; // H.264: what every phone plays
+  video.poster = `/assets/intro/poster-${portrait ? "v" : "h"}.jpg?v=5`;
+  video.src = `/assets/intro/intro-${portrait ? "v" : "h"}.mp4?v=5`; // H.264: what every phone plays
   const flash = intro.querySelector(".intro-flash");
   const title = intro.querySelector(".intro-title");
   // A browser that will not autoplay (or a slow network) gets the page straight away.
   const giveUp = setTimeout(() => endIntro(true), 3500);
   video.addEventListener("playing", () => { clearTimeout(giveUp); intro.classList.add("playing"); }, { once: true });
   video.addEventListener("timeupdate", () => {
-    if (video.currentTime > video.duration - 0.8 && !title.classList.contains("on")) { flash.classList.add("on"); title.classList.add("on"); }
+    if (video.currentTime > video.duration - 0.45 && !title.classList.contains("on")) { flash.classList.add("on"); title.classList.add("on"); }
   });
   video.addEventListener("ended", () => setTimeout(() => endIntro(false), 500));
   video.addEventListener("error", () => endIntro(true));
-  video.play().catch(() => endIntro(true));
+  // With sound when the browser allows it; otherwise muted, with a button to turn it on.
+  const sound = intro.querySelector(".intro-sound");
+  video.muted = false;
+  video.play().catch(() => {
+    video.muted = true;
+    sound.hidden = false;
+    return video.play();
+  }).catch(() => endIntro(true));
+  sound.addEventListener("click", () => { video.muted = false; sound.hidden = true; });
   intro.querySelector(".intro-skip")?.addEventListener("click", () => endIntro(true));
-  intro.addEventListener("pointerdown", (e) => { if (!e.target.closest(".intro-skip")) endIntro(true); });
+  intro.addEventListener("pointerdown", (e) => { if (!e.target.closest(".intro-skip, .intro-sound")) endIntro(true); });
   addEventListener("keydown", () => endIntro(true), { once: true });
 }
 
