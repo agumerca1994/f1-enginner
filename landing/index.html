@@ -1,161 +1,197 @@
 <!doctype html>
-<html lang="es-AR">
+<html lang="es-AR" class="intro-on">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ingeniero de carrera — Un ingeniero de verdad en tu radio</title>
-  <meta name="description" content="Telemetría en vivo, estrategia y un ingeniero con IA que piensa cada vuelta con vos. Compatible con la telemetría de EA SPORTS F1® 24.">
-  <meta property="og:title" content="Ingeniero de carrera">
-  <meta property="og:description" content="Un ingeniero de verdad en tu radio. Telemetría en vivo, estrategia e IA.">
-  <meta property="og:image" content="/assets/dashboard.jpg">
-  <meta name="theme-color" content="#050608">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ingeniero de carrera — Tu box, fuera del juego</title>
+  <meta name="description" content="Un ingeniero que te habla por radio, un cockpit que armás a tu medida y todas las pantallas que quieras alrededor tuyo. Compatible con la telemetría de EA SPORTS F1® 24.">
+  <meta property="og:title" content="Ingeniero de carrera — Tu box, fuera del juego">
+  <meta property="og:description" content="Un ingeniero en tu radio, tu cockpit a medida y todas tus pantallas.">
+  <meta property="og:image" content="/assets/shots/pista-monitor.jpg">
+  <meta name="theme-color" content="#0b0c0e">
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site.css?v=3">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Saira+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/home.css?v=1">
+  <script>
+    // The intro plays once per visit, never with reduced motion, and gives up on slow networks.
+    (function () {
+      var d = document.documentElement, seen = false;
+      try { seen = sessionStorage.getItem("intro-visto") === "1"; } catch (e) {}
+      if (seen || matchMedia("(prefers-reduced-motion: reduce)").matches) { d.classList.add("no-intro"); d.classList.remove("intro-on"); return; }
+      setTimeout(function () {
+        if (!window.__introStarted) { d.classList.add("no-intro"); d.classList.remove("intro-on"); }
+      }, 3500);
+    })();
+  </script>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+  </script>
 </head>
 <body>
+  <div id="intro" aria-hidden="true">
+    <canvas></canvas>
+    <div class="intro-vignette"></div>
+    <div class="intro-flash"></div>
+    <div class="intro-title"><span>Tu box,</span><span>fuera del juego.</span></div>
+    <button class="intro-skip" type="button">Saltar intro</button>
+  </div>
+
   <nav id="nav">
     <div class="wrap">
-      <a class="brand" href="/"><img src="/assets/favicon.svg" alt="">Ingeniero de carrera</a>
+      <a class="brand" href="/">INGENIERO</a>
       <div class="links">
-        <a href="#ingeniero">Ingeniero IA</a>
-        <a href="#telemetria">Telemetría</a>
-        <a href="#analisis">Análisis</a>
+        <a href="#ingeniero">Ingeniero</a>
+        <a href="#boxes">Boxes y Pista</a>
+        <a href="#cockpit">Cockpit</a>
+        <a href="#pantallas">Pantallas</a>
         <a href="/instructivos">Instructivos</a>
-        <a class="btn" href="https://f1.imanzanastore.com.ar">Ingresar</a>
+        <a class="btn ghost" href="https://f1.imanzanastore.com.ar">Ingresar</a>
       </div>
     </div>
   </nav>
 
   <header class="hero">
-    <div class="wrap">
+    <div class="wrap hero-grid">
       <div class="hero-copy">
-        <div>
-          <div class="status label"><span class="live"></span>Telemetría + IA en tiempo real</div>
-          <h1 class="grad">Un ingeniero de verdad en tu radio.</h1>
+        <span class="eyebrow"><span class="live"></span>Compatible con la telemetría de EA SPORTS F1® 24</span>
+        <h1 class="display">Tu box,<br><em>fuera del juego.</em></h1>
+        <p class="lede">Un ingeniero que te habla por radio, un cockpit que armás a tu medida y todas las pantallas que quieras alrededor tuyo.</p>
+        <div class="cta">
+          <a class="btn primary" href="#empezar">Empezar gratis</a>
+          <a class="btn ghost" href="https://f1.imanzanastore.com.ar">Ya tengo cuenta</a>
         </div>
-        <div class="side">
-          <p class="lede">Estrategia, telemetría y una IA que lee cada dato de tu auto y de toda la grilla. Vos manejás. Nosotros pensamos la carrera.</p>
-          <div class="cta">
-            <a class="btn primary" href="#empezar">Empezar ahora <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-            <a class="btn" href="https://f1.imanzanastore.com.ar">Ver el dashboard</a>
-          </div>
-        </div>
+        <ul class="hero-facts">
+          <li><b>PlayStation, Xbox y PC</b><span>con el Bridge en tu compu</span></li>
+          <li><b>Cada pantalla, un rol</b><span>celu, tablet, monitor o tele</span></li>
+        </ul>
       </div>
-
-      <div class="stage" id="stage">
-        <div class="screen">
-          <img src="/assets/dashboard.jpg" alt="Dashboard en vivo: posiciones, mapa del circuito, tiempos, telemetría y estado del monoplaza" width="2880" height="1800">
-        </div>
-        <div class="radio" aria-live="polite">
-          <div class="radio-head">
-            <span class="label tag" id="hero-tag">Estrategia · V1</span>
-            <span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-          </div>
-          <p id="hero-msg">Plan A: una parada. Medios hasta la 12 y duros hasta el final.</p>
+      <div class="hero-stage">
+        <figure class="device monitor"><img src="/assets/shots/pista-monitor.jpg" alt="El cockpit en un segundo monitor: mapa, delta, rivales, gomas y la radio" width="1440" height="900"></figure>
+        <figure class="device phone"><img src="/assets/shots/cockpit-phone.jpg" alt="El cockpit en un celular arriba del volante" width="844" height="390"></figure>
+        <div class="radio-bubble" aria-live="polite">
+          <span class="dot"></span>
+          <div><span class="eyebrow" id="hero-tag">Radio · V4</span><p id="hero-msg">Gasly a tres décimas. Defendé por dentro en la 12.</p></div>
         </div>
       </div>
     </div>
   </header>
 
   <div class="ticker" aria-hidden="true">
-    <div class="track label">
-      <span>Plan de paradas</span><span>Desgaste por goma</span><span>Pronóstico de lluvia</span><span>Ritmo de los rivales</span><span>Combustible</span><span>Despliegue de ERS</span><span>Banderas</span><span>Daños</span><span>Tiempos por sector</span><span>Ventana de box</span>
-      <span>Plan de paradas</span><span>Desgaste por goma</span><span>Pronóstico de lluvia</span><span>Ritmo de los rivales</span><span>Combustible</span><span>Despliegue de ERS</span><span>Banderas</span><span>Daños</span><span>Tiempos por sector</span><span>Ventana de box</span>
+    <div class="track">
+      <span>Delta en vivo</span><span>Plan de paradas</span><span>Gomas y ampollas</span><span>Lluvia que viene</span><span>Rivales en pista</span><span>Energía</span><span>Combustible</span><span>Reglaje sugerido</span><span>Curva por curva</span><span>Banderas</span>
+      <span>Delta en vivo</span><span>Plan de paradas</span><span>Gomas y ampollas</span><span>Lluvia que viene</span><span>Rivales en pista</span><span>Energía</span><span>Combustible</span><span>Reglaje sugerido</span><span>Curva por curva</span><span>Banderas</span>
     </div>
   </div>
 
-  <section id="ingeniero">
+  <section id="ingeniero" class="band">
     <div class="wrap split">
       <div class="reveal">
-        <span class="label">Ingeniero IA</span>
-        <h2 style="margin-top:18px">No es un HUD.<br>Es tu ingeniero.</h2>
-        <p class="lede" style="margin-top:24px">Mira todo lo que vos no podés mirar a 300 km/h, y te habla sólo cuando importa.</p>
-        <div class="points">
-          <div><span class="n mono">01</span><p><b>Arma la estrategia antes de la largada</b><span>Paradas, compuestos y ventanas, con tu ritmo real.</span></p></div>
-          <div><span class="n mono">02</span><p><b>Ve venir la lluvia antes que vos</b><span>Te dice cuándo entrar y con qué gomas salir.</span></p></div>
-          <div><span class="n mono">03</span><p><b>Aprende en cada sesión</b><span>Lo que corriste en prácticas llega a la carrera.</span></p></div>
-        </div>
+        <span class="eyebrow">El ingeniero</span>
+        <h2 class="display">Te habla cuando importa.<br><em>Te escucha cuando preguntás.</em></h2>
+        <p class="lede">Lee tu auto y toda la grilla a cada momento. Te dice lo justo, en criollo, sin llenarte la radio.</p>
+        <ul class="points">
+          <li><b>Mantené la barra espaciadora y preguntale</b><span>"¿Cuándo paro?", "¿qué le toco para que gire en la 3?"</span></li>
+          <li><b>Arma el plan al largar</b><span>Paradas, compuestos y la lluvia que viene, con tu ritmo real.</span></li>
+          <li><b>Se acuerda del fin de semana</b><span>Lo que corriste en práctica llega a la carrera.</span></li>
+        </ul>
       </div>
-      <div class="console reveal">
-        <div class="log" id="log">
-          <div class="item"><span class="lap mono">V1</span><div><small class="label" style="color:var(--accent)">Estrategia</small>Plan A: una parada. Medios hasta la 12 y duros hasta el final.</div></div>
-          <div class="item"><span class="lap mono">V6</span><div><small class="label" style="color:var(--accent)">Ritmo</small>Le sacás tres décimas al de adelante en el sector 3. Lo tenés en dos vueltas.</div></div>
-          <div class="item"><span class="lap mono">V9</span><div><small class="label" style="color:var(--warn)">Clima</small>Lluvia en diez minutos en el sector 2. Quedate afuera, yo te aviso.</div></div>
-          <div class="item"><span class="lap mono">V12</span><div><small class="label" style="color:var(--ok)">Box</small>Box, box. Duros. Salís sexto y con aire limpio.</div></div>
-        </div>
+      <div class="radio-log reveal" id="log">
+        <div class="item"><span class="lap">V1</span><div><small class="tag">Estrategia</small>Una parada. Intermedios hasta que seque, después medios.</div></div>
+        <div class="item"><span class="lap">V3</span><div><small class="tag ok">Ritmo</small>Le sacás tres décimas a Verstappen en el sector 3. Lo tenés en dos vueltas.</div></div>
+        <div class="item"><span class="lap">V4</span><div><small class="tag warn">Rival</small>Gasly a tres décimas. Defendé por dentro en la 12.</div></div>
+        <div class="item me"><span class="lap">Vos</span><div><small class="tag">Pregunta</small>¿Cómo están las gomas?</div></div>
+        <div class="item"><span class="lap">V5</span><div><small class="tag ok">Gomas</small>Bien, la trasera izquierda un poco caliente. Cuidala a la salida de la 3.</div></div>
       </div>
     </div>
   </section>
 
-  <section id="telemetria">
+  <section id="boxes">
     <div class="wrap">
-      <div class="split reveal" style="align-items:end">
-        <div>
-          <span class="label">Telemetría en vivo</span>
-          <h2 style="margin-top:18px">Todo el auto.<br>Toda la pista.</h2>
-        </div>
-        <p class="lede">Velocidad, pedales, gomas, ERS, combustible y toda la grilla sobre el trazado. En la tablet, la notebook o la tele al lado del volante.</p>
+      <div class="head reveal">
+        <span class="eyebrow">Boxes y Pista</span>
+        <h2 class="display">Sabe dónde está<br><em>tu auto.</em></h2>
+        <p class="lede">En el garage te muestra tu tanda, dónde se te fue el tiempo y el único cambio de reglaje que conviene. Salís a pista y pasa solo a tu cockpit.</p>
       </div>
-      <div class="bento reveal">
-        <div class="tile">
-          <img src="/assets/map.jpg" alt="Mapa del circuito con los autos en pista" width="1209" height="838">
-          <div class="cap"><b>Cada auto, en su lugar</b><span class="label">Mapa en vivo</span></div>
-        </div>
-        <div class="tile">
-          <img src="/assets/car.jpg" alt="Panel de telemetría: velocidad, marcha, pedales, ERS y combustible" width="804" height="790">
-          <div class="cap"><b>Tu auto, en detalle</b><span class="label">Telemetría</span></div>
-        </div>
+      <figure class="shot wide reveal"><img src="/assets/shots/boxes.jpg" alt="Boxes: tu tanda, las curvas donde perdiste tiempo, el cambio de reglaje, el clima y las gomas que te quedan" width="1440" height="900" loading="lazy"></figure>
+      <div class="trio reveal">
+        <div><b>Dónde se te fue el tiempo</b><span>Las tres curvas que más te costaron, con el porqué.</span></div>
+        <div><b>Un cambio por vez</b><span>Así sabés si sirvió en la tanda siguiente.</span></div>
+        <div><b>Gomas y clima</b><span>Los juegos que te quedan y la lluvia de los próximos minutos.</span></div>
       </div>
     </div>
   </section>
 
-  <section id="analisis">
+  <section id="cockpit" class="band">
+    <div class="wrap split rev">
+      <figure class="shot reveal"><img src="/assets/shots/editor.jpg" alt="El editor del cockpit: una grilla donde agregás piezas y las estirás" width="1440" height="900" loading="lazy"></figure>
+      <div class="reveal">
+        <span class="eyebrow">Cockpit</span>
+        <h2 class="display">Armá tu cockpit.<br><em>Pieza por pieza.</em></h2>
+        <p class="lede">Delta, gomas, rivales, mapa, energía, la radio. Las ponés donde quieras y del tamaño que quieras: cuanto más grande, más te muestran.</p>
+        <ul class="points">
+          <li><b>Plantillas listas</b><span>Arriba del volante, segundo monitor, celular o tele.</span></li>
+          <li><b>Lo urgente se ilumina</b><span>Si te atacan o una goma se pasa, la pieza te avisa.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="pantallas">
     <div class="wrap split">
       <div class="reveal">
-        <span class="label">Análisis</span>
-        <h2 style="margin-top:18px">Cada sesión te hace más rápido.</h2>
-        <p class="lede" style="margin-top:24px">Todo queda grabado. Volvé a ver cualquier sesión, compará vueltas y preguntale al ingeniero dónde se te escapó el tiempo.</p>
-      </div>
-      <div class="delta reveal">
-        <div class="delta-head">
-          <span class="label">Vuelta 14 vs. vuelta 9</span>
-          <span class="big mono">−0.436</span>
+        <span class="eyebrow">Pantallas</span>
+        <h2 class="display">Convertí tu rincón<br><em>en un box.</em></h2>
+        <p class="lede">La tele con la tabla de posiciones, la tablet con el mapa, el celu con la radio. Abrís la app en cada pantalla, escaneás el código y elegís qué muestra.</p>
+        <div class="roles">
+          <span>Tabla de posiciones</span><span>Cockpit</span><span>Muro de boxes</span><span>Mapa</span><span>Radio</span><span>Panel para transmitir</span>
         </div>
-        <div class="sector"><span class="mono label">S1</span><div class="bar"><i style="left:50%;width:22%;background:var(--ok)"></i></div><span class="v mono up">−0.212</span></div>
-        <div class="sector"><span class="mono label">S2</span><div class="bar"><i style="right:50%;width:9%;background:#f87171"></i></div><span class="v mono down">+0.087</span></div>
-        <div class="sector"><span class="mono label">S3</span><div class="bar"><i style="left:50%;width:31%;background:var(--ok)"></i></div><span class="v mono up">−0.311</span></div>
-        <div class="delta-foot"><span class="label tag">Ingeniero</span>En la 9 frenaste diez metros antes en la curva 15. Ahí están las tres décimas.</div>
+      </div>
+      <div class="tv reveal">
+        <figure class="device tv-frame"><img src="/assets/shots/tv-tabla.jpg" alt="La tabla de posiciones en grande en una tele" width="1280" height="720" loading="lazy"></figure>
+        <figure class="device qr"><img src="/assets/shots/tv-qr.jpg" alt="La pantalla mostrando el código para vincularla" width="1280" height="720" loading="lazy"></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="despues" class="band">
+    <div class="wrap">
+      <div class="head reveal">
+        <span class="eyebrow">Después de correr</span>
+        <h2 class="display">Cada sesión<br><em>te hace más rápido.</em></h2>
+        <p class="lede">El resumen te cuenta cómo te fue y qué cambiar. La telemetría te muestra cada vuelta contra la del más rápido. Y el auto en 3D te enseña qué hace cada ajuste.</p>
+      </div>
+      <div class="gallery reveal">
+        <figure class="shot"><img src="/assets/shots/telemetria.jpg" alt="Telemetría vuelta contra vuelta: velocidad, acelerador, freno y marcha" width="1440" height="900" loading="lazy"><figcaption>Vuelta contra vuelta</figcaption></figure>
+        <figure class="shot"><img src="/assets/shots/reglaje.jpg" alt="El reglaje con el monoplaza en 3D moviendo el alerón delantero" width="1440" height="900" loading="lazy"><figcaption>El cambio, en el auto</figcaption></figure>
       </div>
     </div>
   </section>
 
   <section class="final" id="empezar">
     <div class="wrap reveal">
-      <h2 class="grad">Tu próximo stint<br>empieza acá.</h2>
-      <p class="lede">En dos minutos tenés a tu ingeniero en la radio.</p>
-      <div class="cta">
+      <h2 class="display">Tu próximo stint<br><em>empieza acá.</em></h2>
+      <p class="lede">Bajá el Bridge, vinculá tu cuenta y salí a pista.</p>
+      <div class="cta center">
         <a class="btn primary" href="https://github.com/agumerca1994/f1-enginner/releases/latest/download/ingeniero-bridge-windows.zip">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5 10.5 4.4v7.1H3V5.5Zm8.5-1.2L21 3v8.5h-9.5V4.3ZM3 12.5h7.5v7.1L3 18.5v-6Zm8.5 0H21V21l-9.5-1.3v-7.2Z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3V5.5Zm8.5-1.2L21 3v8.5h-9.5V4.3ZM3 12.5h7.5v7.1L3 18.5v-6Zm8.5 0H21V21l-9.5-1.3v-7.2Z"/></svg>
           Descargar para Windows
         </a>
         <a class="btn primary" href="https://github.com/agumerca1994/f1-enginner/releases/latest/download/ingeniero-bridge-mac.zip">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.8-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.5-1-2.5-4ZM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.5 2.8-1.3Z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.8-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.5-1-2.5-4ZM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.5 2.8-1.3Z"/></svg>
           Descargar para Mac
         </a>
       </div>
-      <a class="text-link" href="https://f1.imanzanastore.com.ar">¿Ya lo tenés? Abrí el dashboard <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a class="text-link" href="/instructivos" style="margin-left:24px">Cómo se conecta <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       <div class="flow">
-        <span><span class="mono">01</span>Descargá el bridge</span>
-        <span><span class="mono">02</span>Vinculá tu cuenta</span>
-        <span><span class="mono">03</span>Salí a pista</span>
+        <span><b>01</b>Bajá el Bridge</span>
+        <span><b>02</b>Vinculá tu cuenta</span>
+        <span><b>03</b>Salí a pista</span>
       </div>
-      <p class="fine">Para PlayStation, Xbox o PC.<br>Windows: si frena el archivo, Propiedades del .zip → Desbloquear. Mac: si no abre, Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente.</p>
+      <p class="links-row"><a href="https://f1.imanzanastore.com.ar">Abrir la app ›</a><a href="/instructivos">Cómo se conecta ›</a></p>
+      <p class="fine">Windows: si frena el archivo, Propiedades del .zip → Desbloquear. Mac: si no abre, Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente.</p>
     </div>
   </section>
 
@@ -166,6 +202,7 @@
     </div>
   </footer>
 
-  <script src="/assets/site.js?v=1"></script>
+  <script type="module" src="/assets/intro.js?v=1"></script>
+  <script src="/assets/home.js?v=1"></script>
 </body>
 </html>
