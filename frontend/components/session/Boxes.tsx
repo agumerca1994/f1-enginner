@@ -145,50 +145,51 @@ function NoRun({ loading }: { loading: boolean }) {
   );
 }
 
+function Stat({ value, label, tone }: { value: string; label: string; tone?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className={`display text-[1.9rem] whitespace-nowrap not-italic sm:text-[2.2rem] ${tone ?? ""}`}>{value}</div>
+      <div className="mt-1 text-[0.82rem] leading-tight text-dim">{label}</div>
+    </div>
+  );
+}
+
 function RunHero({ report, position }: { report: RunReport; position?: number }) {
-  const times = report.vueltas.map((v) => v.tiempo_s).filter((t): t is number => t != null);
-  const lo = Math.min(...times), hi = Math.max(...times);
   const gapToBest = report.mas_rapido_s != null && report.mejor_vuelta_s != null ? report.mejor_vuelta_s - report.mas_rapido_s : null;
   const diff = report.contra_tanda_anterior?.mejor_vuelta_diferencia_s;
   return (
-    <div className="card flex flex-wrap items-end gap-x-7 gap-y-3 px-5 py-4">
-      <div className="min-w-0">
-        <span className="eyebrow flex flex-wrap items-center gap-x-2">
-          Tu tanda {report.tanda} · {report.vueltas.length} {report.vueltas.length === 1 ? "vuelta" : "vueltas"}
-          {report.compuesto && (
-            <span className="inline-flex items-center gap-1.5 normal-case tracking-normal">
-              · <TyreDot compound={report.compuesto} filled size={12} /> {COMPOUND_ES[report.compuesto] ?? report.compuesto}
-            </span>
-          )}
-        </span>
-        <span className="display mt-1.5 block text-[3.2rem] sm:text-[4.4rem]">{lapS(report.mejor_vuelta_s)}</span>
+    <div className="card flex flex-col gap-4 px-5 py-4">
+      <span className="eyebrow flex flex-wrap items-center gap-x-2">
+        Tu tanda {report.tanda} · {report.vueltas.length} {report.vueltas.length === 1 ? "vuelta" : "vueltas"}
+        {report.compuesto && (
+          <span className="inline-flex items-center gap-1.5 normal-case tracking-normal">
+            · <TyreDot compound={report.compuesto} filled size={12} /> {COMPOUND_ES[report.compuesto] ?? report.compuesto}
+          </span>
+        )}
+      </span>
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+        <div>
+          <div className="display text-[3.2rem] sm:text-[4.2rem]">{lapS(report.mejor_vuelta_s)}</div>
+          <div className="mt-1 text-[0.82rem] text-dim">tu mejor vuelta</div>
+        </div>
+        <div className="flex gap-7">
+          {position != null && <Stat value={`P${position}`} label="en la sesión" />}
+          {gapToBest != null && gapToBest > 0.005 && <Stat value={`+${dec(gapToBest)}`} label="al más rápido" tone="text-warn" />}
+          {diff != null && <Stat value={`${diff < 0 ? "−" : "+"}${dec(Math.abs(diff))}`} label="contra tu tanda anterior" tone={diff < 0 ? "text-ok" : "text-warn"} />}
+        </div>
       </div>
-      {position != null && (
-        <div className="pb-1.5 whitespace-nowrap">
-          <span className="display text-[1.6rem] not-italic">P{position}</span> <span className="text-[0.85rem] text-dim">en la sesión</span>
-        </div>
-      )}
-      {gapToBest != null && gapToBest > 0.005 && (
-        <div className="pb-1.5 whitespace-nowrap">
-          <span className="display text-[1.6rem] not-italic text-warn">+{dec(gapToBest)}</span> <span className="text-[0.85rem] text-dim">al más rápido</span>
-        </div>
-      )}
-      {diff != null && (
-        <div className="pb-1.5 whitespace-nowrap">
-          <span className={`display text-[1.6rem] not-italic ${diff < 0 ? "text-ok" : "text-warn"}`}>{diff < 0 ? "−" : "+"}{dec(Math.abs(diff))}</span>{" "}
-          <span className="text-[0.85rem] text-dim">contra tu tanda anterior</span>
-        </div>
-      )}
-      <div className="ml-auto flex h-14 items-end gap-1.5" role="img" aria-label={`Vueltas: ${report.vueltas.map((v) => lapS(v.tiempo_s)).join(", ")}`}>
+      <ol className="flex flex-wrap gap-1.5 border-t border-panel-2 pt-3" aria-label="Tus vueltas de esta tanda">
         {report.vueltas.map((v) => (
-          <span
+          <li
             key={v.vuelta}
-            title={`Vuelta ${v.vuelta}: ${lapS(v.tiempo_s)}`}
-            className={`w-5 rounded ${v.mejor ? "bg-best" : v.valida ? "bg-line" : "bg-danger/50"}`}
-            style={{ height: v.tiempo_s == null || hi === lo ? "40%" : `${30 + (70 * (hi - v.tiempo_s)) / (hi - lo)}%` }}
-          />
+            className={`flex items-baseline gap-2 rounded-[8px] px-2.5 py-1.5 ${v.mejor ? "bg-best/15 ring-1 ring-best/60" : "bg-bg"}`}
+            title={v.valida ? undefined : "Vuelta invalidada"}
+          >
+            <span className="font-mono text-[0.7rem] text-dim">V{v.vuelta}</span>
+            <span className={`title num text-[1rem] normal-case ${v.mejor ? "text-best" : v.valida ? "" : "text-dim line-through"}`}>{lapS(v.tiempo_s)}</span>
+          </li>
         ))}
-      </div>
+      </ol>
     </div>
   );
 }

@@ -58,7 +58,6 @@ export function ScreensSection() {
             <span className="block font-semibold">Este dispositivo</span>
             <span className="text-[0.82rem] text-dim">Con tu cuenta: muestra toda la app</span>
           </span>
-          <Link href="/cockpit/editar" className="text-[0.88rem] text-accent-ink">Armar cockpit</Link>
         </div>
         {screens?.map((s) => (
           <div key={s.id} className="flex flex-col gap-2 border-b border-panel-2 px-4 py-3 last:border-0">
@@ -100,6 +99,22 @@ export function ScreensSection() {
           </div>
         ))}
       </div>
+      <h3 className="eyebrow mt-3">Tus cockpits</h3>
+      <div className="card flex flex-col">
+        {cockpits?.map((c) => (
+          <div key={c.id} className="flex items-center justify-between gap-3 border-b border-panel-2 px-4 py-3 last:border-0">
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">{c.name}</span>
+              <span className="text-[0.82rem] text-dim">{c.pieces.length} piezas · cuadrícula de {c.cols} × {c.rows}</span>
+            </span>
+            <Link href={`/cockpit/editar?id=${c.id}`} className="btn shrink-0 px-3 py-1.5 text-[0.88rem]">Armar</Link>
+          </div>
+        ))}
+      </div>
+      <Link href="/cockpit/editar?nuevo=1" className="rounded-[var(--radius-card)] border border-dashed border-dim px-4 py-3 text-center text-[0.95rem] hover:border-muted">
+        + Nuevo cockpit
+      </Link>
+      <h3 className="eyebrow mt-3">Sumar una pantalla</h3>
       <Link href="/vincular" className="rounded-[var(--radius-card)] border border-dashed border-dim px-4 py-3 text-center text-[0.95rem] hover:border-muted">
         + Sumar pantalla
       </Link>

@@ -250,23 +250,23 @@ function Setup() {
   const pista = base?.pista ?? overview?.sesion.pista;
 
   return (
-    <main className="mx-auto max-w-[1500px] px-3 pb-8 pt-3 sm:px-5">
-      <header className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="display text-3xl">Reglaje</h1>
-          <p className="text-sm text-muted">
+    <main className="mx-auto max-w-[1600px] px-[max(1rem,env(safe-area-inset-left))] pb-8 pt-4 lg:px-7 lg:pt-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <span className="eyebrow block">
             {pista ? `${pista} · ${wet ? "lluvia" : "seco"}${active ? ` · ${SOURCE_LABEL[active].toLowerCase()}` : ""}` : "Elegí la pista para empezar"}
-          </p>
+          </span>
+          <h1 className="display mt-1 text-[2.4rem] uppercase lg:text-[2.9rem]">Reglaje</h1>
         </div>
         {sid != null && (
-          <Link href={`/box?s=${sid}`} className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
-            Ver la telemetría de la tanda
+          <Link href={`/box?s=${sid}`} className="btn mb-1 px-3.5 py-2 text-[0.88rem] text-muted hover:text-fg">
+            Ver la telemetría de la tanda ›
           </Link>
         )}
       </header>
 
-      <div className="mt-3 lg:grid lg:grid-cols-[minmax(0,460px)_minmax(0,1fr)] lg:items-start lg:gap-4">
-        <div className="flex flex-col gap-3">
+      <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] lg:items-start lg:gap-5">
+        <div className="flex flex-col gap-4">
           <StartCard
             available={available}
             active={active}
@@ -300,7 +300,7 @@ function Setup() {
           />
           <SetupList setup={setup} suggestions={suggestions} recommended={recommended} selected={wide ? selected : null} onPick={pick} />
         </div>
-        {wide && <div className="sticky top-16 max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pr-1">{detail}</div>}
+        {wide && <div className="sticky top-[76px] max-h-[calc(100dvh-90px)] overflow-y-auto overscroll-contain pr-1">{detail}</div>}
       </div>
 
       {!wide && open && (
@@ -309,6 +309,31 @@ function Setup() {
         </div>
       )}
     </main>
+  );
+}
+
+/** A segmented choice, the same control as Boxes and Pista. */
+function Segmented<T extends string | boolean>({ options, value, onChange, label, disabled }: { options: { v: T; label: string; hint?: string }[]; value: T | null; onChange: (v: T) => void; label: string; disabled?: (v: T) => boolean }) {
+  return (
+    <div className="flex rounded-[var(--radius-control)] bg-bg p-1" role="radiogroup" aria-label={label}>
+      {options.map((o) => {
+        const off = disabled?.(o.v) ?? false;
+        return (
+          <button
+            key={String(o.v)}
+            type="button"
+            role="radio"
+            aria-checked={value === o.v}
+            disabled={off}
+            title={off ? o.hint : undefined}
+            onClick={() => onChange(o.v)}
+            className={`title min-w-0 flex-1 truncate rounded-[8px] px-2.5 py-2 text-[0.92rem] ${value === o.v ? "bg-fg text-bg" : "text-muted"} disabled:opacity-35`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -349,31 +374,23 @@ function StartCard({
       : "",
     base: base ? `${base.caracteristicas.nota} ${base.nota}` : "",
   };
-  const select = "w-full rounded-[var(--radius-control)] border border-line bg-panel-2 px-3 py-2 text-sm";
+  const select = "h-11 w-full rounded-[var(--radius-control)] border border-line bg-bg px-3 text-[0.92rem] text-fg";
   return (
-    <section className="card space-y-3 p-4">
-      <div className="label">Partís de</div>
-      <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="De dónde salen los valores">
-        {(["tanda", "mejor", "base"] as Source[]).map((s) => {
-          const can = available.includes(s);
-          return (
-            <button
-              key={s}
-              role="radio"
-              aria-checked={active === s}
-              disabled={!can}
-              onClick={() => onSource(s)}
-              className={`chip px-2 py-2 text-center text-xs sm:text-sm ${active === s ? "!border-accent bg-accent/15 text-fg" : "text-muted"} disabled:opacity-35`}
-              title={can ? undefined : s === "tanda" ? "Todavía no diste vueltas en esta sesión" : s === "mejor" ? "Todavía no corriste en esta pista" : "Elegí una pista"}
-            >
-              {SOURCE_LABEL[s]}
-            </button>
-          );
-        })}
-      </div>
-      {active ? <p className="text-sm text-muted">{explain[active]}</p> : <p className="text-sm text-muted">Elegí la pista para ver un reglaje base.</p>}
-
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+    <section className="card flex flex-col gap-3 px-4 py-4">
+      <h2 className="eyebrow">Partís de</h2>
+      <Segmented
+        label="De dónde salen los valores"
+        value={active}
+        onChange={onSource}
+        disabled={(s) => !available.includes(s)}
+        options={[
+          { v: "tanda" as Source, label: "Tu tanda", hint: "Todavía no diste vueltas en esta sesión" },
+          { v: "mejor" as Source, label: "Tu mejor", hint: "Todavía no corriste en esta pista" },
+          { v: "base" as Source, label: "Base", hint: "Elegí una pista" },
+        ]}
+      />
+      <p className="text-[0.92rem] leading-snug text-soft-fg">{active ? explain[active] : "Elegí la pista para ver un reglaje base."}</p>
+      <div className="grid grid-cols-[minmax(0,1fr)_150px] gap-2">
         <select value={trackId ?? ""} onChange={(e) => onTrack(Number(e.target.value))} className={select} aria-label="Pista">
           {trackId == null && <option value="">Elegí la pista…</option>}
           {tracks.map((t) => (
@@ -382,19 +399,7 @@ function StartCard({
             </option>
           ))}
         </select>
-        <div className="flex overflow-hidden rounded-[var(--radius-control)] border border-line" role="radiogroup" aria-label="Clima">
-          {[false, true].map((w) => (
-            <button
-              key={String(w)}
-              role="radio"
-              aria-checked={wet === w}
-              onClick={() => onWet(w)}
-              className={`px-3 text-sm ${wet === w ? "bg-accent text-accent-fg" : "text-muted"}`}
-            >
-              {w ? "Lluvia" : "Seco"}
-            </button>
-          ))}
-        </div>
+        <Segmented label="Clima" value={wet} onChange={onWet} options={[{ v: false, label: "Seco" }, { v: true, label: "Lluvia" }]} />
       </div>
       {active === "tanda" && sessions && sessions.length > 1 && (
         <select value={sid ?? ""} onChange={(e) => onSession(Number(e.target.value))} className={select} aria-label="Sesión">
@@ -407,6 +412,11 @@ function StartCard({
       )}
     </section>
   );
+}
+
+function Tag({ children, tone }: { children: React.ReactNode; tone: "warn" | "accent" | "ok" | "muted" }) {
+  const c = { warn: "border-warn/40 text-warn", accent: "border-accent/50 text-accent-ink", ok: "border-ok/40 text-ok", muted: "border-line text-dim" }[tone];
+  return <span className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[0.65rem] tracking-wider ${c}`}>{children}</span>;
 }
 
 /** What to change next: the engineer's advice for the last run, what was agreed on the radio,
@@ -431,118 +441,124 @@ function ChangeCard({
   const suggestions = run?.sugerencias_reglaje ?? [];
   const last = run?.contra_tanda_anterior;
   const lastChange = last && last.cambios_de_reglaje.length > 0 ? last : null;
+  const first = suggestions[0];
+  const e0 = first ? academyEntry(first.parametro) : undefined;
   return (
-    <section className="card space-y-3 p-4">
-      <div className="label">Qué cambiar</div>
+    <section className="flex flex-col gap-3" aria-label="Qué cambiar">
+      <h2 className="eyebrow">Qué cambiar</h2>
 
-      {agreed.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="text-xs font-semibold text-warn">Acordado con el ingeniero, todavía sin aplicar</div>
-          {agreed.map((a) => {
-            const e = academyEntry(a.parametro);
-            return (
-              <Row
-                key={a.parametro}
-                title={e?.title ?? a.parametro}
-                value={`${fmt(e, valueOf(setup, keyOf(a.parametro)))} → ${fmt(e, a.valor)}`}
-                text={a.motivo}
-                tone="warn"
-                onClick={() => onPick(a.parametro)}
-              />
-            );
-          })}
-        </div>
-      )}
+      {agreed.map((a) => {
+        const e = academyEntry(a.parametro);
+        return (
+          <button key={a.parametro} type="button" onClick={() => onPick(a.parametro)} className="card flex flex-col gap-1.5 px-4 py-3.5 text-left ring-1 ring-warn/40 hover:bg-panel-2">
+            <span className="flex items-center justify-between gap-3">
+              <Tag tone="warn">ACORDADO POR RADIO</Tag>
+              <span className="title num text-[1.15rem]">{fmt(e, valueOf(setup, keyOf(a.parametro)))} → {fmt(e, a.valor)}</span>
+            </span>
+            <span className="title text-[1.2rem]">{e?.title ?? a.parametro}</span>
+            {a.motivo && <span className="text-[0.88rem] text-muted">{a.motivo}</span>}
+          </button>
+        );
+      })}
 
       {lastChange && (
-        <div className="rounded-[var(--radius-card)] bg-panel-2 p-3 text-sm">
-          <div className="text-xs font-semibold text-muted">Tu último cambio</div>
-          <p className="mt-0.5">
-            {lastChange.cambios_de_reglaje.map((c) => `${academyEntry(c.parametro)?.title ?? c.parametro} ${c.antes} → ${c.despues}`).join(", ")}
-          </p>
+        <div className="card flex items-center gap-4 px-4 py-3.5">
+          <div className="min-w-0 flex-1">
+            <span className="eyebrow block">Tu último cambio</span>
+            <span className="mt-1 block text-[0.92rem] text-soft-fg">
+              {lastChange.cambios_de_reglaje.map((c) => `${academyEntry(c.parametro)?.title ?? c.parametro} ${c.antes} → ${c.despues}`).join(", ")}
+            </span>
+          </div>
           {lastChange.mejor_vuelta_diferencia_s != null && (
-            <p className={`mt-0.5 font-semibold ${lastChange.mejor_vuelta_diferencia_s < 0 ? "text-ok" : "text-warn"}`}>
-              {lastChange.mejor_vuelta_diferencia_s < 0
-                ? `Sirvió: tu mejor vuelta bajó ${Math.abs(lastChange.mejor_vuelta_diferencia_s).toFixed(2).replace(".", ",")} s`
-                : `No mejoró: tu mejor vuelta subió ${lastChange.mejor_vuelta_diferencia_s.toFixed(2).replace(".", ",")} s`}
-            </p>
+            <div className="text-right">
+              <span className={`display block text-[1.7rem] not-italic ${lastChange.mejor_vuelta_diferencia_s < 0 ? "text-ok" : "text-warn"}`}>
+                {lastChange.mejor_vuelta_diferencia_s < 0 ? "−" : "+"}
+                {Math.abs(lastChange.mejor_vuelta_diferencia_s).toFixed(2).replace(".", ",")}
+              </span>
+              <span className="text-[0.78rem] text-dim">{lastChange.mejor_vuelta_diferencia_s < 0 ? "sirvió" : "no mejoró"}</span>
+            </div>
           )}
         </div>
       )}
 
-      {suggestions.length > 0 ? (
-        <div className="space-y-1.5">
-          <div className="text-xs font-semibold text-accent">Para tu próxima tanda, de a uno por vez</div>
-          {suggestions.map((s) => {
-            const e = academyEntry(s.parametro);
+      {first ? (
+        <button type="button" onClick={() => onPick(first.parametro)} className="paper flex flex-col gap-2.5 px-5 py-5 text-left">
+          <span className="text-[0.85rem] text-paper-muted">Para tu próxima tanda · un cambio por vez</span>
+          <span className="title text-[1.6rem]">{e0?.title ?? first.parametro}</span>
+          <span className="display flex items-baseline gap-3 not-italic">
+            <span className="text-[2.6rem] text-[#6b717c]">{fmt(e0, first.valor_actual)}</span>
+            <span className="text-[1.5rem] text-[#6b717c]">→</span>
+            <span className="text-[2.6rem] text-[#d92b14]">{fmt(e0, first.valor_sugerido)}</span>
+          </span>
+          <span className="text-[0.92rem] leading-snug text-[#2a2e35]">
+            {first.problema} ({first.evidencia}).
+          </span>
+          <span className="text-[0.85rem] font-semibold">Verlo en el auto ›</span>
+        </button>
+      ) : run ? (
+        <div className="card px-4 py-4 text-[0.92rem] text-soft-fg">El ingeniero no ve nada para cambiar en tu última tanda. Si el auto anda, no lo toques.</div>
+      ) : null}
+
+      {suggestions.length > 1 && (
+        <div className="card flex flex-col gap-1 px-2 py-2">
+          <span className="px-2 pt-1 text-[0.82rem] text-dim">Después, si hace falta</span>
+          {suggestions.slice(1).map((x) => {
+            const e = academyEntry(x.parametro);
             return (
-              <Row
-                key={s.parametro}
-                title={e?.title ?? s.parametro}
-                value={`${fmt(e, s.valor_actual)} → ${fmt(e, s.valor_sugerido)}`}
-                text={`${s.problema} (${s.evidencia}).`}
-                tone="accent"
-                onClick={() => onPick(s.parametro)}
-              />
+              <button key={x.parametro} type="button" onClick={() => onPick(x.parametro)} className="flex items-baseline justify-between gap-3 rounded-[8px] px-2 py-2 text-left hover:bg-panel-2">
+                <span className="min-w-0">
+                  <span className="block text-[0.95rem]">{e?.title ?? x.parametro}</span>
+                  <span className="block text-[0.8rem] text-dim">{x.problema}</span>
+                </span>
+                <span className="title num shrink-0 text-[1.1rem] text-accent-ink">{fmt(e, x.valor_actual)} → {fmt(e, x.valor_sugerido)}</span>
+              </button>
             );
           })}
         </div>
-      ) : run ? (
-        <p className="text-sm text-muted">El ingeniero no ve nada para cambiar en tu última tanda. Si el auto anda, no lo toques.</p>
-      ) : null}
-
-      {run && run.conduccion.length > 0 && (
-        <div>
-          <div className="text-xs font-semibold text-muted">No es reglaje: es manejo</div>
-          <ul className="mt-1 space-y-1 text-sm">
-            {run.conduccion.slice(0, 3).map((c) => (
-              <li key={`${c.curva}-${c.problema}`} className="flex gap-2">
-                <span className="text-accent">›</span>
-                {c.texto}
-              </li>
-            ))}
-          </ul>
-        </div>
       )}
 
-      <div>
-        <div className="text-xs font-semibold text-muted">¿Qué sentís en el auto?</div>
-        <div className="-mx-4 mt-1.5 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
-          {SYMPTOMS.map((s, i) => (
+      {run?.conduccion.slice(0, 3).map((c) => (
+        <div key={`${c.curva}-${c.problema}`} className="card flex items-start gap-3 px-4 py-3.5">
+          <Tag tone="warn">MANEJO</Tag>
+          <span className="text-[0.9rem] leading-snug text-soft-fg">{c.texto}</span>
+        </div>
+      ))}
+
+      <div className="card flex flex-col gap-3 px-4 py-4">
+        <h3 className="eyebrow">¿Qué sentís en el auto?</h3>
+        <div className="flex flex-wrap gap-1.5">
+          {SYMPTOMS.map((x, i) => (
             <button
-              key={s.label}
+              key={x.label}
+              type="button"
               onClick={() => onSymptom(symptom === i ? null : i)}
               aria-pressed={symptom === i}
-              className={`chip shrink-0 px-3 py-1.5 text-sm ${symptom === i ? "!border-accent bg-accent/15 text-fg" : "text-muted"}`}
+              className={`rounded-full px-3 py-1.5 text-[0.85rem] ${symptom === i ? "bg-accent/15 text-fg ring-1 ring-accent" : "bg-panel-2 text-muted hover:text-fg"}`}
             >
-              {s.label}
+              {x.label}
             </button>
           ))}
         </div>
         {recommended.length > 0 && (
-          <div className="mt-2 space-y-1.5">
-            <div className="text-xs text-muted">Probá tocar, en este orden:</div>
-            {recommended.map((k) => {
+          <div className="flex flex-col gap-1">
+            <span className="text-[0.82rem] text-dim">Probá tocar, en este orden</span>
+            {recommended.map((k, i) => {
               const e = academyEntry(k);
-              return <Row key={k} title={e?.title ?? k} value={fmt(e, valueOf(setup, k))} text={e?.when[0] ?? ""} onClick={() => onPick(k)} />;
+              return (
+                <button key={k} type="button" onClick={() => onPick(k)} className="flex items-center gap-3 rounded-[8px] px-1 py-2 text-left hover:bg-panel-2">
+                  <span className="display w-6 text-[1.3rem] not-italic text-dim">{i + 1}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[0.95rem]">{e?.title ?? k}</span>
+                    <span className="block text-[0.8rem] text-dim">{e?.when[0] ?? ""}</span>
+                  </span>
+                  <span className="title num text-[1.05rem]">{fmt(e, valueOf(setup, k))}</span>
+                </button>
+              );
             })}
           </div>
         )}
       </div>
     </section>
-  );
-}
-
-function Row({ title, value, text, tone, onClick }: { title: string; value: string; text: string; tone?: "accent" | "warn"; onClick: () => void }) {
-  const border = tone === "accent" ? "border-accent/50" : tone === "warn" ? "border-warn/50" : "border-line";
-  return (
-    <button onClick={onClick} className={`flex w-full items-start justify-between gap-3 rounded-[var(--radius-card)] border ${border} px-3 py-2.5 text-left hover:bg-panel-2`}>
-      <span className="min-w-0">
-        <span className="block font-semibold">{title}</span>
-        {text && <span className="mt-0.5 block text-xs text-muted">{text}</span>}
-      </span>
-      <span className={`num shrink-0 text-sm font-semibold ${tone === "accent" ? "text-accent" : tone === "warn" ? "text-warn" : ""}`}>{value}</span>
-    </button>
   );
 }
 
@@ -561,46 +577,49 @@ function SetupList({
   onPick: (key: string) => void;
 }) {
   return (
-    <section className="card p-2">
-      <div className="label px-2 pb-1 pt-2">Tu reglaje completo</div>
-      {GROUPS.map((g) => (
-        <div key={g} className="mb-1">
-          <div className="px-2 pb-0.5 pt-2 text-xs font-semibold text-muted">{g}</div>
-          <ul>
-            {ACADEMY.filter((e) => e.group === g).map((e) => {
-              const on = e.key === selected;
-              const v = valueOf(setup, e.key);
-              const sug = suggestions[e.key];
-              return (
-                <li key={e.key}>
-                  <button
-                    onClick={() => onPick(e.key)}
-                    aria-current={on || undefined}
-                    className={`flex w-full items-center justify-between gap-2 rounded-[var(--radius-control)] px-2 py-2 text-left text-sm ${on ? "bg-accent/15 text-fg" : "hover:bg-panel-2"}`}
-                  >
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate">{e.title}</span>
-                      {recommended.includes(e.key) && <span className="shrink-0 rounded bg-warn/15 px-1 text-[0.65rem] font-semibold text-warn">PROBÁ</span>}
-                    </span>
-                    <span className="num flex shrink-0 items-center gap-2 text-xs">
-                      {sug ? (
-                        <span className="text-accent">
-                          {fmt(e, v)} → {fmt(e, sug.valor_sugerido)}
-                        </span>
-                      ) : (
-                        <span className="text-muted">{fmt(e, v)}</span>
-                      )}
-                      <span className="text-muted" aria-hidden>
-                        ›
+    <section className="flex flex-col gap-2" aria-label="Tu reglaje completo">
+      <h2 className="eyebrow">Tu reglaje completo</h2>
+      <div className="card px-2 py-2">
+        {GROUPS.map((g) => (
+          <div key={g} className="mb-1">
+            <div className="title px-2 pb-1 pt-3 text-[0.95rem] text-dim">{g}</div>
+            <ul>
+              {ACADEMY.filter((e) => e.group === g).map((e) => {
+                const on = e.key === selected;
+                const v = valueOf(setup, e.key);
+                const sug = suggestions[e.key];
+                return (
+                  <li key={e.key}>
+                    <button
+                      type="button"
+                      onClick={() => onPick(e.key)}
+                      aria-current={on || undefined}
+                      className={`flex w-full items-center justify-between gap-2 rounded-[10px] px-2.5 py-2.5 text-left ${on ? "bg-panel-2 shadow-[inset_3px_0_0_var(--color-accent)]" : "hover:bg-panel-2"}`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-[0.95rem]">{e.title}</span>
+                        {recommended.includes(e.key) && <Tag tone="warn">PROBÁ</Tag>}
                       </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+                      <span className="flex shrink-0 items-center gap-2">
+                        {sug ? (
+                          <span className="title num text-[1.05rem] text-accent-ink">
+                            {fmt(e, v)} → {fmt(e, sug.valor_sugerido)}
+                          </span>
+                        ) : (
+                          <span className="title num text-[1.05rem]">{fmt(e, v)}</span>
+                        )}
+                        <span className="text-dim" aria-hidden>
+                          ›
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -623,31 +642,30 @@ function Detail({
   onMove: (step: number) => void;
   onClose?: () => void;
 }) {
+  const arrow = "grid h-10 w-10 place-items-center rounded-[var(--radius-control)] border border-line text-muted hover:text-fg";
   return (
-    <div className="flex flex-col gap-3 p-3 lg:p-0">
-      <header className="flex items-center gap-2">
+    <div className="flex flex-col gap-4 p-4 lg:p-0">
+      <header className="flex items-center gap-3">
         {onClose && (
-          <button onClick={onClose} className="chip px-3 py-1.5 text-sm" aria-label="Volver a la lista">
+          <button type="button" onClick={onClose} className="btn px-3 py-2 text-[0.9rem]" aria-label="Volver a la lista">
             ‹ Volver
           </button>
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-xs text-muted">{entry.group}</div>
-          <h2 className="display truncate text-2xl">{entry.title}</h2>
+          <span className="eyebrow block">{entry.group}</span>
+          <h2 className="title truncate text-[1.8rem] lg:text-[2.1rem]">{entry.title}</h2>
         </div>
-        <div className="flex gap-1">
-          <button onClick={() => onMove(-1)} className="chip px-3 py-1.5 text-sm text-muted" aria-label="Ajuste anterior">
-            ↑
-          </button>
-          <button onClick={() => onMove(1)} className="chip px-3 py-1.5 text-sm text-muted" aria-label="Ajuste siguiente">
-            ↓
-          </button>
-        </div>
+        <button type="button" onClick={() => onMove(-1)} className={arrow} aria-label="Ajuste anterior">
+          ↑
+        </button>
+        <button type="button" onClick={() => onMove(1)} className={arrow} aria-label="Ajuste siguiente">
+          ↓
+        </button>
       </header>
 
-      <div className="relative h-[260px] overflow-hidden rounded-[var(--radius-card)] border border-line bg-[radial-gradient(ellipse_at_center,#1a1d22_0%,#0b0c0e_75%)] sm:h-[360px] xl:h-[440px]">
+      <div className="card relative h-[270px] overflow-hidden bg-[radial-gradient(ellipse_at_center,#1c1f24_0%,#0b0c0e_78%)] sm:h-[380px] xl:h-[460px]">
         <CarViewer focus={entry.key} bias={bias} setting={{ value: current ?? null, suggested: suggestion?.valor_sugerido ?? null, range: entry.range }} />
-        <p className="pointer-events-none absolute bottom-2 left-3 right-3 flex flex-wrap justify-between gap-x-3 text-xs text-muted">
+        <p className="pointer-events-none absolute right-4 bottom-3 left-4 flex flex-wrap justify-between gap-x-3 text-[0.78rem] text-dim">
           <span>Arrastrá para girar el auto</span>
           {current != null && entry.range && (
             <span className="text-soft-fg">
@@ -657,68 +675,84 @@ function Detail({
         </p>
       </div>
 
-      <section className="card p-4">
-        <div className="mb-2 flex items-baseline justify-between gap-2">
-          <span className="label">Tu valor</span>
-          <span className="display text-2xl">{current != null ? fmt(entry, current) : "—"}</span>
-        </div>
-        {entry.range && <RangeBar entry={entry} current={current} suggested={suggestion?.valor_sugerido ?? null} />}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <section className="card flex flex-col gap-3 px-5 py-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="eyebrow">Tu valor</span>
+            <span className="display text-[2.6rem] not-italic">{current != null ? fmt(entry, current) : "—"}</span>
+          </div>
+          {entry.range && <RangeBar entry={entry} current={current} suggested={suggestion?.valor_sugerido ?? null} />}
+          <p className="text-[0.95rem] leading-snug text-soft-fg">{entry.what}</p>
+        </section>
 
-        {suggestion && (
-          <div className="mt-3 rounded-[var(--radius-card)] border border-accent/40 bg-accent/10 p-3 text-sm">
-            <div className="label mb-1 !text-accent">El ingeniero sugiere</div>
-            <div className="num text-lg font-semibold">
-              {fmt(entry, suggestion.valor_actual)} → {fmt(entry, suggestion.valor_sugerido)}
-            </div>
-            <p className="mt-1 text-muted">
-              <span className="text-fg">{suggestion.problema}</span> ({suggestion.evidencia}). {suggestion.efecto}
+        {suggestion ? (
+          <section className="paper flex flex-col gap-2 px-5 py-4">
+            <span className="text-[0.85rem] text-paper-muted">El ingeniero sugiere</span>
+            <span className="display flex items-baseline gap-3 not-italic">
+              <span className="text-[2.2rem] text-[#6b717c]">{fmt(entry, suggestion.valor_actual)}</span>
+              <span className="text-[1.3rem] text-[#6b717c]">→</span>
+              <span className="text-[2.2rem] text-[#d92b14]">{fmt(entry, suggestion.valor_sugerido)}</span>
+            </span>
+            <p className="text-[0.92rem] leading-snug">
+              <b>{suggestion.problema}</b> ({suggestion.evidencia}). {suggestion.efecto}
             </p>
-            <p className="mt-1 text-xs text-muted">A cambio: {suggestion.compromiso}</p>
-          </div>
-        )}
-
-        <p className="mt-3 text-sm">{entry.what}</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-[var(--radius-card)] bg-panel-2 p-3 text-sm">
-            <div className="label mb-1">Si lo subís</div>
-            <p className="text-muted">{entry.up}</p>
-          </div>
-          <div className="rounded-[var(--radius-card)] bg-panel-2 p-3 text-sm">
-            <div className="label mb-1">Si lo bajás</div>
-            <p className="text-muted">{entry.down}</p>
-          </div>
-        </div>
-
-        <h3 className="label mb-1.5 mt-4">Cuándo tocarlo</h3>
-        <ul className="space-y-1.5 text-sm text-muted">
-          {entry.when.map((w) => (
-            <li key={w} className="flex gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
-              <span>{w}</span>
-            </li>
-          ))}
-        </ul>
-
-        {entry.related.length > 0 && (
-          <>
-            <h3 className="label mb-1.5 mt-4">Va de la mano con</h3>
-            <ul className="space-y-2 text-sm">
-              {entry.related.map((r) => {
-                const other = academyEntry(r.key);
-                return (
-                  <li key={r.key}>
-                    <button onClick={() => onPick(other?.key ?? r.key)} className="w-full rounded-[var(--radius-card)] bg-panel-2 p-3 text-left hover:ring-1 hover:ring-accent/50">
-                      <span className="font-semibold text-accent">{other?.title ?? r.key} ›</span>
-                      <span className="mt-0.5 block text-muted">{r.text}</span>
-                    </button>
-                  </li>
-                );
-              })}
+            <p className="text-[0.82rem] text-paper-muted">A cambio: {suggestion.compromiso}</p>
+          </section>
+        ) : (
+          <section className="card flex flex-col gap-2 px-5 py-4">
+            <span className="eyebrow">Cuándo tocarlo</span>
+            <ul className="flex flex-col gap-2 text-[0.92rem] text-soft-fg">
+              {entry.when.map((w) => (
+                <li key={w} className="flex gap-2.5">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
+                  <span>{w}</span>
+                </li>
+              ))}
             </ul>
-          </>
+          </section>
         )}
-        <p className="mt-4 text-xs text-muted">Tocá un valor por vez y dá dos o tres vueltas: así sabés qué cambio sirvió.</p>
-      </section>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="card px-4 py-4">
+          <span className="eyebrow">Si lo subís ▲</span>
+          <p className="mt-1.5 text-[0.92rem] leading-snug text-soft-fg">{entry.up}</p>
+        </div>
+        <div className="card px-4 py-4">
+          <span className="eyebrow">Si lo bajás ▼</span>
+          <p className="mt-1.5 text-[0.92rem] leading-snug text-soft-fg">{entry.down}</p>
+        </div>
+      </div>
+
+      {suggestion && (
+        <section className="card flex flex-col gap-2 px-5 py-4">
+          <span className="eyebrow">Cuándo tocarlo</span>
+          <ul className="flex flex-col gap-2 text-[0.92rem] text-soft-fg">
+            {entry.when.map((w) => (
+              <li key={w} className="flex gap-2.5">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
+                <span>{w}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {entry.related.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <span className="eyebrow">Va de la mano con</span>
+          {entry.related.map((r) => {
+            const other = academyEntry(r.key);
+            return (
+              <button key={r.key} type="button" onClick={() => onPick(other?.key ?? r.key)} className="card px-4 py-3.5 text-left hover:bg-panel-2">
+                <span className="title text-[1.1rem] text-accent-ink">{other?.title ?? r.key} ›</span>
+                <span className="mt-1 block text-[0.88rem] text-muted">{r.text}</span>
+              </button>
+            );
+          })}
+        </section>
+      )}
+      <p className="text-[0.82rem] text-dim">Tocá un valor por vez y dá dos o tres vueltas: así sabés qué cambio sirvió.</p>
     </div>
   );
 }
@@ -728,17 +762,18 @@ function RangeBar({ entry, current, suggested }: { entry: AcademyEntry; current:
   const pos = (v: number) => `${Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100))}%`;
   return (
     <div>
-      <div className="relative h-2 rounded-full bg-panel-2">
-        {current != null && <span className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg bg-fg" style={{ left: pos(current) }} title="Tu valor" />}
-        {suggested != null && (
-          <span className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg bg-accent" style={{ left: pos(suggested) }} title="Sugerido" />
+      <div className="relative h-2.5 rounded-full bg-panel-2">
+        {current != null && suggested != null && (
+          <span className="absolute top-0 h-2.5 rounded-full bg-accent/30" style={{ left: `min(${pos(current)}, ${pos(suggested)})`, width: `calc(max(${pos(current)}, ${pos(suggested)}) - min(${pos(current)}, ${pos(suggested)}))` }} />
         )}
+        {current != null && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-panel bg-fg" style={{ left: pos(current) }} title="Tu valor" />}
+        {suggested != null && <span className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-panel bg-accent" style={{ left: pos(suggested) }} title="Sugerido" />}
       </div>
-      <div className="num mt-1 flex justify-between text-[0.7rem] text-muted">
+      <div className="mt-1.5 flex justify-between font-mono text-[0.7rem] text-dim">
         <span>{fmt(entry, lo)}</span>
         <span className="font-sans">
           <span className="text-fg">● vos</span>
-          {suggested != null && <span className="ml-2 text-accent">● sugerido</span>}
+          {suggested != null && <span className="ml-2 text-accent-ink">● sugerido</span>}
         </span>
         <span>{fmt(entry, hi)}</span>
       </div>

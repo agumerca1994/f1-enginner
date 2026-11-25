@@ -31,10 +31,17 @@ export function Session() {
   const [forced, setForced] = useState<{ view: View; state: string | undefined } | null>(null);
   // A manual choice holds until the car changes state.
   const view = forced && forced.state === s?.car_state ? forced.view : auto;
+  const { cockpits } = useCockpits();
+  const [cockpit, setCockpit] = useState<Cockpit | null>(null);
+  useEffect(() => {
+    if (cockpits) setCockpit(chosenCockpit(cockpits));
+  }, [cockpits]);
 
   if (!s) return <NoSession status={status} />;
 
   const race = isRace(s);
+  // The game sends "SEND" when the session ends (and "CHQF" at the chequered flag).
+  const ended = s.events.some((e) => e.code === "SEND" || e.code === "CHQF");
   const left = s.session?.time_left_s;
   return (
     <main className="mx-auto flex max-w-[1600px] flex-col gap-4 px-[max(1rem,env(safe-area-inset-left))] pt-4 lg:px-7 lg:pt-5">
@@ -59,57 +66,88 @@ export function Session() {
             </button>
           ))}
         </div>
-        <span className="mb-3 hidden text-[0.85rem] text-dim sm:inline">
+        <span className="mb-3 hidden text-[0.85rem] text-dim xl:inline">
           {forced && forced.state === s.car_state ? "Elegido a mano hasta que el auto se mueva" : "Automático: cambia cuando salís y cuando volvés"}
         </span>
+        <div className="mb-1 ml-auto flex items-center gap-2">
+          {view === "pista" && cockpits && cockpit && (
+            <CockpitControls
+              cockpits={cockpits}
+              current={cockpit}
+              onPick={(c) => {
+                chooseCockpit(c.id);
+                setCockpit(c);
+              }}
+            />
+          )}
+          {view === "boxes" && sid != null && (
+            <Link href={`/resumen/${sid}`} className="btn flex h-10 items-center gap-2 px-3.5 text-[0.9rem]">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3" /></svg>
+              Resumen de la sesión
+            </Link>
+          )}
+        </div>
       </header>
 
-      {view === "boxes" ? <Boxes s={s} sid={sid} messages={engineer.messages} /> : <Pista s={s} />}
+      {ended && sid != null && (
+        <Link href={`/resumen/${sid}`} className="paper flex items-center justify-between gap-3 px-5 py-4">
+          <span>
+            <span className="title block text-[1.3rem]">Terminó la sesión</span>
+            <span className="text-[0.9rem] text-paper-muted">Mirá cómo te fue, dónde perdiste tiempo y qué cambiar para la próxima.</span>
+          </span>
+          <span className="btn-ink shrink-0 px-4 py-2.5 text-[0.95rem]">Ver el resumen</span>
+        </Link>
+      )}
+
+      {view === "boxes" ? <Boxes s={s} sid={sid} messages={engineer.messages} /> : cockpit ? <Pista s={s} cockpit={cockpit} /> : <div className="h-[60dvh]" />}
       <RadioDock />
       <div className="h-2" />
     </main>
   );
 }
 
-function Pista({ s }: { s: Snapshot }) {
-  const { cockpits } = useCockpits();
-  const { engineer } = useSharedLive();
-  const [current, setCurrent] = useState<Cockpit | null>(null);
-  useEffect(() => {
-    if (cockpits) setCurrent(chosenCockpit(cockpits));
-  }, [cockpits]);
-  if (!cockpits || !current) return <div className="h-[60dvh]" />;
+const ICON = "grid h-10 w-10 place-items-center rounded-[var(--radius-control)] border border-line text-muted hover:text-fg";
+
+/** Which cockpit this screen shows, full screen, and the way to build them: icons on the right of the title. */
+function CockpitControls({ cockpits, current, onPick }: { cockpits: Cockpit[]; current: Cockpit; onPick: (c: Cockpit) => void }) {
   return (
-    <section className="flex flex-col gap-3" aria-label="Tu cockpit">
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-[0.85rem] text-muted">
-          Cockpit
-          <select
-            value={current.id}
-            onChange={(e) => {
-              const c = cockpits.find((k) => k.id === e.target.value)!;
-              chooseCockpit(c.id);
-              setCurrent(c);
-            }}
-            className="h-9 rounded-[8px] border border-line bg-panel px-2 text-[0.92rem] text-fg"
-          >
-            {cockpits.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Link href={`/cockpit/editar?id=${current.id}`} className="btn px-3 py-1.5 text-[0.85rem]">
-          Armar
-        </Link>
-        <Link href="/cockpit" className="btn px-3 py-1.5 text-[0.85rem]">
-          Pantalla completa
-        </Link>
-      </div>
-      <div className="h-[max(360px,calc(100dvh-23rem))] lg:h-[max(460px,calc(100dvh-19.5rem))]">
-        <CockpitGrid cockpit={current} ctx={{ s, messages: engineer.messages }} />
-      </div>
+    <>
+      <label className="relative flex h-10 items-center rounded-[var(--radius-control)] border border-line pl-9 pr-2 text-muted hover:text-fg" title="Qué cockpit ves en esta pantalla">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-2.5" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="12" rx="2" />
+          <path d="M8 20h8M12 16v4" />
+        </svg>
+        <span className="sr-only">Cockpit</span>
+        <select value={current.id} onChange={(e) => onPick(cockpits.find((k) => k.id === e.target.value)!)} className="h-full max-w-[11rem] bg-transparent pr-1 text-[0.88rem] text-fg outline-none">
+          {cockpits.map((c) => (
+            <option key={c.id} value={c.id} className="bg-panel">
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Link href="/cockpit" className={ICON} aria-label="Ver a pantalla completa" title="Pantalla completa">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+        </svg>
+      </Link>
+      <Link href="/settings#pantallas" className={ICON} aria-label="Tus pantallas y cockpits" title="Tus pantallas y cockpits">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
+          <circle cx="16" cy="6" r="2" />
+          <circle cx="10" cy="12" r="2" />
+          <circle cx="18" cy="18" r="2" />
+        </svg>
+      </Link>
+    </>
+  );
+}
+
+function Pista({ s, cockpit }: { s: Snapshot; cockpit: Cockpit }) {
+  const { engineer } = useSharedLive();
+  return (
+    <section className="h-[max(360px,calc(100dvh-20rem))] lg:h-[max(460px,calc(100dvh-16.5rem))]" aria-label="Tu cockpit">
+      <CockpitGrid cockpit={cockpit} ctx={{ s, messages: engineer.messages }} />
     </section>
   );
 }

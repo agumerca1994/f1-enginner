@@ -146,7 +146,7 @@ function Delta({ s, level }: { s: Snapshot | null; level: number }) {
         {s?.lap && <span className="eyebrow">sector {s.lap.sector}</span>}
       </div>
       {d == null ? (
-        <span className="text-[min(14cqh,6cqw)] text-dim">Todavía sin vuelta de referencia: aparece al completar una vuelta limpia.</span>
+        <span className="text-[min(9cqh,3.6cqw)] leading-snug text-dim">Todavía sin vuelta de referencia: aparece al completar una vuelta limpia.</span>
       ) : (
         <span className={`display ${deltaTone(d)}`} style={fs(46, level === 2 ? 30 : 26)}>{signedSecs(d)}</span>
       )}

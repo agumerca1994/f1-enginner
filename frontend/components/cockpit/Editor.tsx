@@ -33,8 +33,13 @@ export function Editor() {
 
   useEffect(() => {
     if (!cockpits || draft) return;
-    const id = new URLSearchParams(window.location.search).get("id");
-    setDraft(structuredClone(cockpits.find((c) => c.id === id) ?? cockpits[0]));
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("nuevo")) {
+      const t = TEMPLATES.find((x) => x.id === "monitor")!;
+      setDraft({ ...structuredClone(t), id: `k${Date.now().toString(36)}`, name: "Cockpit nuevo", pieces: [] });
+      return;
+    }
+    setDraft(structuredClone(cockpits.find((c) => c.id === q.get("id")) ?? cockpits[0]));
   }, [cockpits, draft]);
 
   const change = (next: Cockpit) => {
@@ -150,8 +155,8 @@ export function Editor() {
   return (
     <main className="flex min-h-dvh flex-col bg-bg pt-[env(safe-area-inset-top)]">
       <header className="flex flex-wrap items-center gap-3 border-b border-line px-[max(1rem,env(safe-area-inset-left))] py-3 lg:px-6">
-        <Link href="/cockpit" className="text-[0.9rem] text-muted">
-          ‹ Listo
+        <Link href="/settings#pantallas" className="text-[0.9rem] text-muted">
+          ‹ Tus pantallas
         </Link>
         <div className="min-w-0">
           <label className="sr-only" htmlFor="nombre-cockpit">Nombre del cockpit</label>
