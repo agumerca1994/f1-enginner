@@ -5,7 +5,7 @@ import { buildScene } from "./scene.js";
 const q = new URLSearchParams(location.search);
 const W = Number(q.get("w") || 1920), H = Number(q.get("h") || 1080);
 const c = document.getElementById("c");
-const renderAt = buildScene(c, W, H);
+const renderAt = await buildScene(c, W, H);
 window.frameAt = (t) => { renderAt(t); return c.toDataURL("image/jpeg", 0.93); };
 window.__ready = true;
 </script></body></html>

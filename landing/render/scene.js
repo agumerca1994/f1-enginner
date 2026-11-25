@@ -5,7 +5,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildCar } from "./car3d.js";
+import { loadCar } from "./realcar.js";
 
 function asphalt() {
   const c = document.createElement("canvas");
@@ -74,7 +74,7 @@ function band(r1, r2, a0, a1, y, segs = 48, uvScale = 0) {
 }
 
 
-export function buildScene(canvas, W, H) {
+export async function buildScene(canvas, W, H) {
   const portrait = H > W;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(1);
@@ -131,8 +131,9 @@ export function buildScene(canvas, W, H) {
     { body: 0xe9ecef, accent: 0xff4b2b, helmet: 0x15171b },
     { body: 0x13606e, accent: 0x3ddc97, helmet: 0xf2f3f5 },
   ];
+  const built = await Promise.all(liveries.map((l) => loadCar(l)));
   const cars = liveries.map((l, i) => {
-    const c = buildCar(l);
+    const c = built[i];
     c.car.visible = false;
     scene.add(c.car);
     return { ...c, start: 0.45 + i * 0.42, r: [21.4, 22.3, 21.8][i], dur: 1.0 - i * 0.05 };

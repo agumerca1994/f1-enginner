@@ -1,12 +1,17 @@
 # Intro video
 
 The landing's intro is a video rendered from a Three.js scene, so it plays smoothly on any
-phone. `scene.js` builds the night corner and the cars (`car3d.js`, the same modern
-single-seater as the app's setup viewer, `frontend/components/setup/carModel.ts`). Every
+phone. `scene.js` builds the night corner; the cars are the downloaded single-seater in
+`assets-src/monoplaza/` (kept out of git: its license does not allow redistributing the
+model), loaded by `realcar.js` with the app's own paint. `car3d.js` is the older car built in code. Every
 frame is a function of time, so frames rendered at 960 fps are blended into real motion blur.
 
+Render from a folder that holds only the render files and the model, never the repo root
+(it has the deploy secrets):
+
 ```sh
-cd landing && python3 -m http.server 8090            # serve the folder
+R=$(mktemp -d) && cp landing/render/{scene.js,realcar.js,intro.html,car3d.js} $R && mkdir $R/model \
+  && cp assets-src/monoplaza/custom_f122.obj $R/model/ && python3 -m http.server 8090 --directory $R
 npm i playwright-core                                 # once, anywhere on the NODE_PATH
 node render/capture.cjs /tmp/h 1920 1080 960 3.6      # landscape frames
 node render/capture.cjs /tmp/v 1080 1920 960 3.6      # portrait frames

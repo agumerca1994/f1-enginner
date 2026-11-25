@@ -41,3 +41,4 @@ fixtures/local/
 
 # Personal Claude Code settings
 .claude/settings.local.json
+assets-src/
