@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useDictation } from "@/lib/listen";
 import { useSharedLive } from "@/lib/liveContext";
-import { playRadio } from "@/lib/voice";
+import { playRadio, stopRadio } from "@/lib/voice";
 
 /** Sits above the phone's tab bar and at the foot of the page on a computer. */
 const DOCK = "sticky z-20 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] lg:bottom-4";
@@ -23,22 +23,38 @@ function Dot() {
   return <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />;
 }
 
+const SQUARE = "grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[#c4c8ce] disabled:opacity-40";
+
 function PresentDock({ text, label, compact, place }: { text: string | null; label?: string; compact: boolean; place: string }) {
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => () => stopRadio(), []);
   if (!text) return null;
   return (
     <div className={`${place} paper flex items-center gap-3 py-2 pl-4 pr-2 shadow-[0_10px_30px_rgb(0_0_0/0.45)]`}>
       <Dot />
       {!compact && <span className="title hidden text-[1.05rem] sm:inline">Ingeniero</span>}
       <span className="line-clamp-2 min-w-0 flex-1 text-[0.95rem] leading-snug">{label ?? text}</span>
-      <button type="button" onClick={() => playRadio(text, null, false)} className="btn-ink h-10 shrink-0 px-4 text-[0.95rem]">
-        ▶ Escuchar
+      <button
+        type="button"
+        onClick={() => {
+          if (playing) {
+            stopRadio();
+            setPlaying(false);
+          } else {
+            setPlaying(true);
+            playRadio(text, null, true).finally(() => setPlaying(false));
+          }
+        }}
+        className="btn-ink h-10 shrink-0 px-4 text-[0.95rem]"
+      >
+        {playing ? "■ Detener" : "▶ Escuchar"}
       </button>
     </div>
   );
 }
 
 function TalkDock({ compact, place }: { compact: boolean; place: string }) {
-  const { status, snapshot, engineer, askEngineer, setEngineerActive, engineerBusy } = useSharedLive();
+  const { status, snapshot, engineer, askEngineer, setEngineerActive, engineerBusy, voice } = useSharedLive();
   const [typing, setTyping] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -105,6 +121,35 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
             line
           )}
         </span>
+      )}
+      {!typing && voice.supported && (
+        <button
+          type="button"
+          onClick={voice.toggle}
+          aria-pressed={voice.enabled}
+          aria-label={voice.enabled ? "Silenciar la voz del ingeniero" : "Escuchar la voz del ingeniero"}
+          title={voice.enabled ? "Voz encendida" : "Voz apagada"}
+          className={SQUARE}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+            {voice.enabled ? <path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" /> : <path d="M17 9l5 6M22 9l-5 6" />}
+          </svg>
+        </button>
+      )}
+      {!typing && live && (
+        <button
+          type="button"
+          disabled={engineerBusy}
+          onClick={() => void setEngineerActive(!engineer.active)}
+          aria-label={engineer.active ? "Pausar al ingeniero" : "Volver a activar al ingeniero"}
+          title={engineer.active ? "Pausar al ingeniero en esta sesión" : "Activar al ingeniero"}
+          className={SQUARE}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+            {engineer.active ? <path d="M7 5h4v14H7zM13 5h4v14h-4z" /> : <path d="M7 4v16l13-8z" />}
+          </svg>
+        </button>
       )}
       <button
         type="button"

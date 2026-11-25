@@ -265,7 +265,7 @@ function Around({ s, level, rows }: { s: Snapshot | null; level: number; rows: n
       const car = cars.get(r.index);
       const hot = !isAhead && r.gap_s != null && r.gap_s < 0.5 && r.relation == null;
       return (
-        <div className={`flex min-h-0 flex-1 items-center justify-between gap-2 rounded-[10px] ${single ? "" : "px-[4cqw]"} ${hot && !single ? "bg-danger/15 ring-2 ring-danger ring-inset" : ""}`}>
+        <div className={`flex min-h-0 flex-1 items-center justify-between gap-2 rounded-[10px] ${single ? "" : "px-[4cqw]"} ${hot && !single ? "bg-danger/15" : ""}`}>
           <span className="min-w-0">
             <Label tone={hot ? "!text-accent-ink" : undefined}>{isAhead ? "Adelante" : "Atrás"} · {car ? shortName(car) : "—"}</Label>
             {hot && <span className="block text-[min(20cqh,6cqw)] leading-tight text-accent-ink">te ataca</span>}
@@ -287,7 +287,7 @@ function Around({ s, level, rows }: { s: Snapshot | null; level: number; rows: n
       {list.map(({ r, car, me, side }, i) => {
         const hot = side === 1 && r?.gap_s != null && r.gap_s < 0.5 && r.relation == null;
         return (
-          <div key={i} className={`flex min-h-0 flex-1 items-center gap-[3cqw] rounded-[8px] px-[3cqw] ${me ? "bg-ok/10" : hot ? "bg-danger/15 ring-2 ring-danger ring-inset" : ""}`}>
+          <div key={i} className={`flex min-h-0 flex-1 items-center gap-[3cqw] rounded-[8px] px-[3cqw] ${me ? "bg-ok/10" : hot ? "bg-danger/15" : ""}`}>
             <span className="display w-[14cqw] font-bold not-italic text-dim" style={fs(8, 7)}>P{car?.position ?? "—"}</span>
             <span className="h-[50%] w-1 rounded" style={{ background: car?.color ?? teamColor(car?.team_id) }} />
             <span className="min-w-0 flex-1 truncate font-semibold" style={fs(8, 7)}>{me ? "Vos" : car ? shortName(car) : "—"}</span>

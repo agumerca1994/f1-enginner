@@ -101,7 +101,7 @@ function speakWithBrowser(text: string): Promise<void> {
 
 /** Queue one radio call: the engineer's voice from the server through the radio chain,
  * or the browser's speech when the server has no audio for it. */
-export function playRadio(text: string, audio: string | null | undefined, urgent: boolean): void {
+export function playRadio(text: string, audio: string | null | undefined, urgent: boolean): Promise<void> {
   if (urgent) {
     generation++;
     current?.stop();
@@ -130,6 +130,15 @@ export function playRadio(text: string, audio: string | null | undefined, urgent
     radioTones(CLOSE_TONES);
     await sleep(250);
   });
+  return queue;
+}
+
+/** Cuts whatever the engineer is saying and drops what was queued. */
+export function stopRadio(): void {
+  generation++;
+  current?.stop();
+  window.speechSynthesis?.cancel();
+  queue = Promise.resolve();
 }
 
 /**

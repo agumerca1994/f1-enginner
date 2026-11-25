@@ -112,6 +112,34 @@ export type ViewerSetting = { value: number | null; suggested: number | null; ra
 // Settings whose effect grows as the number goes down (more negative camber, softer springs mean more movement).
 const INVERTED = new Set(["camber_del", "camber_tras", "suspension_del", "suspension_tras", "barra_antivuelco_del", "barra_antivuelco_tras", "diferencial_acelerando_pct", "diferencial_soltando_pct"]);
 
+/** The studio floor: a pool of light fading to nothing, with a faint grid. */
+function studioFloor(): THREE.Texture {
+  const size = 1024;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d")!;
+  const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grad.addColorStop(0, "rgba(58,63,71,0.55)");
+  grad.addColorStop(0.45, "rgba(36,39,45,0.35)");
+  grad.addColorStop(1, "rgba(11,12,14,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, size, size);
+  g.globalCompositeOperation = "source-atop";
+  g.strokeStyle = "rgba(255,255,255,0.05)";
+  g.lineWidth = 1;
+  for (let i = 0; i <= size; i += size / 36) {
+    g.beginPath();
+    g.moveTo(i, 0);
+    g.lineTo(i, size);
+    g.moveTo(0, i);
+    g.lineTo(size, i);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export function CarViewer({ focus, bias, setting }: { focus: string; bias?: number | null; setting?: ViewerSetting }) {
   const host = useRef<HTMLDivElement>(null);
   const api = useRef<{ setFocus: (k: string) => void; setBias: (b: number | null) => void; setSetting: (v: ViewerSetting | null) => void } | null>(null);
@@ -122,7 +150,7 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.0;
     el.appendChild(renderer.domElement);
     renderer.domElement.style.display = "block";
     renderer.domElement.style.touchAction = "pan-y";
@@ -132,13 +160,23 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
     const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = env;
     const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-    const key = new THREE.DirectionalLight(0xffffff, 1.2);
-    key.position.set(4, 8, 5);
+    // Studio light: a soft key from above, a cool fill and a warm rim in the app's red.
+    const key = new THREE.DirectionalLight(0xffffff, 1.35);
+    key.position.set(3, 9, 4);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(0x7dd3fc, 0.8);
-    rim.position.set(-6, 3, -4);
+    const fill = new THREE.DirectionalLight(0xc9d2dc, 0.35);
+    fill.position.set(5, 2, -6);
+    scene.add(fill);
+    const rim = new THREE.DirectionalLight(0xff6a4d, 0.9);
+    rim.position.set(-7, 2.5, -3);
     scene.add(rim);
-    scene.add(new THREE.GridHelper(18, 36, 0x173040, 0x0f1b25));
+    scene.add(new THREE.HemisphereLight(0x2a2e35, 0x0b0c0e, 0.6));
+    // A studio floor: a soft pool of light that fades out, with a faint grid.
+    const floorTex = studioFloor();
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(9, 64), new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.001;
+    scene.add(floor);
     const shadowTex = roundedTexture();
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 2.4), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2;
@@ -147,18 +185,20 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
 
     // --- materials -------------------------------------------------------------
     const mats = {
-      paint: new THREE.MeshPhysicalMaterial({ color: 0x18222e, metalness: 0.45, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.3, envMapIntensity: 0.55, transparent: true }),
-      carbon: new THREE.MeshPhysicalMaterial({ color: 0x0f141b, metalness: 0.3, roughness: 0.5, clearcoat: 0.3, envMapIntensity: 0.5, transparent: true }),
+      paint: new THREE.MeshPhysicalMaterial({ color: 0x23272e, metalness: 0.35, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.18, sheen: 0.4, sheenColor: new THREE.Color(0x3a3f47), envMapIntensity: 0.7, transparent: true }),
+      carbon: new THREE.MeshPhysicalMaterial({ color: 0x111317, metalness: 0.2, roughness: 0.55, clearcoat: 0.5, clearcoatRoughness: 0.4, envMapIntensity: 0.45, transparent: true }),
+      livery: new THREE.MeshPhysicalMaterial({ color: 0xff4b2b, metalness: 0.15, roughness: 0.35, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: 0.6, transparent: true }),
+      cover: new THREE.MeshPhysicalMaterial({ color: 0x1a1d22, metalness: 0.5, roughness: 0.3, clearcoat: 0.6, envMapIntensity: 0.6 }),
       rubber: new THREE.MeshStandardMaterial({ color: 0x0b0e12, metalness: 0, roughness: 0.92 }),
       rim: new THREE.MeshStandardMaterial({ color: 0x2b3542, metalness: 0.85, roughness: 0.3 }),
-      stripe: new THREE.MeshStandardMaterial({ color: 0xe9eef3, roughness: 0.6 }),
-      helmet: new THREE.MeshPhysicalMaterial({ color: 0xe9eef3, metalness: 0.1, roughness: 0.25, clearcoat: 1 }),
+      stripe: new THREE.MeshStandardMaterial({ color: 0xff4b2b, roughness: 0.5 }),
+      helmet: new THREE.MeshPhysicalMaterial({ color: 0xff4b2b, metalness: 0.1, roughness: 0.25, clearcoat: 1 }),
       visor: new THREE.MeshPhysicalMaterial({ color: 0x0a0d12, metalness: 0.9, roughness: 0.1 }),
       metal: new THREE.MeshStandardMaterial({ color: 0x55667a, metalness: 0.9, roughness: 0.35 }),
       black: new THREE.MeshBasicMaterial({ color: 0x030405 }),
-      hl: new THREE.MeshStandardMaterial({ color: 0x9a2410, emissive: 0xff4b2b, emissiveIntensity: 0.55, metalness: 0.3, roughness: 0.35 }),
-      line: new THREE.LineBasicMaterial({ color: 0x4f7a96, transparent: true, opacity: 0.55 }),
-      hlLine: new THREE.LineBasicMaterial({ color: 0xffb3a3 }),
+      hl: new THREE.MeshStandardMaterial({ color: 0xe9edf2, emissive: 0xffffff, emissiveIntensity: 0.45, metalness: 0.2, roughness: 0.3 }),
+      line: new THREE.LineBasicMaterial({ color: 0x6b717c, transparent: true, opacity: 0.55 }),
+      hlLine: new THREE.LineBasicMaterial({ color: 0xffffff }),
     };
     const owned: Owned[] = [];
     const brakeMats: { front: boolean; mat: THREE.MeshStandardMaterial }[] = [];
@@ -226,7 +266,7 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
 
     // Front wing: main plane, two flaps that tilt together, endplates.
     add(body, wing(0.44, 1.95, 0.1, 0.04), "front_wing", mats.carbon).position.set(3.5, 0.075, 0);
-    for (const side of [1, -1]) add(body, plate(FRONT_ENDPLATE, 0.014), "front_wing", mats.carbon).position.z = side * 0.98;
+    for (const side of [1, -1]) add(body, plate(FRONT_ENDPLATE, 0.014), "front_wing", mats.livery).position.z = side * 0.98;
     const frontFlap = new THREE.Group();
     frontFlap.position.set(3.08, 0.13, 0);
     body.add(frontFlap);
@@ -237,7 +277,9 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
 
     // Rear wing: main plane, a flap above it, endplates, beam wing and pylon.
     add(body, wing(0.38, 1.0, 0.11, 0.05), "rear_wing", mats.carbon).position.set(-2.22, 0.84, 0);
-    for (const side of [1, -1]) add(body, plate(REAR_ENDPLATE, 0.014), "rear_wing", mats.carbon).position.z = side * 0.505;
+    for (const side of [1, -1]) add(body, plate(REAR_ENDPLATE, 0.014), "rear_wing", mats.livery).position.z = side * 0.505;
+    // A red fin on the engine cover, like a livery.
+    add(body, plate([[-0.2, 0.74], [-1.5, 0.62], [-1.55, 0.68], [-0.1, 0.8]], 0.012), "body", mats.livery, { lines: false });
     add(body, wing(0.2, 0.86, 0.1, 0.04), "rear_wing", mats.carbon).position.set(-2.18, 0.42, 0);
     add(body, tube([[-2.15, 0.36, 0], [-2.3, 0.62, 0], [-2.36, 0.83, 0]], 0.022), "rear_wing", mats.carbon, { lines: false });
     const rearFlap = new THREE.Group();
@@ -273,7 +315,7 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
         const barrel = new THREE.CylinderGeometry(RIM, RIM, width - 0.02, 40, 1, true);
         barrel.rotateX(Math.PI / 2);
         add(spin, barrel, front ? "wheels_front" : "wheels_rear", mats.rim, { lines: false });
-        const c = add(spin, new THREE.CircleGeometry(RIM, 40), front ? "wheels_front" : "wheels_rear", mats.rim, { lines: false });
+        const c = add(spin, new THREE.CircleGeometry(RIM, 40), front ? "wheels_front" : "wheels_rear", mats.cover, { lines: false });
         c.position.z = side * (width / 2 - 0.02);
         if (side < 0) c.rotation.y = Math.PI;
         for (let k = 0; k < 3; k++) {
@@ -482,6 +524,8 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
       }
       for (const bm of brakeMats) bm.mat.emissiveIntensity = 0;
 
+      // The chosen part breathes, so it reads as selected from any angle.
+      mats.hl.emissiveIntensity = 0.32 + 0.22 * (Math.sin(now / 420) + 1) / 2;
       const anim = focus.anim;
       if (anim === "wing_front") frontFlap.rotation.z = -0.12 - s * 0.5;
       if (anim === "wing_rear") rearFlap.rotation.z = -0.15 - s * 0.65;
@@ -550,6 +594,7 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
       Object.values(mats).forEach((m) => m.dispose());
       brakeMats.forEach((bm) => bm.mat.dispose());
       shadowTex.dispose();
+      floorTex.dispose();
       env.dispose();
       pmrem.dispose();
       renderer.dispose();
