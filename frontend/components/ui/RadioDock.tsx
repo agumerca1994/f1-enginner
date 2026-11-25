@@ -82,6 +82,7 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
     }
   };
   const mic = useDictation((q) => void ask(q));
+  useSpaceToTalk(mic.supported && !typing, mic.start, mic.stop);
   const last = [...engineer.messages].reverse().find((m) => m.radio);
   const live = status === "live" && snapshot;
   const paused = live && !engineer.active && engineer.provider != null;
@@ -185,8 +186,55 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
         >
           <span className="lg:hidden">Hablar</span>
           <span className="hidden lg:inline">Mantené para hablar</span>
+          <span className="ml-2 hidden rounded border border-current/40 px-1.5 py-0.5 font-mono text-[0.62rem] tracking-normal opacity-70 lg:inline" title="También con la barra espaciadora">
+            ESPACIO
+          </span>
         </button>
       )}
     </div>
   );
+}
+
+
+/**
+ * Hold the space bar to talk, release to send: push-to-talk without looking for the
+ * button. Off while typing in a field, and only while this window has the focus
+ * (with the game on the same computer, the game keeps the keyboard).
+ */
+function useSpaceToTalk(enabled: boolean, start: () => void, stop: () => void) {
+  useEffect(() => {
+    if (!enabled) return;
+    let held = false;
+    const typing = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      return !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
+    };
+    const down = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      e.preventDefault(); // no page scroll, no click on a focused button
+      if (held || e.repeat) return;
+      held = true;
+      start();
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || !held) return;
+      e.preventDefault();
+      held = false;
+      stop();
+    };
+    const blur = () => {
+      if (held) {
+        held = false;
+        stop();
+      }
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+    };
+  }, [enabled, start, stop]);
 }
