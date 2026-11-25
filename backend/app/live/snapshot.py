@@ -118,7 +118,12 @@ def build(live: LiveSession) -> dict[str, Any]:
             "delta_best_ms": live.timing.delta.delta_ms(lap),
             "delta_reference_lap": live.timing.delta.reference_lap,
         }
+        # Where the car is: in the garage the app shows the box, anywhere else the track.
+        out["car_state"] = "garage" if int(lap["driver_status"]) == 0 else "pista"
         out.update(_timing(live, p.body["lap_data"], player))
+
+    if (p := live.last.get("tyre_sets")) is not None and int(p.body["car_idx"]) == player:
+        out["tyre_sets"] = _tyre_sets(p.body)
 
     if (p := live.last.get("car_telemetry")) is not None:
         t = p.body["car_telemetry_data"][player]
@@ -430,3 +435,19 @@ def _is_sprint(s) -> bool:
     except (KeyError, ValueError, IndexError):
         return False
     return int(s["session_type"]) == 15 and 16 in weekend
+
+
+def _tyre_sets(body) -> list[dict[str, Any]]:
+    """The player's sets still available or fitted, identical ones grouped (same compound, wear and new/used)."""
+    groups: dict[tuple, dict[str, Any]] = {}
+    for ts in body["tyre_set_data"]:
+        compound = c.VISUAL_COMPOUNDS.get(int(ts["visual_tyre_compound"]))
+        fitted, available = bool(ts["fitted"]), bool(ts["available"])
+        if compound is None or not (available or fitted):
+            continue
+        wear = int(ts["wear"])
+        key = (compound, wear, fitted)
+        g = groups.setdefault(key, {"compound": compound, "wear_percent": wear, "fitted": fitted, "new": wear == 0, "count": 0})
+        g["count"] += 1
+    order = ["Soft", "Medium", "Hard", "Intermediate", "Wet"]
+    return sorted(groups.values(), key=lambda g: (order.index(g["compound"]), not g["fitted"], g["wear_percent"]))

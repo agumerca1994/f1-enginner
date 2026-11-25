@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,6 +31,8 @@ class User(Base):
     # How the engineer calls the player on the radio. The game's driver name is the seat they
     # took in career mode ("GASLY"), never the player.
     radio_name: Mapped[str | None] = mapped_column(String(40))
+    # The player's cockpit layouts (grid size and pieces), shared by all their screens.
+    cockpits: Mapped[list | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     tenant: Mapped[Tenant] = relationship(back_populates="users")

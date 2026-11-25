@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -27,3 +28,7 @@ class OverlayToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A screen linked with a code: what it shows ("tabla", "cockpit", "mapa", "radio", "muro", "panel")
+    # and its options (the cockpit layout id, the panel). None for plain overlay links.
+    role: Mapped[str | None] = mapped_column(String(20))
+    config: Mapped[dict | None] = mapped_column(JSONB)

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.engineer import box
+from app.engineer import box, debrief
 from app.engineer.review import SessionReview, review_for
 from app.engineer.runner import engineer_hub
 from app.engineer.traces import trace_json
@@ -61,6 +61,25 @@ async def overview(session_id: int, user: User = Depends(get_current_user), db: 
             "en_curso": g.ended_at is None,
         },
         **box.overview(r),
+    }
+
+
+@router.get("/{session_id}/report")
+async def run_report(session_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The box screen: the last run, the corners where its best lap lost time and what to change."""
+    _, r = await _review(session_id, user, db)
+    return debrief.run_report(r)
+
+
+@router.get("/{session_id}/summary")
+async def summary(session_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The session summary, written by code from the recording."""
+    g, r = await _review(session_id, user, db)
+    tipo = c.SESSION_TYPES.get(g.session_type) if g.session_type is not None else None
+    return {
+        "sesion": {"id": g.id, "pista": c.TRACKS.get(g.track_id) if g.track_id is not None else None,
+                   "track_id": g.track_id, "tipo": tipo, "inicio": g.started_at.isoformat(), "en_curso": g.ended_at is None},
+        **debrief.summary(r, tipo),
     }
 
 

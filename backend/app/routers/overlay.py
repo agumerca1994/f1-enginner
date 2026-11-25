@@ -51,7 +51,7 @@ def _out(row: OverlayToken) -> OverlayTokenOut:
 async def list_tokens(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     rows = await db.scalars(
         select(OverlayToken)
-        .where(OverlayToken.tenant_id == user.tenant_id, OverlayToken.revoked_at.is_(None))
+        .where(OverlayToken.tenant_id == user.tenant_id, OverlayToken.revoked_at.is_(None), OverlayToken.role.is_(None))
         .order_by(OverlayToken.created_at.desc())
     )
     return [_out(r) for r in rows]
