@@ -41,7 +41,7 @@ if (!intro || html.classList.contains("no-intro")) {
   const giveUp = setTimeout(() => endIntro(true), 3500);
   video.addEventListener("playing", () => { clearTimeout(giveUp); intro.classList.add("playing"); }, { once: true });
   video.addEventListener("timeupdate", () => {
-    if (video.currentTime > video.duration - 1.4 && !title.classList.contains("on")) { flash.classList.add("on"); title.classList.add("on"); }
+    if (video.currentTime > video.duration - 0.8 && !title.classList.contains("on")) { flash.classList.add("on"); title.classList.add("on"); }
   });
   video.addEventListener("ended", () => setTimeout(() => endIntro(false), 500));
   video.addEventListener("error", () => endIntro(true));

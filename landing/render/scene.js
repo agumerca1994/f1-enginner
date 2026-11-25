@@ -150,7 +150,7 @@ export async function buildScene(canvas, W, H) {
   const SPEED = 62 / RC; // rad/s, about 220 km/h
   const cars = built.map((c, i) => {
     scene.add(c.car);
-    return { ...c, a0: -0.95 - i * 0.075, r: [RC + 1.2, RC - 1.4, RC + 2.4, RC - 0.4][i], weave: i * 1.7 };
+    return { ...c, a0: -0.85 - i * 0.075, last: i === built.length - 1, r: [RC + 1.2, RC - 1.4, RC + 2.4, RC - 0.4][i], weave: i * 1.7 };
   });
 
   // The camera stands just inside the kerb, a long lens looking up the corner at the oncoming cars.
@@ -164,7 +164,8 @@ export async function buildScene(canvas, W, H) {
   composer.addPass(new OutputPass());
 
   return function renderAt(t) {
-    let lead = null;
+    // A locked-off camera. Each car that goes by shakes it a little; the last one the most.
+    let shake = 0;
     for (const c of cars) {
       const a = c.a0 + SPEED * t;
       const r = c.r + Math.sin(t * 1.3 + c.weave) * 0.4; // drivers moving on the line
@@ -172,14 +173,14 @@ export async function buildScene(canvas, W, H) {
       c.car.position.set(r * Math.cos(a), 0, r * Math.sin(a));
       c.car.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)) - 0.02;
       for (const s of c.spinners) s.rotation.z = -t * 172; // 62 m/s on a 0.36 m tyre
-      if (c.car.visible && (!lead || a > lead.a)) lead = { a, pos: c.car.position };
+      const d = Math.abs(a - camA) * RC; // metres along the track from the camera
+      shake = Math.max(shake, Math.exp(-d / 7) * (c.last ? 1 : 0.55));
     }
-    // The operator keeps the leader in frame as it closes in.
-    const target = look.clone();
-    if (lead) target.lerp(new THREE.Vector3(lead.pos.x, 0.5, lead.pos.z), Math.min(0.6, Math.max(0, (lead.a + 0.2) / 0.25) * 0.6));
     camera.position.copy(camBase);
-    camera.position.y += Math.sin(t * 9) * 0.004; // a hand-held breath
-    camera.lookAt(target);
+    camera.position.y += (Math.sin(t * 53) * 0.6 + Math.sin(t * 91) * 0.4) * 0.03 * shake;
+    camera.position.x += Math.sin(t * 67) * 0.03 * shake;
+    camera.lookAt(look);
+    camera.rotateZ((Math.sin(t * 71) * 0.6 + Math.sin(t * 43) * 0.4) * 0.012 * shake);
     composer.render();
   };
 }
