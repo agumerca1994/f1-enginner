@@ -39,6 +39,8 @@ class LiveSession:
     best_lap_ms: dict[int, int] = field(default_factory=dict)
     # The player's own SessionHistory body: lap and sector times with validity flags.
     player_history: object | None = None
+    # The player's own TyreSets body: the game sends every car's in turn, so the last one is rarely theirs.
+    player_tyre_sets: object | None = None
     timing: LiveTiming = field(default_factory=LiveTiming)
     # Circuit outline built from every car's position; loaded and saved by the ingest service.
     track_id: int | None = None
@@ -57,6 +59,8 @@ class LiveSession:
         self.last_at[packet.name] = now
         self.updated_at = now
         self.packets += 1
+        if packet.name == "tyre_sets" and int(packet.body["car_idx"]) == packet.player_car_index:
+            self.player_tyre_sets = packet.body
         if packet.name == "event":
             code, details = registry.event_details(packet)
             if code != "BUTN":  # button presses are noise for the engineer

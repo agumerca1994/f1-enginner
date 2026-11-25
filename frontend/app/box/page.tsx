@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MINE_COLOR, REF_COLOR, TelemetryChart } from "@/components/box/TelemetryChart";
 import { sessionName } from "@/components/dashboard/Cards";
-import { Panel } from "@/components/dashboard/Panel";
+import { TyreDot } from "@/components/ui/Tyres";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -211,20 +211,17 @@ function Box() {
     : null;
 
   return (
-    <main className="mx-auto max-w-[1800px] px-3 pb-10 pt-3 sm:px-5">
-      <header className="flex flex-wrap items-center justify-between gap-3 card px-4 py-3">
+    <main className="mx-auto max-w-[1600px] px-[max(1rem,env(safe-area-inset-left))] pb-10 pt-4 lg:px-7 lg:pt-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent-ink">TELEMETRÍA</span>
-            <span className="truncate text-lg font-semibold">{overview?.sesion.pista ?? "Telemetría por vuelta"}</span>
-          </div>
-          <div className="text-sm text-muted">
+          <span className="eyebrow block">
             {overview
-              ? `${overview.sesion.tipo ? sessionName(overview.sesion.tipo) : "Sesión"} · ${when(overview.sesion.inicio)}`
+              ? `${overview.sesion.pista ?? "Pista"} · ${overview.sesion.tipo ? sessionName(overview.sesion.tipo) : "Sesión"} · ${when(overview.sesion.inicio)}`
               : "Elegí una sesión grabada"}
-          </div>
+          </span>
+          <h1 className="display mt-1 text-[2.4rem] uppercase lg:text-[2.9rem]">Telemetría</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
           {sessions && sessions.length > 0 && (
             <select
               value={sid ?? ""}
@@ -235,7 +232,7 @@ function Box() {
                 setRef(null);
                 setSid(Number(e.target.value));
               }}
-              className="max-w-64 rounded-lg border border-line bg-panel-2 px-2 py-1.5 text-sm"
+              className="h-10 max-w-[18rem] rounded-[var(--radius-control)] border border-line bg-panel px-3 text-[0.88rem] text-fg"
               aria-label="Sesión"
             >
               {sessions.map((s) => (
@@ -246,58 +243,47 @@ function Box() {
             </select>
           )}
           {session && !session.ended_at && (
-            <button
-              onClick={() => setRefresh((n) => n + 1)}
-              disabled={loading}
-              className="chip px-3 py-1.5 text-sm text-muted hover:text-fg disabled:opacity-50"
-            >
+            <button type="button" onClick={() => setRefresh((n) => n + 1)} disabled={loading} className="btn h-10 px-3.5 text-[0.88rem] text-muted hover:text-fg disabled:opacity-50">
               {loading ? "Actualizando…" : "Actualizar"}
             </button>
           )}
-          <Link href={sid != null ? `/reglaje?s=${sid}` : "/reglaje"} className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
-            Reglaje
-          </Link>
-          <Link href="/sessions" className="chip px-3 py-1.5 text-sm text-muted hover:text-fg">
-            Sesiones
+          <Link href={sid != null ? `/reglaje?s=${sid}` : "/reglaje"} className="btn flex h-10 items-center px-3.5 text-[0.88rem] text-muted hover:text-fg">
+            Reglaje ›
           </Link>
         </div>
       </header>
 
-      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      {error && <p className="mt-3 text-[0.9rem] text-warn">{error}</p>}
       {sessions?.length === 0 && (
-        <p className="mt-8 rounded-2xl border border-dashed border-line p-6 text-center text-muted">
-          Todavía no hay sesiones grabadas. Corré una con el bridge encendido y va a aparecer acá.
-        </p>
+        <p className="card mt-6 px-6 py-8 text-center text-muted">Todavía no hay sesiones grabadas. Corré una con el Bridge encendido y va a aparecer acá.</p>
       )}
-      {loading && !overview && <p className="mt-8 text-center text-sm text-muted">Leyendo la telemetría de la sesión…</p>}
+      {loading && !overview && <p className="mt-8 text-center text-[0.9rem] text-muted">Leyendo la telemetría de la sesión…</p>}
 
       {overview && overview.vueltas.length === 0 && mine !== LIVE && (
-        <p className="mt-8 rounded-2xl border border-dashed border-line p-6 text-center text-muted">
-          Esta sesión no tiene vueltas completas grabadas. Hace falta cruzar la línea al menos dos veces.
-        </p>
+        <p className="card mt-6 px-6 py-8 text-center text-muted">Esta sesión no tiene vueltas completas grabadas. Hace falta cruzar la línea al menos dos veces.</p>
       )}
 
       {overview && (overview.vueltas.length > 0 || mine === LIVE) && (
-        <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
-          <div className="flex min-w-0 flex-col gap-3">
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
+          <div className="flex min-w-0 flex-col gap-4">
             <Panel
-              title="Telemetría"
+              title="Vuelta contra vuelta"
               right={
                 <div className="flex flex-wrap items-center gap-2">
                   {mine === LIVE ? (
                     <>
-                      <span className="flex items-center gap-1.5 text-xs text-ok">
+                      <span className="flex items-center gap-1.5 text-[0.82rem] text-ok">
                         <span className="h-2 w-2 animate-pulse rounded-full bg-ok" aria-hidden /> En vivo
                       </span>
                       {lastDoneKey && (
-                        <button onClick={() => setMine(lastDoneKey)} className="rounded-lg border border-line px-2.5 py-1 text-xs text-muted hover:text-fg">
+                        <button type="button" onClick={() => setMine(lastDoneKey)} className="btn px-2.5 py-1.5 text-[0.82rem] text-muted hover:text-fg">
                           Comparar la última vuelta
                         </button>
                       )}
                     </>
                   ) : (
                     overview.sesion.en_curso && (
-                      <button onClick={() => setMine(LIVE)} className="rounded-lg border border-line px-2.5 py-1 text-xs text-muted hover:text-fg">
+                      <button type="button" onClick={() => setMine(LIVE)} className="btn px-2.5 py-1.5 text-[0.82rem] text-muted hover:text-fg">
                         Ver en vivo
                       </button>
                     )
@@ -318,9 +304,7 @@ function Box() {
                     refLabel={`Referencia · ${refLabel(ref)}`}
                   />
                 ) : (
-                  <p className="py-10 text-center text-sm text-muted">
-                    {liveTrace ? "Elegí una referencia para comparar mientras manejás." : "Esperando la vuelta en curso…"}
-                  </p>
+                  <p className="py-12 text-center text-[0.9rem] text-muted">{liveTrace ? "Elegí una referencia para comparar mientras manejás." : "Esperando la vuelta en curso…"}</p>
                 )
               ) : cmp && overview.largo_pista_m ? (
                 <TelemetryChart
@@ -333,28 +317,24 @@ function Box() {
                   refLabel={`Referencia · ${refLabel(ref)}`}
                 />
               ) : (
-                <p className="py-10 text-center text-sm text-muted">
-                  {mine && ref && mine !== ref
-                    ? "Cargando las vueltas…"
-                    : "Para comparar hace falta otra vuelta tuya o la de otro piloto."}
+                <p className="py-12 text-center text-[0.9rem] text-muted">
+                  {mine && ref && mine !== ref ? "Cargando las vueltas…" : "Para comparar hace falta otra vuelta tuya o la de otro piloto."}
                 </p>
               )}
               {mine === LIVE && (
-                <p className="mt-2 text-xs text-muted">
-                  Se dibuja mientras manejás. La comparación curva por curva, las tandas y las sugerencias se calculan
-                  al terminar cada vuelta: tocá &quot;Comparar la última vuelta&quot;.
+                <p className="mt-2 text-[0.8rem] text-dim">
+                  Se dibuja mientras manejás. La comparación curva por curva y las sugerencias se calculan al terminar cada vuelta: tocá &quot;Comparar la última vuelta&quot;.
                 </p>
               )}
               {cmp && (cmp.traza_a.coverage < 0.8 || cmp.traza_b.coverage < 0.8) && (
-                <p className="mt-2 text-xs text-warn">
-                  Llegó poca telemetría de alguna de las dos vueltas: los tramos sin datos quedan en blanco.
-                </p>
+                <p className="mt-2 text-[0.8rem] text-warn">Llegó poca telemetría de alguna de las dos vueltas: los tramos sin datos quedan en blanco.</p>
               )}
             </Panel>
             <LapsPanel overview={overview} mine={mine} refKey={ref} onMine={setMine} onRef={setRef} />
             {cmp && <CornersPanel rows={cmp.curvas} />}
           </div>
-          <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 flex-col gap-4">
+            {cmp && <AdvicePanel cmp={cmp} />}
             <RunsPanel
               runs={overview.tandas}
               sessionId={overview.sesion.id}
@@ -363,12 +343,24 @@ function Box() {
                 if (v) setMine(lapKey(v.car, v.vuelta));
               }}
             />
-            {cmp && <AdvicePanel cmp={cmp} />}
             <SetupPanel overview={overview} mine={mineLap} other={refLap} />
           </div>
         </div>
       )}
     </main>
+  );
+}
+
+/** A block of the page: the eyebrow title, its controls on the right and its content. */
+function Panel({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="card px-4 py-4 sm:px-5">
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="eyebrow">{title}</h2>
+        {right}
+      </header>
+      {children}
+    </section>
   );
 }
 
@@ -387,12 +379,12 @@ function RefPicker({
 }) {
   const own = overview.vueltas.filter((v) => lapKey(v.car, v.vuelta) !== mine && v.tiempo_s);
   return (
-    <label className="flex items-center gap-2 text-xs text-muted">
+    <label className="flex items-center gap-2 text-[0.82rem] text-muted">
       <span className="hidden sm:inline">Comparar con</span>
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        className="max-w-56 rounded-lg border border-line bg-panel-2 px-2 py-1 text-sm text-fg"
+        className="h-9 max-w-[15rem] rounded-[8px] border border-line bg-bg px-2 text-[0.88rem] text-fg"
       >
         {overview.referencias.length > 0 && (
           <optgroup label="Mejor vuelta de cada piloto">
@@ -432,20 +424,19 @@ function LapsPanel({
 }) {
   const multipleSetups = overview.reglajes.length > 1;
   return (
-    <Panel title="Vueltas" right={<span className="text-xs text-muted">Tocá una vuelta para analizarla</span>}>
-      <div className="-mx-4 overflow-x-auto px-4">
-        <table className="w-full min-w-[640px] text-sm">
+    <Panel title="Tus vueltas" right={<span className="text-[0.8rem] text-dim">Tocá una para analizarla</span>}>
+      <div className="-mx-4 overflow-x-auto px-4 sm:-mx-5 sm:px-5">
+        <table className="w-full min-w-[620px] text-[0.92rem]">
           <thead>
-            <tr className="label text-left">
-              <th className="py-1.5 pr-2 font-normal">Vuelta</th>
-              <th className="pr-2 text-right font-normal">Tiempo</th>
-              <th className="pr-2 text-right font-normal">S1</th>
-              <th className="pr-2 text-right font-normal">S2</th>
-              <th className="pr-2 text-right font-normal">S3</th>
-              <th className="pr-2 font-normal">Gomas</th>
-              <th className="pr-2 font-normal">Reglaje</th>
-              <th className="pr-2 text-right font-normal">Datos</th>
-              <th className="font-normal" />
+            <tr className="eyebrow text-left">
+              <th className="pb-2 pr-2 font-normal">Vuelta</th>
+              <th className="pb-2 pr-3 text-right font-normal">Tiempo</th>
+              <th className="pb-2 pr-3 text-right font-normal">S1</th>
+              <th className="pb-2 pr-3 text-right font-normal">S2</th>
+              <th className="pb-2 pr-3 text-right font-normal">S3</th>
+              <th className="pb-2 pr-2 font-normal">Gomas</th>
+              {multipleSetups && <th className="pb-2 pr-2 font-normal">Reglaje</th>}
+              <th className="pb-2 font-normal" />
             </tr>
           </thead>
           <tbody>
@@ -454,54 +445,42 @@ function LapsPanel({
               const isMine = key === mine;
               const isRef = key === refKey;
               return (
-                <tr
-                  key={key}
-                  onClick={() => onMine(key)}
-                  className={`cursor-pointer border-t border-line hover:bg-panel-2 ${isMine ? "bg-panel-2" : ""}`}
-                >
-                  <td className="py-1.5 pr-2">
+                <tr key={key} onClick={() => onMine(key)} className={`cursor-pointer border-t border-panel-2 hover:bg-panel-2 ${isMine ? "bg-panel-2" : ""}`}>
+                  <td className="py-2 pr-2">
                     <span className="flex items-center gap-2">
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full"
-                        style={{ background: isMine ? MINE_COLOR : isRef ? REF_COLOR : "transparent" }}
-                        aria-hidden
-                      />
-                      <span className="num">{v.vuelta}</span>
-                      {v.mejor && <span className="rounded bg-accent/20 px-1.5 text-[0.65rem] font-semibold text-accent">MEJOR</span>}
-                      {!v.valida && <span className="text-[0.7rem] text-warn">inválida</span>}
-                      {v.box && <span className="text-[0.7rem] text-muted">box</span>}
+                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: isMine ? MINE_COLOR : isRef ? REF_COLOR : "transparent" }} aria-hidden />
+                      <span className="title text-[1.05rem]">V{v.vuelta}</span>
+                      {v.mejor && <span className="rounded border border-best/50 px-1.5 font-mono text-[0.62rem] text-best">MEJOR</span>}
+                      {!v.valida && <span className="font-mono text-[0.62rem] text-warn">INVÁLIDA</span>}
+                      {v.box && <span className="font-mono text-[0.62rem] text-dim">BOX</span>}
+                      {v.cobertura < 0.6 && <span className="font-mono text-[0.62rem] text-warn" title="Llegó poca telemetría de esta vuelta">POCOS DATOS</span>}
                     </span>
                   </td>
-                  <td className="num pr-2 text-right">{lapTime(ms(v.tiempo_s))}</td>
+                  <td className={`title num pr-3 text-right text-[1.05rem] normal-case ${v.mejor ? "text-best" : ""}`}>{lapTime(ms(v.tiempo_s))}</td>
                   {[0, 1, 2].map((k) => (
-                    <td key={k} className="num pr-2 text-right text-muted">
-                      {v.sectores_s?.[k] != null ? v.sectores_s[k]!.toFixed(3) : "—"}
+                    <td key={k} className="num pr-3 text-right text-muted">
+                      {v.sectores_s?.[k] != null ? v.sectores_s[k]!.toFixed(3).replace(".", ",") : "—"}
                     </td>
                   ))}
                   <td className="pr-2 text-muted">
-                    {v.compuesto ? (COMPOUND_ES[v.compuesto] ?? v.compuesto) : "—"}
-                    {v.edad_gomas != null ? ` · ${v.edad_gomas} v.` : ""}
+                    <span className="flex items-center gap-2 whitespace-nowrap">
+                      {v.compuesto && <TyreDot compound={v.compuesto} filled size={12} />}
+                      {v.compuesto ? (COMPOUND_ES[v.compuesto] ?? v.compuesto) : "—"}
+                      {v.edad_gomas != null ? <span className="text-dim">· {v.edad_gomas} v.</span> : null}
+                    </span>
                   </td>
-                  <td className="pr-2">
-                    {v.reglaje ? (
-                      <span className={`num rounded px-1.5 ${multipleSetups ? "bg-panel-2 text-fg" : "text-muted"}`}>{v.reglaje}</span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className={`num pr-2 text-right ${v.cobertura < 0.8 ? "text-warn" : "text-muted"}`}>
-                    {Math.round(v.cobertura * 100)}%
-                  </td>
+                  {multipleSetups && <td className="pr-2">{v.reglaje ? <span className="title rounded bg-bg px-1.5 text-[0.95rem]">{v.reglaje}</span> : "—"}</td>}
                   <td className="text-right">
                     {!isMine && v.tiempo_s && (
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onRef(key);
                         }}
-                        className="rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:text-fg"
+                        className={`rounded-[8px] border px-2 py-1 text-[0.78rem] ${isRef ? "border-best/60 text-best" : "border-line text-muted hover:text-fg"}`}
                       >
-                        Usar de referencia
+                        {isRef ? "Referencia" : "Usar de referencia"}
                       </button>
                     )}
                   </td>
@@ -519,11 +498,11 @@ function CornersPanel({ rows }: { rows: CornerRow[] }) {
   const m = (v: number | null) => (v == null ? "—" : `${v.toLocaleString("es-AR")} m`);
   const kmh = (v: number | null) => (v == null ? "—" : `${v}`);
   return (
-    <Panel title="Curva por curva" right={<span className="text-xs text-muted">vos / referencia</span>}>
-      <div className="-mx-4 overflow-x-auto px-4">
-        <table className="w-full min-w-[640px] text-sm">
+    <Panel title="Curva por curva" right={<span className="text-[0.8rem] text-dim">vos / referencia</span>}>
+      <div className="-mx-4 overflow-x-auto px-4 sm:-mx-5 sm:px-5">
+        <table className="w-full min-w-[640px] text-[0.9rem]">
           <thead>
-            <tr className="label text-left">
+            <tr className="eyebrow text-left">
               <th className="py-1.5 pr-2 font-normal">Curva</th>
               <th className="pr-2 text-right font-normal">Diferencia</th>
               <th className="pr-2 text-right font-normal">Frena en</th>
@@ -534,11 +513,11 @@ function CornersPanel({ rows }: { rows: CornerRow[] }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.curva} className="border-t border-line align-top">
-                <td className="py-1.5 pr-2">
-                  <span className="num">C{r.curva}</span> <span className="text-xs text-muted">S{r.sector}</span>
+              <tr key={r.curva} className="border-t border-panel-2 align-top">
+                <td className="py-2 pr-2">
+                  <span className="title text-[1.05rem]">Curva {r.curva}</span> <span className="font-mono text-[0.65rem] text-dim">S{r.sector}</span>
                 </td>
-                <td className={`num pr-2 text-right ${diffClass(r.diferencia_s)}`}>
+                <td className={`title num pr-2 text-right text-[1.05rem] ${diffClass(r.diferencia_s)}`}>
                   {r.diferencia_s == null ? "—" : secondsText(r.diferencia_s)}
                 </td>
                 <td className="num pr-2 text-right">
@@ -550,23 +529,20 @@ function CornersPanel({ rows }: { rows: CornerRow[] }) {
                 <td className="num pr-2 text-right">
                   {m(r.b.acelera_a_fondo_en_m)} <span className="text-muted">/ {m(r.a.acelera_a_fondo_en_m)}</span>
                 </td>
-                <td className="text-xs text-muted">{(r.b.problemas ?? []).map((p) => ISSUE_ES[p] ?? p).join(", ") || "—"}</td>
+                <td className="text-[0.82rem] text-muted">{(r.b.problemas ?? []).map((p) => ISSUE_ES[p] ?? p).join(", ") || "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-muted">
-        Diferencia positiva: perdés tiempo contra la referencia en esa curva. Las curvas las numera la app en orden
-        desde la largada, así que pueden no coincidir con la numeración oficial.
-      </p>
+      <p className="mt-3 text-[0.8rem] text-dim">Diferencia positiva: perdés tiempo contra la referencia en esa curva. Son las mismas curvas numeradas del mapa.</p>
     </Panel>
   );
 }
 
 function diffClass(v: number | null): string {
   if (v == null || Math.abs(v) < 0.05) return "text-muted";
-  return v > 0 ? "text-danger" : "text-ok";
+  return v > 0 ? "text-accent-ink" : "text-ok";
 }
 
 function AdvicePanel({ cmp }: { cmp: Comparison }) {
@@ -577,21 +553,21 @@ function AdvicePanel({ cmp }: { cmp: Comparison }) {
   return (
     <Panel title="Dónde está el tiempo">
       {total != null && (
-        <p className="mb-3 text-sm">
+        <div className="mb-4">
           {Math.abs(total) < 0.001 ? (
-            "Las dos vueltas dieron el mismo tiempo."
+            <p className="text-[0.95rem]">Las dos vueltas dieron el mismo tiempo.</p>
           ) : (
             <>
-              Tu vuelta es <span className={`num font-semibold ${total > 0 ? "text-danger" : "text-ok"}`}>{secondsText(total, false)}</span>{" "}
-              {total > 0 ? "más lenta" : "más rápida"} que la referencia.
+              <span className={`display block text-[2.6rem] not-italic ${total > 0 ? "text-accent-ink" : "text-ok"}`}>{secondsText(total, false)}</span>
+              <span className="text-[0.85rem] text-dim">tu vuelta, {total > 0 ? "más lenta" : "más rápida"} que la referencia</span>
             </>
           )}
-        </p>
+        </div>
       )}
       {losing.length > 0 && (
         <>
-          <h3 className="label mb-1.5">Dónde perdés</h3>
-          <ul className="mb-3 space-y-2">
+          <h3 className="eyebrow mb-2">Dónde perdés</h3>
+          <ul className="mb-4 flex flex-col gap-2">
             {losing.map((r) => (
               <AdviceItem key={r.curva} row={r} />
             ))}
@@ -600,8 +576,8 @@ function AdvicePanel({ cmp }: { cmp: Comparison }) {
       )}
       {gaining.length > 0 && (
         <>
-          <h3 className="label mb-1.5">Dónde ganás</h3>
-          <ul className="space-y-2">
+          <h3 className="eyebrow mb-2">Dónde ganás</h3>
+          <ul className="flex flex-col gap-2">
             {gaining.map((r) => (
               <AdviceItem key={r.curva} row={r} />
             ))}
@@ -618,14 +594,14 @@ function AdvicePanel({ cmp }: { cmp: Comparison }) {
 function AdviceItem({ row }: { row: CornerRow }) {
   const advice = cornerAdvice(row);
   return (
-    <li className="rounded-lg bg-panel-2 px-3 py-2 text-sm">
+    <li className="rounded-[10px] bg-bg px-3 py-2.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-semibold">
-          Curva {row.curva} <span className="text-xs font-normal text-muted">sector {row.sector}</span>
+        <span className="title text-[1.15rem]">
+          Curva {row.curva} <span className="font-mono text-[0.65rem] font-normal text-dim">S{row.sector}</span>
         </span>
-        <span className={`num ${diffClass(row.diferencia_s)}`}>{secondsText(row.diferencia_s!)}</span>
+        <span className={`display text-[1.25rem] not-italic ${diffClass(row.diferencia_s)}`}>{secondsText(row.diferencia_s!)}</span>
       </div>
-      {advice.length > 0 && <p className="mt-0.5 text-muted">{capitalize(advice.join(", "))}.</p>}
+      {advice.length > 0 && <p className="mt-0.5 text-[0.88rem] text-muted">{capitalize(advice.join(", "))}.</p>}
     </li>
   );
 }
@@ -641,12 +617,12 @@ function SetupPanel({ overview, mine, other }: { overview: BoxOverview; mine: Bo
   if (!setup) {
     return (
       <Panel title="Reglaje">
-        <p className="py-4 text-center text-sm text-muted">El juego no mandó el reglaje de esta vuelta.</p>
+        <p className="py-3 text-[0.9rem] text-dim">El juego no mandó el reglaje de esta vuelta.</p>
       </Panel>
     );
   }
   return (
-    <Panel title="Reglaje" right={<span className="num text-xs text-muted">Reglaje {setup.id}</span>}>
+    <Panel title="Reglaje de la vuelta" right={<span className="title text-[0.95rem] text-muted">Reglaje {setup.id}</span>}>
       {overview.reglajes.length > 1 && (
         <ul className="mb-3 space-y-0.5 text-xs text-muted">
           {overview.reglajes.map((s) => (
@@ -656,10 +632,10 @@ function SetupPanel({ overview, mine, other }: { overview: BoxOverview; mine: Bo
           ))}
         </ul>
       )}
-      <table className="w-full text-sm">
+      <table className="w-full text-[0.9rem]">
         {compare && (
           <thead>
-            <tr className="label">
+            <tr className="eyebrow">
               <th className="pb-1 text-left font-normal" />
               <th className="pb-1 text-right font-normal">
                 <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: MINE_COLOR }} />
@@ -674,15 +650,15 @@ function SetupPanel({ overview, mine, other }: { overview: BoxOverview; mine: Bo
         )}
         <tbody>
           {rows.map(([label, value, otherValue, changed]) => (
-            <tr key={label} className="border-t border-line">
+            <tr key={label} className="border-t border-panel-2">
               <td className={`py-1 pr-2 ${changed ? "text-fg" : "text-muted"}`}>{label}</td>
-              <td className={`num py-1 text-right ${changed ? "font-semibold text-fg" : ""}`}>{value}</td>
-              {compare && <td className={`num py-1 text-right ${changed ? "font-semibold text-fg" : "text-muted"}`}>{otherValue}</td>}
+              <td className={`title num py-1.5 text-right text-[0.98rem] normal-case ${changed ? "text-accent-ink" : ""}`}>{value}</td>
+              {compare && <td className={`title num py-1.5 text-right text-[0.98rem] normal-case ${changed ? "text-best" : "text-muted"}`}>{otherValue}</td>}
             </tr>
           ))}
         </tbody>
       </table>
-      {compare && <p className="mt-2 text-xs text-muted">En negrita, lo que cambia entre los dos reglajes.</p>}
+      {compare && <p className="mt-2 text-[0.8rem] text-dim">En color, lo que cambia entre los dos reglajes.</p>}
     </Panel>
   );
 }
@@ -724,13 +700,13 @@ function RunsPanel({ runs, sessionId, onBestLap }: { runs: Run[]; sessionId: num
   const ordered = [...runs].reverse();
   return (
     <Panel title="Tandas y sugerencias de reglaje">
-      {runs.length === 0 && <p className="py-4 text-center text-sm text-muted">Todavía no hay vueltas completas.</p>}
-      <ol className="space-y-3">
+      {runs.length === 0 && <p className="py-3 text-[0.9rem] text-dim">Todavía no hay vueltas completas.</p>}
+      <ol className="flex flex-col gap-3">
         {ordered.map((run, i) => (
           <RunCard key={run.tanda} run={run} sessionId={sessionId} open={i === 0} onBestLap={onBestLap} />
         ))}
       </ol>
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-[0.8rem] text-dim">
         Una tanda son las vueltas entre dos pasadas por boxes con el mismo reglaje. Cambiá uno o dos valores por vez y
         compará la tanda siguiente: así sabés qué cambio sirvió.
       </p>
@@ -743,14 +719,14 @@ function RunCard({ run, sessionId, open, onBestLap }: { run: Run; sessionId: num
   const range = run.vueltas.length > 1 ? `vueltas ${run.vueltas[0]} a ${run.vueltas[run.vueltas.length - 1]}` : `vuelta ${run.vueltas[0]}`;
   const issues = Object.entries(run.problemas_pct).filter(([, v]) => v >= 0.15).sort((a, b) => b[1] - a[1]);
   return (
-    <li className="rounded-xl bg-panel-2 p-3">
+    <li className="rounded-[12px] bg-bg p-3.5">
       <details open={open}>
         <summary className="cursor-pointer list-none">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="font-semibold">
-              Tanda {run.tanda} <span className="text-xs font-normal text-muted">{range}{run.reglaje ? ` · reglaje ${run.reglaje}` : ""}</span>
+            <span className="title text-[1.2rem]">
+              Tanda {run.tanda} <span className="font-sans text-[0.8rem] font-normal normal-case text-dim">{range}{run.reglaje ? ` · reglaje ${run.reglaje}` : ""}</span>
             </span>
-            <span className="num text-sm">{run.mejor_vuelta_s ? lapTime(ms(run.mejor_vuelta_s)) : "—"}</span>
+            <span className="title num text-[1.1rem] normal-case">{run.mejor_vuelta_s ? lapTime(ms(run.mejor_vuelta_s)) : "—"}</span>
           </div>
           {prev?.mejor_vuelta_diferencia_s != null && (
             <div className={`num text-right text-xs ${prev.mejor_vuelta_diferencia_s < 0 ? "text-ok" : "text-danger"}`}>
@@ -791,19 +767,19 @@ function RunCard({ run, sessionId, open, onBestLap }: { run: Run; sessionId: num
         {run.sugerencias_reglaje.length > 0 ? (
           <ul className="mt-3 space-y-2">
             {run.sugerencias_reglaje.map((sug) => (
-              <li key={sug.parametro} className="rounded-lg border border-line p-2.5 text-sm">
+              <li key={sug.parametro} className="rounded-[10px] border border-line p-3 text-[0.9rem]">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-semibold">{paramName(sug.parametro)}</span>
-                  <span className="num">
-                    {paramValue(sug.parametro, sug.valor_actual)} → <span className="font-semibold text-accent">{paramValue(sug.parametro, sug.valor_sugerido)}</span>
+                  <span className="title num text-[1.05rem]">
+                    {paramValue(sug.parametro, sug.valor_actual)} → <span className="text-accent-ink">{paramValue(sug.parametro, sug.valor_sugerido)}</span>
                   </span>
                 </div>
                 <p className="mt-1 text-muted">
                   <span className="text-fg">{sug.problema}</span> ({sug.evidencia}). {sug.efecto}
                 </p>
                 <p className="mt-1 text-xs text-muted">A cambio: {sug.compromiso}</p>
-                <Link href={`/reglaje?s=${sessionId}&p=${sug.parametro}`} className="mt-1 inline-block text-xs text-accent underline">
-                  Ver qué hace en el auto
+                <Link href={`/reglaje?s=${sessionId}&p=${sug.parametro}`} className="mt-1.5 inline-block text-[0.82rem] text-accent-ink">
+                  Ver qué hace en el auto ›
                 </Link>
               </li>
             ))}
@@ -828,7 +804,7 @@ function RunCard({ run, sessionId, open, onBestLap }: { run: Run; sessionId: num
         {run.mejor_vuelta != null && (
           <button
             onClick={() => onBestLap(run.mejor_vuelta!)}
-            className="mt-3 rounded-md border border-line px-2 py-1 text-xs text-muted hover:text-fg"
+            className="btn mt-3 px-2.5 py-1.5 text-[0.82rem] text-muted hover:text-fg"
           >
             Ver la mejor vuelta de la tanda en el gráfico
           </button>

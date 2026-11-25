@@ -122,8 +122,8 @@ def build(live: LiveSession) -> dict[str, Any]:
         out["car_state"] = "garage" if int(lap["driver_status"]) == 0 else "pista"
         out.update(_timing(live, p.body["lap_data"], player))
 
-    if (p := live.last.get("tyre_sets")) is not None and int(p.body["car_idx"]) == player:
-        out["tyre_sets"] = _tyre_sets(p.body)
+    if live.player_tyre_sets is not None:
+        out["tyre_sets"] = _tyre_sets(live.player_tyre_sets)
 
     if (p := live.last.get("car_telemetry")) is not None:
         t = p.body["car_telemetry_data"][player]

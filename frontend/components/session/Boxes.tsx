@@ -8,7 +8,7 @@ import { COMPOUND_ES, TyreDot } from "@/components/ui/Tyres";
 import { academyEntry } from "@/lib/academy";
 import type { SetupSuggestion } from "@/lib/box";
 import { WEATHER_ES } from "@/lib/format";
-import { dec, lapS, useApi, type RunReport } from "@/lib/sessions";
+import { dec, lapS, useApi, useSticky, type RunReport } from "@/lib/sessions";
 import type { EngineerMessage, Snapshot } from "@/lib/types";
 
 const DONE_KEY = "cambios-hechos";
@@ -51,6 +51,10 @@ export function Boxes({ s, sid, messages }: { s: Snapshot; sid: number | null; m
   const { data: report, loading } = useApi<RunReport | null>(sid != null ? `/api/sessions/${sid}/report` : null, lapsKey);
   const { done, mark } = useDone(sid);
   const plan = [...messages].reverse().find((m) => m.estrategia?.plan)?.estrategia?.plan;
+  // Keep the last known values for this session, so a lost packet never blanks a block.
+  const position = useSticky(s.lap?.position, s.session_uid);
+  const session = useSticky(s.session, s.session_uid);
+  const tyreSets = useSticky(s.tyre_sets, s.session_uid);
 
   const todo = (report?.sugerencias_reglaje ?? []).filter((x) => !done.includes(x.parametro));
   const next = todo[0];
@@ -58,7 +62,7 @@ export function Boxes({ s, sid, messages }: { s: Snapshot; sid: number | null; m
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_330px]">
       <section className="flex min-w-0 flex-col gap-3" aria-label="Tu última tanda">
-        {report ? <RunHero report={report} position={s.lap?.position} /> : <NoRun loading={loading && sid != null} />}
+        {report ? <RunHero report={report} position={position ?? undefined} /> : <NoRun loading={loading && sid != null} />}
         <h2 className="eyebrow mt-2">Dónde se te fue el tiempo</h2>
         {[0, 1, 2].map((i) => {
           const l = report?.perdidas[i];
@@ -130,8 +134,8 @@ export function Boxes({ s, sid, messages }: { s: Snapshot; sid: number | null; m
       </section>
 
       <aside className="flex min-w-0 flex-col gap-3" aria-label="Condiciones">
-        <WeatherCard s={s} />
-        <TyreSets s={s} />
+        <WeatherCard ses={session} />
+        <TyreSets sets={tyreSets ?? []} />
         <div className="card min-h-[96px] px-4 py-4">
           <h2 className="eyebrow">El plan</h2>
           <p className={`mt-2 text-[0.92rem] leading-snug ${plan ? "text-soft-fg" : "text-dim"}`}>{plan ?? "El ingeniero arma el plan al largar o después de tu primera tanda."}</p>
@@ -228,8 +232,7 @@ function NextChange({ x, sid, onDone }: { x: SetupSuggestion; sid: number | null
   );
 }
 
-function WeatherCard({ s }: { s: Snapshot }) {
-  const ses = s.session;
+function WeatherCard({ ses }: { ses: Snapshot["session"] | null }) {
   if (!ses)
     return (
       <div className="card min-h-[150px] px-4 py-4">
@@ -258,8 +261,7 @@ function WeatherCard({ s }: { s: Snapshot }) {
   );
 }
 
-function TyreSets({ s }: { s: Snapshot }) {
-  const sets = s.tyre_sets ?? [];
+function TyreSets({ sets }: { sets: NonNullable<Snapshot["tyre_sets"]> }) {
   return (
     <div className="card flex min-h-[120px] flex-col gap-2.5 px-4 py-4">
       <h2 className="eyebrow">Gomas que te quedan</h2>

@@ -63,3 +63,23 @@ def test_the_written_report_says_where_time_went():
     s = debrief.summary(r, "Race")
     assert s["resultado"] == 8 and s["mejor_vuelta_s"] == 116.883
     assert "1:56,883" in s["texto"] and "None" not in s["texto"]
+
+
+def test_the_players_tyre_sets_stay_in_the_snapshot():
+    """The game cycles TyreSets through every car: the player's sets must not blink out between their packets."""
+    from app.live import snapshot
+    from app.replay.player import ReplayPlayer, ReplaySource
+
+    seen = {"with": 0, "without": 0, "first": False}
+
+    def observe(packet, live):
+        if packet.name != "car_telemetry":
+            return
+        has = "tyre_sets" in snapshot.build(live)
+        seen["first"] = seen["first"] or has
+        if seen["first"]:
+            seen["with" if has else "without"] += 1
+
+    player = ReplayPlayer(ReplaySource(sorted(glob.glob("../fixtures/captures/texas*.zst"))), on_packet=observe)
+    player.seek(600)
+    assert seen["with"] > 0 and seen["without"] == 0

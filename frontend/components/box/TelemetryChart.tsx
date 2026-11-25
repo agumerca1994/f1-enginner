@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { type BoxCorner, deltaTrace, type Trace } from "@/lib/box";
 
-// Validated pair (dark surface #0e1217): lightness band, CVD separation and contrast pass.
-export const MINE_COLOR = "#0891b2";
-export const REF_COLOR = "#ea580c";
+// You in near-white, the reference in the timing screens' purple: they differ in lightness, not hue alone.
+export const MINE_COLOR = "#f2f3f5";
+export const REF_COLOR = "#b77cff";
 
 const MARGIN = { left: 44, right: 12, top: 50 };
 const PANEL_GAP = 26;
@@ -271,7 +271,7 @@ export function TelemetryChart({
                   </g>
                 ))}
                 {p.key === "delta" ? (
-                  <path d={path(delta, p.top, p.height, dom)} fill="none" stroke="var(--color-fg)" strokeWidth={1.5} />
+                  <path d={path(delta, p.top, p.height, dom)} fill="none" stroke="var(--color-warn)" strokeWidth={1.75} />
                 ) : (
                   <>
                     <path d={path(reference[p.key], p.top, p.height, dom, p.key === "gear")} fill="none" stroke={REF_COLOR} strokeWidth={2} />

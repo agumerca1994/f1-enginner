@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -145,4 +145,13 @@ export function useApi<T>(path: string | null, key?: unknown): { data: T | null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, key, credentials]);
   return { data, error, loading };
+}
+
+/** The last value that was not null or empty: a packet lost on the way never blanks what is on screen. */
+export function useSticky<T>(value: T | null | undefined, reset?: unknown): T | null {
+  const kept = useRef<{ value: T | null; reset: unknown }>({ value: null, reset });
+  if (kept.current.reset !== reset) kept.current = { value: null, reset };
+  const empty = value == null || (Array.isArray(value) && value.length === 0);
+  if (!empty) kept.current.value = value as T;
+  return kept.current.value;
 }
