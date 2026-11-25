@@ -33,8 +33,8 @@ if (!intro || html.classList.contains("no-intro")) {
 } else {
   const video = intro.querySelector("video");
   const portrait = innerHeight > innerWidth;
-  video.poster = `/assets/intro/poster-${portrait ? "v" : "h"}.jpg`;
-  video.src = `/assets/intro/intro-${portrait ? "v" : "h"}.mp4`; // H.264: what every phone plays
+  video.poster = `/assets/intro/poster-${portrait ? "v" : "h"}.jpg?v=3`;
+  video.src = `/assets/intro/intro-${portrait ? "v" : "h"}.mp4?v=3`; // H.264: what every phone plays
   const flash = intro.querySelector(".intro-flash");
   const title = intro.querySelector(".intro-title");
   // A browser that will not autoplay (or a slow network) gets the page straight away.
