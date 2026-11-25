@@ -226,7 +226,7 @@ for n, ((body, accent), (top, objs)) in enumerate(zip(LIVERIES, copies)):
     top.rotation_mode = "XYZ"  # the glTF importer leaves quaternions, which rotation_euler would not drive
     for w in wheels:
         w.rotation_mode = "XYZ"
-    cars.append({"root": top, "wheels": wheels, "a0": -0.86 - n * 0.072, "r": [RC - 4.3, RC - 2.6, RC - 4.9, RC - 3.4][n], "phase": n * 1.7, "last": n == len(LIVERIES) - 1})
+    cars.append({"root": top, "wheels": wheels, "a0": -0.86 - n * 0.072, "r": [RC + 2.6, RC + 1.2, RC + 3.4, RC - 4.3][n], "phase": n * 1.7, "last": n == len(LIVERIES) - 1})
 
 
 # --- camera: locked off on the inside kerb, a long lens up the corner ------------------------
@@ -245,6 +245,9 @@ scene.collection.objects.link(focus)
 cam_data.dof.focus_object = focus
 
 
+focus_at = None
+
+
 def place(frame):
     t = (frame - 1) / FPS
     lead, shake = None, 0.0
@@ -259,11 +262,15 @@ def place(frame):
             w.rotation_euler = (0, t * SPEED / 0.36, 0)  # rolling forward about the axle (local y)
             w.keyframe_insert("rotation_euler", frame=frame)
         d = abs(a) * RC
-        shake = max(shake, math.exp(-d / 5) * (1.0 if c["last"] else 0.6))
-        if a < 0.01 and (lead is None or a > lead[0]):
+        shake = max(shake, math.exp(-d / 5) * (1.0 if c["last"] else 0.3))
+        if a < -0.03 and (lead is None or a > lead[0]):
             lead = (a, Vector(c["root"].location))
     # Focus pulls on the leading car still in front of the lens.
-    focus.location = lead[1] + Vector((0, 0, 0.6)) if lead else LOOK
+    # It lets go of each car ~9 m before it passes and eases back, so the frame never goes soft.
+    global focus_at
+    want = lead[1] + Vector((0, 0, 0.6)) if lead else LOOK
+    focus_at = want if focus_at is None else focus_at.lerp(want, 0.12)
+    focus.location = focus_at
     focus.keyframe_insert("location", frame=frame)
     off = Vector((0.0, math.sin(t * 67) * 0.02 * shake, (math.sin(t * 53) * 0.6 + math.sin(t * 91) * 0.4) * 0.025 * shake))
     cam.location = CAM + off
