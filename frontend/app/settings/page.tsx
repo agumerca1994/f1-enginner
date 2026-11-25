@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTalkAction } from "@/lib/gameButton";
 import { useSharedLive } from "@/lib/liveContext";
+import { chooseVoice, chosenVoice, previewVoice, spanishVoices } from "@/lib/voice";
 import { THEMES, useTheme } from "@/lib/theme";
 
 type Device = {
@@ -76,6 +77,7 @@ function Settings() {
       </section>
 
       <RadioNameSection />
+      <VoiceSection />
       <TalkButtonSection />
 
       <section className="mt-4 flex items-center justify-between card p-4">
@@ -152,6 +154,55 @@ function AppearanceSection() {
           </button>
         ))}
       </div>
+    </section>
+  );
+}
+
+/** Which of this device's voices reads the radio: they differ a lot from one device to another. */
+function VoiceSection() {
+  const [voices, setVoices] = useState<{ uri: string; label: string }[]>([]);
+  const [uri, setUri] = useState("");
+  useEffect(() => {
+    const load = () =>
+      setVoices(spanishVoices().map((v) => ({ uri: v.voiceURI, label: `${v.name.replace(/\s*\(.*\)$/, "")} · ${v.lang}` })));
+    setUri(chosenVoice());
+    load();
+    window.speechSynthesis?.addEventListener("voiceschanged", load);
+    return () => window.speechSynthesis?.removeEventListener("voiceschanged", load);
+  }, []);
+
+  return (
+    <section className="mt-4 card p-4">
+      <h2 className="label">Voz del ingeniero</h2>
+      <p className="mt-1 text-sm text-muted">
+        La radio la lee una voz de este dispositivo, y cada uno trae las suyas. Arriba quedan las más naturales; probá y quedate con la
+        que mejor suene. En Chrome las de Google y en Edge las «Natural» suelen ser las mejores.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select
+          value={uri}
+          onChange={(e) => {
+            setUri(e.target.value);
+            chooseVoice(e.target.value);
+          }}
+          className="min-w-0 max-w-full rounded-lg border border-line bg-panel-2 px-3 py-1.5 text-sm focus:border-accent focus:outline-none"
+        >
+          <option value="">Automática{voices[0] ? ` (${voices[0].label})` : ""}</option>
+          {voices.map((v) => (
+            <option key={v.uri} value={v.uri}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => previewVoice(uri, "Box, box. Intermedios. Salís sexto con aire limpio.")}
+          className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm hover:border-accent"
+        >
+          Probar
+        </button>
+      </div>
+      {voices.length === 0 && <p className="mt-2 text-sm text-muted">Este navegador no tiene voces en español.</p>}
     </section>
   );
 }

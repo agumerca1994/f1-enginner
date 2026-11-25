@@ -7,14 +7,69 @@ import type { EngineerMessage } from "@/lib/types";
 
 const STORAGE_KEY = "engineer-voice";
 
+const VOICE_KEY = "voz-ingeniero";
+
+// macOS "Eloquence" voices and other novelty ones: the most robotic on the system, never chosen by default.
+const ROBOTIC = /^(Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley)\b/;
+
+/** How natural a voice sounds, as far as its name and accent tell: higher is better. */
+function voiceScore(v: SpeechSynthesisVoice): number {
+  let s = 0;
+  const n = v.name;
+  if (/Natural|Online/i.test(n)) s += 60; // Edge: Microsoft's neural voices
+  if (/Google/i.test(n)) s += 50; // Chrome: Google's network voices
+  if (/Premium/i.test(n)) s += 45; // Apple's downloadable voices
+  if (/Siri/i.test(n)) s += 40;
+  if (/Enhanced|Mejorada/i.test(n)) s += 30;
+  if (/^(Diego|Jorge|Juan|Paulina|Mónica|Monica|Marisol|Angélica|Isabela)\b/.test(n)) s += 15;
+  if (ROBOTIC.test(n)) s -= 100;
+  if (v.lang === "es-AR") s += 12;
+  else if (v.lang === "es-419" || v.lang === "es-US" || v.lang === "es-MX") s += 8;
+  else if (v.lang.startsWith("es")) s += 3;
+  return s;
+}
+
+/** The Spanish voices this device has, the most natural first. */
+export function spanishVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
+  return window.speechSynthesis
+    .getVoices()
+    .filter((v) => v.lang.toLowerCase().startsWith("es"))
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
+}
+
+/** The voice chosen in Ajustes on this device ("" = the best one available). */
+export function chosenVoice(): string {
+  try {
+    return localStorage.getItem(VOICE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function chooseVoice(uri: string): void {
+  try {
+    if (uri) localStorage.setItem(VOICE_KEY, uri);
+    else localStorage.removeItem(VOICE_KEY);
+  } catch {}
+}
+
 function pickVoice(): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find((v) => v.lang === "es-AR") ??
-    voices.find((v) => v.lang === "es-419" || v.lang === "es-US" || v.lang === "es-MX") ??
-    voices.find((v) => v.lang.startsWith("es")) ??
-    null
-  );
+  const voices = spanishVoices();
+  const uri = chosenVoice();
+  return (uri && voices.find((v) => v.voiceURI === uri)) || voices[0] || null;
+}
+
+/** Says a line with the given voice, to try it in Ajustes. */
+export function previewVoice(uri: string, text: string): void {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const v = (uri && spanishVoices().find((x) => x.voiceURI === uri)) || spanishVoices()[0];
+  if (v) u.voice = v;
+  u.lang = v?.lang ?? "es-AR";
+  u.rate = 1.05;
+  window.speechSynthesis.speak(u);
 }
 
 // The broadcast team-radio chime: three pure tones back to back, G5 D6 B5, about
