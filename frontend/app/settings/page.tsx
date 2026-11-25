@@ -9,6 +9,8 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { ScreensSection, StatusBarSection } from "@/components/settings/ScreensSection";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useTalkAction } from "@/lib/gameButton";
+import { useSharedLive } from "@/lib/liveContext";
 import { THEMES, useTheme } from "@/lib/theme";
 
 type Device = {
@@ -74,6 +76,7 @@ function Settings() {
       </section>
 
       <RadioNameSection />
+      <TalkButtonSection />
 
       <section className="mt-4 flex items-center justify-between card p-4">
         <div>
@@ -148,6 +151,49 @@ function AppearanceSection() {
             <div className="text-xs text-muted">{t.description}</div>
           </button>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/** A button in the game to talk to the engineer: one of its "UDP Action" buttons. */
+function TalkButtonSection() {
+  const [action, setAction] = useTalkAction();
+  const { snapshot } = useSharedLive();
+  const presses = action ? snapshot?.udp_actions?.presses[action - 1] : undefined;
+  const [first, setFirst] = useState<number | undefined>(undefined);
+  useEffect(() => setFirst(undefined), [action]);
+  useEffect(() => {
+    if (presses !== undefined && first === undefined) setFirst(presses);
+  }, [presses, first]);
+  const seen = presses !== undefined && first !== undefined && presses > first;
+
+  return (
+    <section className="mt-4 card p-4">
+      <h2 className="label">Hablar desde el juego</h2>
+      <p className="mt-1 text-sm text-muted">
+        Un botón del volante o del mando para hablarle al ingeniero sin soltar el auto: mantenelo apretado mientras hablás, o tocalo
+        una vez y te escucha hasta que lo vuelvas a tocar. En el juego, en Ajustes → Controles, asigná «Acción UDP» (UDP Action) con
+        el número que elijas acá a un botón libre. Te escucha el micrófono de este dispositivo.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <select
+          value={action}
+          onChange={(e) => setAction(Number(e.target.value))}
+          className="rounded-lg border border-line bg-panel-2 px-3 py-1.5 text-sm focus:border-accent focus:outline-none"
+        >
+          <option value={0}>Apagado</option>
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              Acción UDP {i + 1}
+            </option>
+          ))}
+        </select>
+        {action > 0 && (
+          <span className={`text-sm ${seen ? "text-ok" : "text-muted"}`}>
+            {seen ? "Recibido: el botón funciona." : snapshot ? "Apretalo en el juego para probarlo." : "Con el juego abierto podés probarlo acá."}
+          </span>
+        )}
       </div>
     </section>
   );

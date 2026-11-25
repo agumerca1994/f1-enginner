@@ -20,6 +20,9 @@ from app.telemetry import registry
 from app.telemetry.registry import Packet
 
 
+UDP_ACTION_1 = 0x00100000  # button flag of "UDP Action 1"; Actions 2-12 are the next bits
+
+
 @dataclass
 class LiveSession:
     tenant_id: int
@@ -41,6 +44,11 @@ class LiveSession:
     player_history: object | None = None
     # The player's own TyreSets body: the game sends every car's in turn, so the last one is rarely theirs.
     player_tyre_sets: object | None = None
+    # The game's buttons (BUTN events: the whole pressed mask, sent on every change) and how many
+    # times each "UDP Action" 1-12 has gone down, so a dashboard polling a few times a second
+    # still sees a press and release that fell between two of its looks.
+    buttons: int = 0
+    udp_action_presses: list[int] = field(default_factory=lambda: [0] * 12)
     timing: LiveTiming = field(default_factory=LiveTiming)
     # Circuit outline built from every car's position; loaded and saved by the ingest service.
     track_id: int | None = None
@@ -53,6 +61,13 @@ class LiveSession:
     def __post_init__(self) -> None:
         self.started_at = self.updated_at = self.clock()
 
+    def _buttons(self, status: int) -> None:
+        down = status & ~self.buttons
+        for i in range(12):
+            if down & (UDP_ACTION_1 << i):
+                self.udp_action_presses[i] += 1
+        self.buttons = status
+
     def update(self, packet: Packet) -> None:
         now = self.clock()
         self.last[packet.name] = packet
@@ -63,7 +78,9 @@ class LiveSession:
             self.player_tyre_sets = packet.body
         if packet.name == "event":
             code, details = registry.event_details(packet)
-            if code != "BUTN":  # button presses are noise for the engineer
+            if code == "BUTN":  # not for the engineer: the talk button
+                self._buttons(int(details.get("button_status", 0)))
+            else:
                 self.events.append({"code": code, "session_time": packet.session_time, **details})
         elif packet.name == "session":
             track_id, length = int(packet.body["track_id"]), int(packet.body["track_length"])

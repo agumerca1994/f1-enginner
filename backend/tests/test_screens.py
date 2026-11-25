@@ -127,3 +127,18 @@ def test_the_licensed_car_model_is_only_served_to_signed_in_players(client):
     assert client.get("/api/assets/car.glb").status_code == 401
     r = client.get("/api/assets/car.glb", headers={"X-Dev-User": "model@example.test"})
     assert r.status_code == 200 and r.content == glb and "private" in r.headers["cache-control"]
+
+
+def test_the_games_udp_action_buttons_count_presses_for_the_talk_button():
+    """BUTN carries the whole pressed mask on every change: each UDP Action going down is one press,
+    even when the dashboard only looks a few times a second, and other buttons don't count."""
+    from app.live import snapshot
+    from app.live.state import UDP_ACTION_1, LiveSession
+
+    live = LiveSession(tenant_id=0, device_id=0, session_uid=1, packet_format=2024)
+    action2 = UDP_ACTION_1 << 1
+    for status in (0x10, 0x10 | UDP_ACTION_1, 0x10, 0, UDP_ACTION_1, UDP_ACTION_1 | 0x400, UDP_ACTION_1, action2):
+        live._buttons(status)
+    out = snapshot.build(live)["udp_actions"]
+    assert out["presses"][:3] == [2, 1, 0]
+    assert out["down"][:3] == [False, True, False]

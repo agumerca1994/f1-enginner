@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { useGameTalkButton } from "@/lib/gameButton";
 import { useDictation } from "@/lib/listen";
 import { useSharedLive } from "@/lib/liveContext";
 import { playRadio, stopRadio } from "@/lib/voice";
@@ -83,6 +84,7 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
   };
   const mic = useDictation((q) => void ask(q));
   useSpaceToTalk(mic.supported && !typing, mic.start, mic.stop);
+  useGameTalkButton(mic.supported ? snapshot?.udp_actions : undefined, mic);
   const last = [...engineer.messages].reverse().find((m) => m.radio);
   const live = status === "live" && snapshot;
   const paused = live && !engineer.active && engineer.provider != null;

@@ -8,6 +8,8 @@ export type Snapshot = {
   session_uid: string;
   packet_format: number;
   link: { reception: number | null; source: string | null; packets: number; rejected: number };
+  /** The game's "UDP Action" buttons 1-12: held now, and how many times each went down. */
+  udp_actions?: { down: boolean[]; presses: number[] };
   session?: {
     age_s: number | null;
     track: string;

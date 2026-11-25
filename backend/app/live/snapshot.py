@@ -6,7 +6,7 @@ section carries `age_s`, the seconds since its source packet arrived.
 
 from typing import Any
 
-from app.live.state import LiveSession
+from app.live.state import UDP_ACTION_1, LiveSession
 from app.live.timing import forecast
 from app.telemetry import constants as c
 
@@ -43,6 +43,11 @@ def build(live: LiveSession) -> dict[str, Any]:
             "source": live.source,
             "packets": live.packets,
             "rejected": live.rejected,
+        },
+        # The game's "UDP Action" buttons: the dashboard can use one as the talk button.
+        "udp_actions": {
+            "down": [bool(live.buttons & (UDP_ACTION_1 << i)) for i in range(12)],
+            "presses": list(live.udp_action_presses),
         },
     }
 
