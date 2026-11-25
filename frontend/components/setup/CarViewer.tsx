@@ -3,6 +3,11 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+
+import { API_URL } from "@/lib/api";
+import { useAuth, type Credentials } from "@/lib/auth";
 
 import {
   BODY,
@@ -104,7 +109,33 @@ export const FOCUS: Record<string, Focus> = {
 
 type Wheel = { group: THREE.Group; camber: THREE.Group; spin: THREE.Group; front: boolean; side: 1 | -1 };
 type Link = { mesh: THREE.Mesh; inboard: THREE.Vector3; wheel: number; outboard: THREE.Vector3 };
-type Owned = { mesh: THREE.Mesh; lines: THREE.LineSegments; part: Part; base: THREE.Material; glow?: boolean };
+type Owned = { mesh: THREE.Mesh; lines: THREE.LineSegments; part: Part; base: THREE.Material; glow?: boolean; retired?: boolean };
+
+/**
+ * The licensed car model (served only to signed-in players, see backend/app/routers/assets.py),
+ * fetched once per page load. Null when it is not there: the viewer keeps the car built in code.
+ */
+let realCar: Promise<THREE.Group | null> | null = null;
+function loadRealCar(creds: Credentials | null): Promise<THREE.Group | null> {
+  realCar ??= (async () => {
+    try {
+      const headers: Record<string, string> = {};
+      if (creds?.token) headers.Authorization = `Bearer ${creds.token}`;
+      if (creds?.devUser) headers["X-Dev-User"] = creds.devUser;
+      const res = await fetch(`${API_URL}/api/assets/car.glb`, { headers });
+      if (!res.ok) {
+        realCar = null; // try again next time the viewer opens (signed in later, uploaded later)
+        return null;
+      }
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      const gltf = await loader.parseAsync(await res.arrayBuffer(), "");
+      return gltf.scene;
+    } catch {
+      return null;
+    }
+  })();
+  return realCar;
+}
 
 /** The setting being shown: the player's value, the engineer's suggestion and the game's range. */
 export type ViewerSetting = { value: number | null; suggested: number | null; range?: [number, number] };
@@ -142,6 +173,9 @@ function studioFloor(): THREE.Texture {
 
 export function CarViewer({ focus, bias, setting }: { focus: string; bias?: number | null; setting?: ViewerSetting }) {
   const host = useRef<HTMLDivElement>(null);
+  const { credentials } = useAuth();
+  const credentialsRef = useRef(credentials);
+  credentialsRef.current = credentials;
   const api = useRef<{ setFocus: (k: string) => void; setBias: (b: number | null) => void; setSetting: (v: ViewerSetting | null) => void } | null>(null);
 
   useEffect(() => {
@@ -437,19 +471,108 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
     function applyHighlight() {
       const lit = new Set(focus.parts);
       for (const o of owned) {
+        if (o.retired) {
+          o.mesh.visible = false;
+          continue;
+        }
         const on = lit.has(o.part);
         o.mesh.material = on && !o.glow ? mats.hl : o.base;
         o.lines.material = on ? mats.hlLine : mats.line;
         o.mesh.visible = !INTERNAL.includes(o.part) || !!focus.xray || on;
       }
       // See-through bodywork, so the parts inside show.
-      for (const m of [mats.paint, mats.carbon]) {
+      for (const m of [mats.paint, mats.carbon, mats.livery]) {
         m.opacity = focus.xray ? 0.16 : 1;
         m.depthWrite = !focus.xray;
       }
-      helmet.visible = visor.visible = !focus.xray;
+      helmet.visible = visor.visible = !focus.xray && !realLoaded;
       mats.line.opacity = focus.xray ? 0.35 : 0.55;
     }
+
+    // --- the licensed model, when the server has it: it replaces the car built in code ---
+    let realLoaded = false;
+    let disposed = false;
+    const realFrontWing = new THREE.Group();
+    const realRearFlap = new THREE.Group();
+    const REPLACED: Part[] = ["body", "front_wing", "front_flap", "rear_wing", "rear_flap", "floor", "tyres_front", "tyres_rear", "wheels_front", "wheels_rear", "arms_front", "arms_rear"];
+    const realMat: Record<string, THREE.Material> = {
+      chassis: mats.paint, coler: mats.livery, carbon_fiber: mats.carbon, tier: mats.rubber, chrome: mats.metal, mirror: mats.metal, glass: mats.black,
+    };
+    const own = (mesh: THREE.Mesh, part: Part) => {
+      const lines = new THREE.LineSegments(new THREE.BufferGeometry(), mats.line);
+      mesh.add(lines);
+      owned.push({ mesh, lines, part, base: mesh.material as THREE.Material });
+    };
+    function attachReal(model: THREE.Group) {
+      if (disposed) return;
+      const parts = new Map<string, THREE.Mesh[]>();
+      const real = new Set<THREE.Object3D>();
+      model.updateMatrixWorld(true);
+      model.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        // Node names are "<part>:<material>", but three.js drops the ":" from names.
+        const hit = /^(.*?):?(chassis|coler|carbon_fiber|tier|chrome|mirror|glass)$/.exec(m.name);
+        if (!hit) return;
+        const [, part, matName] = hit;
+        // Meshopt stores positions and normals as quantised integers: back to floats before moving them.
+        const geo = new THREE.BufferGeometry();
+        for (const key of ["position", "normal"] as const) {
+          const a = m.geometry.getAttribute(key);
+          if (!a) continue;
+          const f = new Float32Array(a.count * 3);
+          for (let i = 0; i < a.count; i++) {
+            f[i * 3] = a.getX(i);
+            f[i * 3 + 1] = a.getY(i);
+            f[i * 3 + 2] = a.getZ(i);
+          }
+          geo.setAttribute(key, new THREE.BufferAttribute(f, 3));
+        }
+        if (m.geometry.index) geo.setIndex(Array.from(m.geometry.index.array as ArrayLike<number>));
+        geo.applyMatrix4(m.matrixWorld);
+        if (!geo.getAttribute("normal")) geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, realMat[matName] ?? mats.carbon);
+        real.add(mesh);
+        (parts.get(part) ?? parts.set(part, []).get(part)!).push(mesh);
+      });
+      if (!parts.size) return;
+      for (const o of owned) if (REPLACED.includes(o.part)) o.retired = true;
+      const into = (group: THREE.Object3D, name: string, part: Part, at?: THREE.Vector3) => {
+        for (const mesh of parts.get(name) ?? []) {
+          if (at) mesh.geometry.translate(-at.x, -at.y, -at.z);
+          group.add(mesh);
+          own(mesh, part);
+        }
+      };
+      ["body", "floor", "rear_wing", "arms_front", "arms_rear"].forEach((n) => into(body, n, (n === "body" ? "body" : n) as Part));
+      // The front wing and the rear flap tilt about their leading edges.
+      realFrontWing.position.set(3.05, 0.1, 0);
+      body.add(realFrontWing);
+      into(realFrontWing, "front_wing", "front_wing", realFrontWing.position);
+      const flapBox = new THREE.Box3();
+      (parts.get("rear_flap") ?? []).forEach((m) => flapBox.expandByObject(m));
+      const flapAt = flapBox.isEmpty() ? new THREE.Vector3(-2.4, 0.95, 0) : flapBox.getCenter(new THREE.Vector3());
+      realRearFlap.position.copy(flapAt);
+      body.add(realRearFlap);
+      into(realRearFlap, "rear_flap", "rear_flap", flapAt);
+      // Each wheel goes on its corner's spinner, at the model's own axle positions.
+      for (const w of wheels) {
+        const corner = `${w.front ? "F" : "R"}${w.side < 0 ? "L" : "R"}`;
+        const box = new THREE.Box3();
+        for (const k of ["tyre", "rim"]) (parts.get(`wheel_${corner}_${k}`) ?? []).forEach((m) => box.expandByObject(m));
+        if (box.isEmpty()) continue;
+        const c = box.getCenter(new THREE.Vector3());
+        w.group.position.set(c.x, c.y, c.z);
+        into(w.spin, `wheel_${corner}_tyre`, w.front ? "tyres_front" : "tyres_rear", c);
+        into(w.spin, `wheel_${corner}_rim`, w.front ? "wheels_front" : "wheels_rear", c);
+        into(w.camber, `wheel_${corner}_brake`, w.front ? "wheels_front" : "wheels_rear", c);
+      }
+      // The code-built wheels' marks, bands and nuts go too; the brake discs stay for the x-ray views.
+      for (const w of wheels) for (const c of [...w.spin.children]) if (!real.has(c)) c.visible = false;
+      realLoaded = true;
+      applyHighlight();
+    }
+    credentialsRef.current().then((creds) => loadRealCar(creds)).then((m) => m && attachReal(m));
 
     api.current = {
       setFocus(k: string) {
@@ -598,6 +721,8 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
         }
       }
 
+      realFrontWing.rotation.z = (frontFlap.rotation.z + 0.32) * 0.35;
+      realRearFlap.rotation.z = (rearFlap.rotation.z + 0.45) * 0.8;
       placeLinks();
       renderer.render(scene, camera);
       raf = requestAnimationFrame(frame);
@@ -605,6 +730,7 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
     raf = requestAnimationFrame(frame);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onDown);

@@ -115,3 +115,15 @@ def test_a_flying_lap_from_the_pit_exit_is_not_a_pit_lap_in_telemetry():
     out = runs(r, {})
     assert [x.laps for x in out] == [[1, 2], [3, 4]]
     assert out[1].clean_laps == [3, 4]  # the lap from the pit exit counts
+
+
+def test_the_licensed_car_model_is_only_served_to_signed_in_players(client):
+    key = {"x-internal-key": "test-internal-key"}
+    glb = b"glTF" + b"\x00" * 64
+    assert client.put("/internal/assets/car.glb", content=b"not a model", headers=key).status_code == 422
+    assert client.put("/internal/assets/car.glb", content=glb).status_code == 422  # no key
+    assert client.put("/internal/assets/../x.glb", content=glb, headers=key).status_code in (404, 422)
+    assert client.put("/internal/assets/car.glb", content=glb, headers=key).status_code == 204
+    assert client.get("/api/assets/car.glb").status_code == 401
+    r = client.get("/api/assets/car.glb", headers={"X-Dev-User": "model@example.test"})
+    assert r.status_code == 200 and r.content == glb and "private" in r.headers["cache-control"]
