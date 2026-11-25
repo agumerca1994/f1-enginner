@@ -112,22 +112,39 @@ function tube(points, radius) {
   return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p))), 24, radius, 8, false);
 }
 
+// Modern proportions (2022 onwards): a long low nose, a tall airbox, sidepods with a high
+// inlet, an undercut and a steep downwash ramp, a wide floor and rounded rear wing tips.
 const BODY = [
-  { x: 3.1, w: 0.05, top: 0.27, bot: 0.21, n: 2.2 }, { x: 2.8, w: 0.09, top: 0.31, bot: 0.18 }, { x: 2.4, w: 0.14, top: 0.37, bot: 0.15 },
-  { x: 2.0, w: 0.19, top: 0.44, bot: 0.13 }, { x: 1.6, w: 0.26, top: 0.52, bot: 0.11 }, { x: 1.3, w: 0.32, top: 0.56, bot: 0.1 },
-  { x: 0.95, w: 0.36, top: 0.57, bot: 0.1 }, { x: 0.55, w: 0.37, top: 0.6, bot: 0.1 }, { x: 0.3, w: 0.36, top: 0.79, bot: 0.1 },
-  { x: 0.0, w: 0.33, top: 0.8, bot: 0.11 }, { x: -0.5, w: 0.27, top: 0.7, bot: 0.13 }, { x: -1.0, w: 0.2, top: 0.58, bot: 0.15 },
-  { x: -1.5, w: 0.14, top: 0.49, bot: 0.17 }, { x: -1.95, w: 0.1, top: 0.43, bot: 0.2 }, { x: -2.25, w: 0.06, top: 0.38, bot: 0.23, n: 2.2 },
+  { x: 3.32, w: 0.1, top: 0.21, bot: 0.15, n: 3 }, { x: 3.0, w: 0.13, top: 0.25, bot: 0.13, n: 3 }, { x: 2.6, w: 0.17, top: 0.31, bot: 0.12 },
+  { x: 2.2, w: 0.2, top: 0.39, bot: 0.11 }, { x: 1.8, w: 0.24, top: 0.47, bot: 0.1 }, { x: 1.4, w: 0.3, top: 0.54, bot: 0.1 },
+  { x: 1.05, w: 0.34, top: 0.57, bot: 0.1 }, { x: 0.7, w: 0.36, top: 0.59, bot: 0.1 }, { x: 0.42, w: 0.33, top: 0.66, bot: 0.1 },
+  { x: 0.22, w: 0.28, top: 0.93, bot: 0.11, n: 3 }, { x: -0.1, w: 0.26, top: 0.9, bot: 0.12 }, { x: -0.6, w: 0.21, top: 0.74, bot: 0.13 },
+  { x: -1.1, w: 0.16, top: 0.6, bot: 0.15 }, { x: -1.6, w: 0.12, top: 0.5, bot: 0.17 }, { x: -2.0, w: 0.08, top: 0.42, bot: 0.2 },
+  { x: -2.3, w: 0.05, top: 0.36, bot: 0.24, n: 2.2 },
 ];
 const sidepod = (side) => [
-  { x: 1.08, zc: side * 0.5, w: 0.15, top: 0.5, bot: 0.15, n: 3.2 }, { x: 0.85, zc: side * 0.52, w: 0.2, top: 0.53, bot: 0.12, n: 3.2 },
-  { x: 0.35, zc: side * 0.5, w: 0.21, top: 0.51, bot: 0.12, n: 3 }, { x: -0.3, zc: side * 0.43, w: 0.18, top: 0.45, bot: 0.13 },
-  { x: -0.9, zc: side * 0.32, w: 0.13, top: 0.38, bot: 0.15 }, { x: -1.35, zc: side * 0.22, w: 0.07, top: 0.32, bot: 0.18, n: 2.2 },
+  { x: 1.15, zc: side * 0.5, w: 0.22, top: 0.6, bot: 0.38, n: 4 }, { x: 0.98, zc: side * 0.5, w: 0.28, top: 0.62, bot: 0.3, n: 3.8 },
+  { x: 0.6, zc: side * 0.49, w: 0.29, top: 0.6, bot: 0.24, n: 3.4 }, { x: 0.1, zc: side * 0.44, w: 0.26, top: 0.5, bot: 0.18, n: 3 },
+  { x: -0.5, zc: side * 0.36, w: 0.19, top: 0.38, bot: 0.14 }, { x: -1.0, zc: side * 0.26, w: 0.12, top: 0.28, bot: 0.13 },
+  { x: -1.4, zc: side * 0.18, w: 0.07, top: 0.22, bot: 0.14, n: 2.2 },
 ];
-const FLOOR = [[1.75, 0.22], [1.5, 0.52], [1.05, 0.7], [-1.25, 0.72], [-1.6, 0.56], [-2.05, 0.5], [-2.05, -0.5], [-1.6, -0.56], [-1.25, -0.72], [1.05, -0.7], [1.5, -0.52], [1.75, -0.22]];
-const FRONT_ENDPLATE = [[3.5, 0.03], [2.78, 0.03], [2.72, 0.25], [2.95, 0.29], [3.42, 0.14]];
-const REAR_ENDPLATE = [[-2.12, 0.5], [-2.78, 0.5], [-2.84, 1.06], [-2.25, 1.1], [-2.1, 0.92]];
-const haloHalf = (side) => [[1.42, 0.58, 0], [1.36, 0.78, 0], [1.18, 0.84, side * 0.16], [0.9, 0.83, side * 0.26], [0.65, 0.76, side * 0.28], [0.55, 0.62, side * 0.28]];
+const FLOOR = [[1.6, 0.25], [1.3, 0.6], [1.0, 0.78], [-0.9, 0.8], [-1.3, 0.7], [-2.1, 0.55], [-2.1, -0.55], [-1.3, -0.7], [-0.9, -0.8], [1.0, -0.78], [1.3, -0.6], [1.6, -0.25]];
+const FRONT_ENDPLATE = [[3.58, 0.03], [2.75, 0.03], [2.7, 0.2], [2.9, 0.31], [3.25, 0.3], [3.5, 0.16]];
+const REAR_ENDPLATE = [[-2.08, 0.46], [-2.8, 0.46], [-2.86, 0.95], [-2.76, 1.08], [-2.42, 1.13], [-2.14, 1.02]];
+const haloHalf = (side) => [[1.42, 0.58, 0], [1.36, 0.8, 0], [1.18, 0.86, side * 0.16], [0.9, 0.85, side * 0.26], [0.65, 0.78, side * 0.28], [0.55, 0.64, side * 0.28]];
+
+/** A front wing element whose outer thirds sweep up, as on current cars. */
+function frontElement(chord, span, thick, camber, mat, add, x, y) {
+  const mid = span * 0.36, out = (span - mid) / 2;
+  add(wing(chord, mid + 0.02, thick, camber), mat).position.set(x, y, 0);
+  for (const side of [1, -1]) {
+    const hinge = new THREE.Group();
+    hinge.position.set(x, y, side * (mid / 2));
+    hinge.rotation.x = side * 0.16;
+    add.root.add(hinge);
+    add(wing(chord, out, thick, camber), mat, hinge).position.z = side * (out / 2);
+  }
+}
 
 /** A car in the given livery. Returns the group and its four wheel spinners. */
 export function buildCar({ body = 0x23272e, accent = 0xff4b2b, helmet = 0xf2f3f5 } = {}) {
@@ -142,20 +159,38 @@ export function buildCar({ body = 0x23272e, accent = 0xff4b2b, helmet = 0xf2f3f5
 
   const car = new THREE.Group();
   const add = (geo, mat, parent = car) => { const m = new THREE.Mesh(geo, mat); parent.add(m); return m; };
+  add.root = car;
   add(loft(BODY), paint);
   for (const side of [1, -1]) add(loft(sidepod(side), 24, 4), paint);
   add(planPlate(FLOOR, 0.025, 0.05), carbon);
   const h = add(new THREE.SphereGeometry(0.125, 18, 12), helm);
-  h.position.set(0.78, 0.72, 0);
+  h.position.set(0.78, 0.71, 0);
   for (const side of [1, -1]) add(tube(haloHalf(side), 0.028), carbon);
-  add(wing(0.44, 1.95, 0.1, 0.04), carbon).position.set(3.5, 0.075, 0);
-  add(wing(0.24, 1.9, 0.1, 0.05), livery).position.set(3.08, 0.13, 0);
-  add(wing(0.17, 1.9, 0.1, 0.05), carbon).position.set(2.91, 0.21, 0);
-  for (const side of [1, -1]) add(plate(FRONT_ENDPLATE, 0.014), livery).position.z = side * 0.98;
-  add(wing(0.38, 1.0, 0.11, 0.05), carbon).position.set(-2.22, 0.84, 0);
-  add(wing(0.22, 0.98, 0.1, 0.05), livery).position.set(-2.46, 0.97, 0);
+  // Front wing: four elements sweeping up at the tips, endplates, and the wake deflectors over the wheels.
+  frontElement(0.42, 2.0, 0.09, 0.04, carbon, add, 3.55, 0.06);
+  frontElement(0.22, 1.96, 0.09, 0.05, livery, add, 3.14, 0.12);
+  frontElement(0.17, 1.94, 0.09, 0.05, carbon, add, 2.96, 0.19);
+  frontElement(0.13, 1.92, 0.09, 0.05, carbon, add, 2.83, 0.25);
+  for (const side of [1, -1]) add(plate(FRONT_ENDPLATE, 0.014), livery).position.z = side * 1.0;
+  for (const side of [1, -1]) {
+    const d = add(wing(0.36, 0.26, 0.12, 0.08), carbon);
+    d.position.set(WB_F + 0.2, 0.71, side * (TRACK - 0.12));
+    d.rotation.set(side * 0.45, 0, -0.1);
+  }
+  // Floor edges.
+  for (const side of [1, -1]) add(plate([[1.0, 0.075], [-0.9, 0.075], [-0.9, 0.12], [1.0, 0.1]], 0.01), carbon).position.z = side * 0.79;
+  // Rear wing: a spoon-shaped mainplane, the flap, rounded endplates and a beam wing below.
+  add(wing(0.4, 1.0, 0.12, 0.06), carbon).position.set(-2.22, 0.84, 0);
+  add(wing(0.22, 0.98, 0.1, 0.05), livery).position.set(-2.48, 0.98, 0);
   for (const side of [1, -1]) add(plate(REAR_ENDPLATE, 0.014), livery).position.z = side * 0.505;
-  add(plate([[-0.2, 0.74], [-1.5, 0.62], [-1.55, 0.68], [-0.1, 0.8]], 0.012), livery);
+  add(wing(0.18, 0.9, 0.12, 0.05), carbon).position.set(-2.12, 0.42, 0);
+  add(wing(0.14, 0.9, 0.12, 0.05), carbon).position.set(-2.3, 0.5, 0);
+  // Engine cover fin and the roll hoop intake.
+  add(plate([[-0.1, 0.88], [-1.45, 0.64], [-1.5, 0.7], [0.05, 0.95]], 0.012), livery);
+  const intake = add(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: 0x050607 }));
+  intake.scale.set(0.09, 0.08, 1);
+  intake.rotation.y = Math.PI / 2;
+  intake.position.set(0.3, 0.86, 0);
   // The rain light: a red dot at the back that streaks in the motion blur.
   add(new THREE.BoxGeometry(0.04, 0.05, 0.12), rain).position.set(-2.28, 0.33, 0);
 

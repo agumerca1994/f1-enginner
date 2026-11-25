@@ -1,32 +1,11 @@
-// Landing intro: a night corner seen from the kerb at ground level, three cars
-// flashing past with motion trails, a flash, the title, and the page slides in.
-// Plays once per visit; skipped with reduced motion, a tap, a key or "Saltar".
+// The intro's scene, rendered offline into a video (render/intro.html + scripts/render-intro.js).
+// Deterministic: every frame is a function of the time, so frames can be blended into motion blur.
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { AfterimagePass } from "three/addons/postprocessing/AfterimagePass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { buildCar } from "./car3d.js";
-
-const root = document.getElementById("intro");
-const canvas = root?.querySelector("canvas");
-let finished = false;
-
-function finish(fast = false) {
-  if (finished || !root) return;
-  finished = true;
-  try { sessionStorage.setItem("intro-visto", "1"); } catch {}
-  document.documentElement.classList.add("intro-done");
-  root.classList.add(fast ? "out-fast" : "out");
-  setTimeout(() => { root.remove(); document.documentElement.classList.remove("intro-on"); }, fast ? 250 : 900);
-  window.dispatchEvent(new Event("intro-fin"));
-}
-
-if (root && canvas && !document.documentElement.classList.contains("no-intro")) {
-  window.__introStarted = true;
-  try { run(); } catch (e) { finish(true); }
-}
 
 function asphalt() {
   const c = document.createElement("canvas");
@@ -94,19 +73,19 @@ function band(r1, r2, a0, a1, y, segs = 48, uvScale = 0) {
   return g;
 }
 
-function run() {
-  const w = () => window.innerWidth, h = () => window.innerHeight;
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
-  renderer.setSize(w(), h(), false);
+
+export function buildScene(canvas, W, H) {
+  const portrait = H > W;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H, false);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.95;
 
   const scene = new THREE.Scene();
   scene.background = sky();
   scene.fog = new THREE.Fog(0x141722, 40, 140);
-  const camera = new THREE.PerspectiveCamera(w() < h() ? 70 : 52, w() / h(), 0.05, 400);
-
+  const camera = new THREE.PerspectiveCamera(portrait ? 72 : 52, W / H, 0.05, 400);
   // Floodlit night: a cool sky fill, a high key light and warm light from the stands.
   scene.add(new THREE.HemisphereLight(0x8a96b8, 0x15161a, 0.9));
   const key = new THREE.DirectionalLight(0xffffff, 2.4);
@@ -166,76 +145,38 @@ function run() {
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const trails = new AfterimagePass(0.82);
-  composer.addPass(trails);
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(w(), h()), 0.55, 0.4, 0.93));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.55, 0.4, 0.93));
   composer.addPass(new OutputPass());
 
-  const onResize = () => {
-    renderer.setSize(w(), h(), false);
-    composer.setSize(w(), h());
-    camera.aspect = w() / h();
-    camera.fov = w() < h() ? 70 : 52;
-    camera.updateProjectionMatrix();
-  };
-  addEventListener("resize", onResize);
-
-  const flash = root.querySelector(".intro-flash");
-  const title = root.querySelector(".intro-title");
-  // ?introT=1.2 freezes the intro at that second (no trails), for tuning the shot.
-  const frozen = Number(new URLSearchParams(location.search).get("introT")) || null;
-  if (frozen) trails.uniforms["damp"].value = 0;
-  const t0 = performance.now();
-  let raf = 0;
-  const skip = () => finish(true);
-  root.querySelector(".intro-skip")?.addEventListener("click", skip);
-  root.addEventListener("pointerdown", (e) => { if (!e.target.closest(".intro-skip")) skip(); });
-  addEventListener("keydown", skip, { once: true });
-
-  function frame(now) {
-    if (finished) {
-      cancelAnimationFrame(raf);
-      removeEventListener("resize", onResize);
-      renderer.dispose();
-      return;
-    }
-    const t = frozen ?? (now - t0) / 1000;
+  return function renderAt(t) {
     let shake = 0;
+    let aim = null, aimW = 0;
     for (const c of cars) {
       const p = (t - c.start) / c.dur;
-      c.car.visible = p > 0 && p < 1;
+      c.car.visible = p > -0.05 && p < 1.05;
       if (!c.car.visible) continue;
       const a = -1.15 + p * 2.3;
       const x = c.r * Math.cos(a), z = c.r * Math.sin(a);
       const tx = -Math.sin(a), tz = Math.cos(a);
       c.car.position.set(x, 0, z);
-      c.car.rotation.y = Math.atan2(-tz, tx) - 0.06; // a touch of yaw: the car is turning in
-      for (const s of c.spinners) s.rotation.z -= 1.6;
+      c.car.rotation.y = Math.atan2(-tz, tx) - 0.06;
+      for (const s of c.spinners) s.rotation.z = -t * 150;
       const d = c.car.position.distanceTo(camBase);
       shake = Math.max(shake, Math.max(0, 1 - d / 9));
+      // The camera operator follows the car that is closest, then lets it go.
+      const w = Math.max(0, 1 - d / 16) ** 1.5;
+      if (w > aimW) { aimW = w; aim = c.car.position.clone().add(new THREE.Vector3(0, 0.45, 0)); }
     }
-    // Drift towards the oncoming cars, and a jolt as each one goes by.
     const drift = Math.min(1, t / 2.4);
     camera.position.copy(camBase);
     camera.position.y += Math.sin(t * 40) * 0.012 * shake;
     camera.position.x += Math.sin(t * 53) * 0.03 * shake;
     const target = look.clone();
-    target.applyAxisAngle(new THREE.Vector3(0, 1, 0), drift * 0.12);
+    target.applyAxisAngle(new THREE.Vector3(0, 1, 0), drift * 0.12 + (portrait ? -0.05 : 0));
+    if (aim) target.lerp(aim, Math.min(0.55, aimW * 0.7));
     target.y += Math.cos(t * 47) * 0.05 * shake;
     camera.lookAt(target);
     camera.rotateZ(Math.sin(t * 31) * 0.01 * shake);
-
     composer.render();
-
-    if (!frozen && t > 2.35 && !flash.classList.contains("on")) {
-      flash.classList.add("on");
-      title.classList.add("on");
-      trails.uniforms["damp"].value = 0.9;
-    }
-    if (frozen) { raf = requestAnimationFrame(frame); return; }
-    if (t > 3.6) return finish();
-    raf = requestAnimationFrame(frame);
-  }
-  raf = requestAnimationFrame(frame);
-  root.classList.add("playing");
+  };
 }

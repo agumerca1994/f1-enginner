@@ -50,8 +50,8 @@ h2.display { font-size: clamp(40px, 5.4vw, 76px); margin-top: 16px; }
 #intro { position: fixed; inset: 0; z-index: 100; background: #000; overflow: hidden; }
 html.no-intro #intro { display: none; }
 html.intro-on body { overflow: hidden; }
-#intro canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .35s; }
-#intro.playing canvas { opacity: 1; }
+#intro video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .35s; }
+#intro.playing video { opacity: 1; }
 .intro-vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 60%, transparent 40%, rgba(0, 0, 0, .7) 100%); }
 .intro-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 .intro-flash.on { animation: flash .55s ease-out forwards; }

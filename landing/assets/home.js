@@ -16,8 +16,40 @@ const io = new IntersectionObserver((entries) => {
 }, { threshold: 0.15 });
 document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
 
-// Without the intro (seen already, or reduced motion) the hero animates in at once.
-if (document.documentElement.classList.contains("no-intro")) document.documentElement.classList.add("intro-done");
+// --- the intro: a rendered video of cars passing a corner, then the page slides in --------------
+const html = document.documentElement;
+const intro = document.getElementById("intro");
+let introOver = false;
+function endIntro(fast) {
+  if (introOver || !intro) return;
+  introOver = true;
+  try { sessionStorage.setItem("intro-visto", "1"); } catch (e) {}
+  html.classList.add("intro-done");
+  intro.classList.add(fast ? "out-fast" : "out");
+  setTimeout(() => { intro.remove(); html.classList.remove("intro-on"); }, fast ? 250 : 900);
+}
+if (!intro || html.classList.contains("no-intro")) {
+  html.classList.add("intro-done");
+} else {
+  const video = intro.querySelector("video");
+  const portrait = innerHeight > innerWidth;
+  video.poster = `/assets/intro/poster-${portrait ? "v" : "h"}.jpg`;
+  video.src = `/assets/intro/intro-${portrait ? "v" : "h"}.mp4`; // H.264: what every phone plays
+  const flash = intro.querySelector(".intro-flash");
+  const title = intro.querySelector(".intro-title");
+  // A browser that will not autoplay (or a slow network) gets the page straight away.
+  const giveUp = setTimeout(() => endIntro(true), 3000);
+  video.addEventListener("playing", () => { clearTimeout(giveUp); intro.classList.add("playing"); }, { once: true });
+  video.addEventListener("timeupdate", () => {
+    if (video.currentTime > 2.3 && !title.classList.contains("on")) { flash.classList.add("on"); title.classList.add("on"); }
+  });
+  video.addEventListener("ended", () => setTimeout(() => endIntro(false), 500));
+  video.addEventListener("error", () => endIntro(true));
+  video.play().catch(() => endIntro(true));
+  intro.querySelector(".intro-skip")?.addEventListener("click", () => endIntro(true));
+  intro.addEventListener("pointerdown", (e) => { if (!e.target.closest(".intro-skip")) endIntro(true); });
+  addEventListener("keydown", () => endIntro(true), { once: true });
+}
 
 // Hero radio: types each call, holds it, then the next.
 const msg = document.getElementById("hero-msg");

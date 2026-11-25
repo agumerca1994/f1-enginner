@@ -250,7 +250,7 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
     opening.rotateX(-Math.PI / 2);
     add(body, opening, "body", mats.black, { lines: false }).position.set(0.88, 0.605, 0);
     const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.125, 24, 18), mats.helmet);
-    helmet.position.set(0.78, 0.72, 0);
+    helmet.position.set(0.78, 0.71, 0);
     body.add(helmet);
     const visor = new THREE.Mesh(new THREE.SphereGeometry(0.127, 24, 12, -Math.PI / 2.6, Math.PI / 1.3, Math.PI / 2.9, Math.PI / 5), mats.visor);
     visor.rotation.y = Math.PI / 2;
@@ -262,28 +262,51 @@ export function CarViewer({ focus, bias, setting }: { focus: string; bias?: numb
     const intake = new THREE.CircleGeometry(1, 24);
     intake.scale(0.09, 0.07, 1);
     intake.rotateY(Math.PI / 2);
-    add(body, intake, "body", mats.black, { lines: false }).position.set(0.42, 0.72, 0);
+    add(body, intake, "body", mats.black, { lines: false }).position.set(0.3, 0.86, 0);
 
-    // Front wing: main plane, two flaps that tilt together, endplates.
-    add(body, wing(0.44, 1.95, 0.1, 0.04), "front_wing", mats.carbon).position.set(3.5, 0.075, 0);
-    for (const side of [1, -1]) add(body, plate(FRONT_ENDPLATE, 0.014), "front_wing", mats.livery).position.z = side * 0.98;
+    // Front wing: four elements whose outer thirds sweep up (the flaps tilt together), endplates,
+    // the nose pylons and the wake deflectors over the front wheels.
+    const element = (parent: THREE.Object3D, part: Part, chord: number, span: number, mat: THREE.Material, x: number, y: number) => {
+      const mid = span * 0.36;
+      const out = (span - mid) / 2;
+      add(parent, wing(chord, mid + 0.02, 0.09, 0.045), part, mat).position.set(x, y, 0);
+      for (const side of [1, -1]) {
+        // The tip hinges on the edge of the middle piece, so the element stays one surface.
+        const hinge = new THREE.Group();
+        hinge.position.set(x, y, side * (mid / 2));
+        hinge.rotation.x = side * 0.16;
+        parent.add(hinge);
+        add(hinge, wing(chord, out, 0.09, 0.045), part, mat).position.z = side * (out / 2);
+      }
+    };
+    element(body, "front_wing", 0.42, 2.0, mats.carbon, 3.55, 0.06);
+    for (const side of [1, -1]) add(body, plate(FRONT_ENDPLATE, 0.014), "front_wing", mats.livery).position.z = side * 1.0;
     const frontFlap = new THREE.Group();
-    frontFlap.position.set(3.08, 0.13, 0);
+    frontFlap.position.set(3.14, 0.12, 0);
     body.add(frontFlap);
-    add(frontFlap, wing(0.24, 1.9, 0.1, 0.05), "front_flap", mats.carbon);
-    add(frontFlap, wing(0.17, 1.9, 0.1, 0.05), "front_flap", mats.carbon).position.set(-0.17, 0.08, 0);
-    // Nose pylons to the main plane.
-    for (const side of [1, -1]) add(body, tube([[3.0, 0.22, side * 0.04], [3.06, 0.16, side * 0.07], [3.12, 0.1, side * 0.1]], 0.012), "front_wing", mats.carbon, { lines: false });
+    element(frontFlap, "front_flap", 0.22, 1.96, mats.carbon, 0, 0);
+    element(frontFlap, "front_flap", 0.17, 1.94, mats.carbon, -0.18, 0.07);
+    element(frontFlap, "front_flap", 0.13, 1.92, mats.carbon, -0.31, 0.13);
+    for (const side of [1, -1]) add(body, tube([[3.0, 0.22, side * 0.05], [3.08, 0.15, side * 0.08], [3.16, 0.09, side * 0.1]], 0.012), "front_wing", mats.carbon, { lines: false });
+    for (const side of [1, -1]) {
+      const d = add(body, wing(0.36, 0.26, 0.12, 0.08), "body", mats.carbon, { lines: false });
+      d.position.set(WB_F + 0.2, 0.71, side * (TRACK - 0.12));
+      d.rotation.set(side * 0.45, 0, -0.1);
+    }
+    // Floor edges.
+    for (const side of [1, -1]) add(body, plate([[1.0, 0.075], [-0.9, 0.075], [-0.9, 0.12], [1.0, 0.1]], 0.01), "floor", mats.carbon, { lines: false }).position.z = side * 0.79;
 
     // Rear wing: main plane, a flap above it, endplates, beam wing and pylon.
-    add(body, wing(0.38, 1.0, 0.11, 0.05), "rear_wing", mats.carbon).position.set(-2.22, 0.84, 0);
+    add(body, wing(0.4, 1.0, 0.12, 0.06), "rear_wing", mats.carbon).position.set(-2.22, 0.84, 0);
     for (const side of [1, -1]) add(body, plate(REAR_ENDPLATE, 0.014), "rear_wing", mats.livery).position.z = side * 0.505;
     // A red fin on the engine cover, like a livery.
-    add(body, plate([[-0.2, 0.74], [-1.5, 0.62], [-1.55, 0.68], [-0.1, 0.8]], 0.012), "body", mats.livery, { lines: false });
-    add(body, wing(0.2, 0.86, 0.1, 0.04), "rear_wing", mats.carbon).position.set(-2.18, 0.42, 0);
+    add(body, plate([[-0.1, 0.88], [-1.45, 0.64], [-1.5, 0.7], [0.05, 0.95]], 0.012), "body", mats.livery, { lines: false });
+    // Beam wing: two small elements low between the endplates.
+    add(body, wing(0.18, 0.9, 0.12, 0.05), "rear_wing", mats.carbon).position.set(-2.12, 0.42, 0);
+    add(body, wing(0.14, 0.9, 0.12, 0.05), "rear_wing", mats.carbon).position.set(-2.3, 0.5, 0);
     add(body, tube([[-2.15, 0.36, 0], [-2.3, 0.62, 0], [-2.36, 0.83, 0]], 0.022), "rear_wing", mats.carbon, { lines: false });
     const rearFlap = new THREE.Group();
-    rearFlap.position.set(-2.46, 0.97, 0);
+    rearFlap.position.set(-2.48, 0.98, 0);
     body.add(rearFlap);
     add(rearFlap, wing(0.22, 0.98, 0.1, 0.05), "rear_flap", mats.carbon);
 
