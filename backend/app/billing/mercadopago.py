@@ -1,4 +1,4 @@
-"""Mercado Pago over plain HTTPS: Checkout Pro for race packs, preapprovals for the subscription.
+"""Mercado Pago over plain HTTPS: Checkout Pro for race packs, a subscription plan for the subscription.
 
 Nothing in a notification is trusted: every change is read back from Mercado Pago with our
 access token, and a payment counts only if its external_reference and amount match ours.
@@ -52,17 +52,17 @@ async def get_payment(payment_id: str) -> dict:
     return await _call("GET", f"/v1/payments/{payment_id}")
 
 
-async def create_preapproval(*, ref: str, title: str, amount: float, payer_email: str, back_url: str,
-                             notify_url: str) -> tuple[str, str]:
-    """A monthly subscription without a plan. Returns (preapproval id, URL where the player authorizes it)."""
-    body = await _call("POST", "/preapproval", {
+async def create_plan(*, title: str, amount: float, back_url: str) -> tuple[str, str]:
+    """A monthly subscription plan. Returns (plan id, URL where a player subscribes to it).
+
+    The player subscribes with whatever Mercado Pago account they choose, so no payer email is
+    sent; Mercado Pago adds the new subscription's preapproval_id to back_url on the way back.
+    """
+    body = await _call("POST", "/preapproval_plan", {
         "reason": title,
-        "external_reference": ref,
-        "payer_email": payer_email,
-        "auto_recurring": {"frequency": 1, "frequency_type": "months", "transaction_amount": amount, "currency_id": "ARS"},
+        "auto_recurring": {"frequency": 1, "frequency_type": "months", "transaction_amount": amount,
+                           "currency_id": "ARS"},
         "back_url": back_url,
-        "notification_url": notify_url,
-        "status": "pending",
     })
     return str(body["id"]), body["init_point"]
 

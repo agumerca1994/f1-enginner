@@ -32,6 +32,21 @@ function Plans() {
   // Back from Mercado Pago (or the simulated checkout): check the payment now.
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
+    const preapproval = q.get("preapproval_id");
+    if (preapproval) {
+      // Back from subscribing: bind the new subscription to this account.
+      (async () => {
+        try {
+          const r = await api<{ estado: string }>(`/api/billing/subscription/confirm?preapproval_id=${encodeURIComponent(preapproval)}`, await credentials(), { method: "POST" });
+          setNote(r.estado === "aprobado" ? "Listo, ya tenés la suscripción." : "Mercado Pago todavía no confirmó la suscripción. Puede tardar unos minutos.");
+          setRev((x) => x + 1);
+        } catch {
+          setNote("No pudimos confirmar la suscripción ahora. Si la autorizaste, escribinos y la activamos.");
+        }
+        window.history.replaceState(null, "", "/planes");
+      })();
+      return;
+    }
     const ref = q.get("ref");
     if (!ref) return;
     const simulated = q.get("simulado") === "1";

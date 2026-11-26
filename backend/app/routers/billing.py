@@ -18,7 +18,7 @@ from app.billing import plans
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.models import BillingAccount, Payment, User
+from app.models import BillingAccount, BillingSetting, Payment, User
 from app.routers.internal import require_internal_key
 
 logger = logging.getLogger(__name__)
@@ -30,12 +30,6 @@ def _api_url() -> str:
     if settings.PUBLIC_API_URL:
         return settings.PUBLIC_API_URL.rstrip("/")
     return f"https://{settings.API_DOMAIN}" if settings.API_DOMAIN else "http://localhost:8000"
-
-
-def _payer_email(user: User) -> str:
-    if settings.MP_TEST_PAYER_EMAIL:  # testing with a test seller's account: the payer must be a test user too
-        return settings.MP_TEST_PAYER_EMAIL
-    return user.email
 
 
 @router.get("/api/billing")
@@ -72,8 +66,7 @@ async def checkout(body: Checkout, user: User = Depends(get_current_user), db: A
     if mp.configured():
         try:
             if body.producto == "suscripcion":
-                pay.mp_id, url = await mp.create_preapproval(ref=ref, title=f"Ingeniero de pista · {product['titulo']}",
-                                                             amount=amount, payer_email=_payer_email(user), back_url=back, notify_url=notify)
+                pay.mp_id, url = await _plan(db, amount, f"Ingeniero de pista · {product['titulo']}")
             else:
                 pay.mp_id, url = await mp.create_preference(ref=ref, title=f"Ingeniero de pista · {product['titulo']}",
                                                             amount=amount, back_url=back, notify_url=notify)
@@ -88,17 +81,38 @@ async def checkout(body: Checkout, user: User = Depends(get_current_user), db: A
     return {"url": url, "ref": ref, "ars": amount}
 
 
+async def _plan(db: AsyncSession, amount: int, title: str) -> tuple[str, str]:
+    """The subscription plan at this price, created once per price (the price follows the dollar)."""
+    key = f"mp_plan_{amount}"
+    row = await db.get(BillingSetting, key)
+    if row is not None:
+        plan_id, url = row.value.split("|", 1)
+        return plan_id, url
+    plan_id, url = await mp.create_plan(title=title, amount=amount,
+                                        back_url=f"{settings.FRONTEND_URL.rstrip('/')}/planes?suscripcion=1")
+    db.add(BillingSetting(key=key, value=f"{plan_id}|{url}"[:200]))
+    return plan_id, url
+
+
+async def _our_plans(db: AsyncSession) -> set[str]:
+    rows = (await db.scalars(select(BillingSetting).where(BillingSetting.key.like("mp_plan_%")))).all()
+    return {r.value.split("|", 1)[0] for r in rows}
+
+
+def _extend(acc: BillingAccount, next_charge: datetime | None) -> None:
+    until = (next_charge or datetime.now(timezone.utc) + timedelta(days=31)) + GRACE
+    if acc.plan_until is None or until > acc.plan_until:
+        acc.plan_until = until
+
+
 async def _apply(db: AsyncSession, pay: Payment, *, next_charge: datetime | None = None) -> None:
     """Credit an approved payment once."""
     if pay.status == "aprobado" and pay.product != "suscripcion":
         return
     acc = await plans.account(db, pay.tenant_id)
     if pay.product == "suscripcion":
-        acc.mp_preapproval_id = pay.mp_id or acc.mp_preapproval_id
         acc.mp_preapproval_status = "authorized"
-        until = (next_charge or datetime.now(timezone.utc) + timedelta(days=31)) + GRACE
-        if acc.plan_until is None or until > acc.plan_until:
-            acc.plan_until = until
+        _extend(acc, next_charge)
     else:
         await plans.add_credits(db, pay.tenant_id, plans.PRODUCTS[pay.product]["carreras"])
     pay.status = "aprobado"
@@ -127,16 +141,14 @@ async def _sync_payment(db: AsyncSession, payment_id: str) -> None:
 
 
 async def _sync_preapproval(db: AsyncSession, preapproval_id: str) -> None:
+    """A subscription changed (or charged its month): read it back and update the account bound to it."""
     pre = await mp.get_preapproval(preapproval_id)
-    pay = await db.scalar(select(Payment).where(Payment.ref == pre.get("external_reference")))
-    if pay is None:
-        return
-    acc = await plans.account(db, pay.tenant_id)
-    state = pre.get("status")
-    acc.mp_preapproval_id, acc.mp_preapproval_status = str(pre.get("id")), state
-    if state == "authorized":
-        pay.mp_id = str(pre.get("id"))
-        await _apply(db, pay, next_charge=_parse_date(pre.get("next_payment_date")))
+    acc = await db.scalar(select(BillingAccount).where(BillingAccount.mp_preapproval_id == str(pre.get("id"))))
+    if acc is None:
+        return  # not bound yet: the player's return to /planes binds it
+    acc.mp_preapproval_status = pre.get("status")
+    if pre.get("status") == "authorized":
+        _extend(acc, _parse_date(pre.get("next_payment_date")))
     # cancelled or paused: the plan simply runs until plan_until, already paid for.
 
 
@@ -176,8 +188,8 @@ async def sync(ref: str, user: User = Depends(get_current_user), db: AsyncSessio
         raise HTTPException(404, "Payment not found")
     if mp.configured() and pay.status == "pendiente":
         try:
-            if pay.product == "suscripcion" and pay.mp_id:
-                await _sync_preapproval(db, pay.mp_id)
+            if pay.product == "suscripcion":
+                pass  # bound and confirmed by /api/billing/subscription/confirm
             else:
                 found = await _search_payment(ref)
                 if found:
@@ -192,6 +204,37 @@ async def _search_payment(ref: str) -> str | None:
     body = await mp._call("GET", f"/v1/payments/search?external_reference={ref}&sort=date_created&criteria=desc")
     results = body.get("results") or []
     return str(results[0]["id"]) if results else None
+
+
+@router.post("/api/billing/subscription/confirm")
+async def confirm_subscription(preapproval_id: str, user: User = Depends(get_current_user),
+                               db: AsyncSession = Depends(get_db)) -> dict:
+    """Back from subscribing: bind the new subscription to this account, once it is ours and authorized."""
+    if not mp.configured() or not preapproval_id.isalnum():
+        raise HTTPException(404, "Not found")
+    try:
+        pre = await mp.get_preapproval(preapproval_id)
+    except mp.MercadoPagoError as e:
+        logger.warning("mercado pago preapproval read failed", extra={"error": str(e)})
+        raise HTTPException(502, "payment_provider_error")
+    if str(pre.get("preapproval_plan_id")) not in await _our_plans(db):
+        raise HTTPException(404, "Not our subscription")
+    taken = await db.scalar(select(BillingAccount).where(BillingAccount.mp_preapproval_id == str(pre.get("id")),
+                                                         BillingAccount.tenant_id != user.tenant_id))
+    if taken is not None:
+        raise HTTPException(409, "Subscription already bound")
+    acc = await plans.account(db, user.tenant_id)
+    acc.mp_preapproval_id, acc.mp_preapproval_status = str(pre.get("id")), pre.get("status")
+    amount = float((pre.get("auto_recurring") or {}).get("transaction_amount") or 0)
+    pay = await db.scalar(select(Payment).where(Payment.tenant_id == user.tenant_id, Payment.product == "suscripcion",
+                                                Payment.status == "pendiente").order_by(Payment.id.desc()))
+    if pre.get("status") == "authorized" and pay is not None and amount + 0.01 >= float(pay.amount_ars):
+        pay.mp_id = str(pre.get("id"))
+        await _apply(db, pay, next_charge=_parse_date(pre.get("next_payment_date")))
+    elif pre.get("status") == "authorized":
+        _extend(acc, _parse_date(pre.get("next_payment_date")))
+    await db.commit()
+    return {"estado": "aprobado" if pre.get("status") == "authorized" else "pendiente"}
 
 
 @router.post("/api/billing/simulate")

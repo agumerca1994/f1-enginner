@@ -25,11 +25,14 @@ Las "credenciales de prueba" de la cuenta real dan "Hubo un error" dentro del ch
 3. En Easypanel → Entorno del servicio:
    - `MP_ACCESS_TOKEN` = ese token
    - `MP_SANDBOX` = `false`
-   - `MP_TEST_PAYER_EMAIL` = `test_user_<UserID del comprador>@testuser.com` (para la suscripción)
    - `PLAN_LIMITS` sigue en `false`.
 4. Desplegar y cargar el dólar: `scripts/plans.sh dolar <pesos>`.
 5. En otra ventana de incógnito, comprar desde Ajustes → Plan y pagar entrando con el **comprador de prueba**, con tarjeta de prueba (titular `APRO`). Las notificaciones llegan a `https://f1-api.imanzanastore.com.ar/api/billing/mp/webhook` (la URL va en cada cobro).
-6. Para cobrar de verdad: `MP_ACCESS_TOKEN` = el de producción de la cuenta real, borrar `MP_TEST_PAYER_EMAIL`, darte cortesía (`scripts/plans.sh cortesia <tu mail>`) y recién ahí `PLAN_LIMITS=true`.
+6. Para cobrar de verdad: `MP_ACCESS_TOKEN` = el de producción de la cuenta real, darte cortesía (`scripts/plans.sh cortesia <tu mail>`) y recién ahí `PLAN_LIMITS=true`.
+
+## Suscripción
+
+La suscripción usa un plan de Mercado Pago (`/preapproval_plan`), creado solo la primera vez para cada precio y guardado en `billing_settings` (`mp_plan_<pesos>`). El jugador se suscribe con la cuenta de Mercado Pago que quiera, sin mandarle un email. Al volver, Mercado Pago agrega `preapproval_id` a `/planes`; la página llama a `POST /api/billing/subscription/confirm`, que lee la suscripción, comprueba que sea de un plan nuestro y que no esté atada a otra cuenta, y la ata a la del jugador. Las renovaciones llegan por las notificaciones y se buscan por `mp_preapproval_id`.
 
 ## Seguridad
 
@@ -37,6 +40,6 @@ Las notificaciones de Mercado Pago no se creen: el servidor vuelve a leer el pag
 
 ## Pendiente de verificar en el sandbox
 
-- El alta de la suscripción sin plan con `status: pending` y el `init_point` que devuelve.
+- El alta por plan y que la vuelta traiga `preapproval_id`.
 - Los nombres de estado de la suscripción (`authorized`, `cancelled`) y la cancelación con `PUT /preapproval/{id}`.
 - El aviso `subscription_authorized_payment` y su `preapproval_id`.

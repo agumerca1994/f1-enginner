@@ -205,3 +205,47 @@ def test_the_live_engineer_steps_down_from_pro_to_alerts_to_silence(client, limi
     quiet = EngineerRunner(t, "live", game_session_id=_session(t), provider=FakeAI())
     assert asyncio.run(quiet._access()) is None
     assert quiet.provider_name.startswith("sin radio")
+
+
+def test_subscription_through_a_plan_is_bound_on_the_way_back(client, limits, monkeypatch):
+    from app.billing import mercadopago as mp
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "MP_ACCESS_TOKEN", "TEST-token")
+    made = []
+
+    async def fake_plan(*, title, amount, back_url):
+        made.append(amount)
+        return "plan1", "https://mp.test/subscribe/plan1"
+
+    pres = {}
+
+    async def fake_pre(pid):
+        return pres[pid]
+
+    monkeypatch.setattr(mp, "create_plan", fake_plan)
+    monkeypatch.setattr(mp, "get_preapproval", fake_pre)
+    h = {"X-Dev-User": "subs@planes.test"}
+    other = {"X-Dev-User": "otro@planes.test"}
+    c = client.post("/api/billing/checkout", json={"producto": "suscripcion"}, headers=h).json()
+    assert c["url"] == "https://mp.test/subscribe/plan1"
+    client.post("/api/billing/checkout", json={"producto": "suscripcion"}, headers=other)
+    assert made == [c["ars"]]  # one plan per price
+
+    # Someone else's plan is not ours.
+    pres["X1"] = {"id": "X1", "preapproval_plan_id": "foreign", "status": "authorized", "auto_recurring": {"transaction_amount": c["ars"]}}
+    assert client.post("/api/billing/subscription/confirm", params={"preapproval_id": "X1"}, headers=h).status_code == 404
+    # Ours, authorized: the subscription starts, bound to this account only.
+    pres["S1"] = {"id": "S1", "preapproval_plan_id": "plan1", "status": "authorized",
+                  "next_payment_date": "2030-01-01T00:00:00Z", "auto_recurring": {"transaction_amount": c["ars"]}}
+    assert client.post("/api/billing/subscription/confirm", params={"preapproval_id": "S1"}, headers=h).json()["estado"] == "aprobado"
+    assert client.post("/api/billing/subscription/confirm", params={"preapproval_id": "S1"}, headers=other).status_code == 409
+    monkeypatch.setattr(settings, "MP_ACCESS_TOKEN", "")
+    p = client.get("/api/billing", headers=h).json()
+    assert p["plan"] == "suscripcion" and p["hasta"].startswith("2030-01-0")
+    monkeypatch.setattr(settings, "MP_ACCESS_TOKEN", "TEST-token")
+    # A renewal notice moves the end date; the notice is read back, never trusted.
+    pres["S1"] = {**pres["S1"], "next_payment_date": "2030-02-01T00:00:00Z"}
+    client.post("/api/billing/mp/webhook", json={"type": "subscription_preapproval", "data": {"id": "S1"}})
+    monkeypatch.setattr(settings, "MP_ACCESS_TOKEN", "")
+    assert client.get("/api/billing", headers=h).json()["hasta"].startswith("2030-02-0")
