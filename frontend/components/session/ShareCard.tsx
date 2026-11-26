@@ -59,8 +59,32 @@ function fit(ctx: CanvasRenderingContext2D, text: string, font: (px: number) => 
 }
 
 type CardData = { summary: Summary; layout: TrackLayout | null };
+type Design = "clasico" | "centrado";
 
-function draw(canvas: HTMLCanvasElement, format: Format, bg: HTMLImageElement | null, { summary: s, layout }: CardData) {
+/** The app's mark: the gauge with the cyan arc, as in the app icon. */
+function gauge(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  const cx = x + size / 2, cy = y + size / 2, r = size * 0.4;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#22d3ee";
+  ctx.lineWidth = size * 0.13;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI * 0.75, Math.PI * 0.25);
+  ctx.stroke();
+  ctx.strokeStyle = "#e9eef3";
+  ctx.lineWidth = size * 0.11;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(-0.95) * r * 0.78, cy + Math.sin(-0.95) * r * 0.78);
+  ctx.stroke();
+  ctx.fillStyle = "#e9eef3";
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.09, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function draw(canvas: HTMLCanvasElement, format: Format, design: Design, bg: HTMLImageElement | null, { summary: s, layout }: CardData) {
   const { w: W, h: H } = FORMATS[format];
   canvas.width = W;
   canvas.height = H;
@@ -69,168 +93,222 @@ function draw(canvas: HTMLCanvasElement, format: Format, bg: HTMLImageElement | 
   const mono = cssFont("--font-jetbrains", "monospace");
   const sans = cssFont("--font-barlow", "sans-serif");
   const D = (px: number) => `italic 800 ${px}px ${disp}`;
+  const D7 = (px: number) => `italic 700 ${px}px ${disp}`;
   const M = (px: number) => `500 ${px}px ${mono}`;
   const pad = 76;
   const story = format === "historia";
+  const centred = design === "centrado";
   const t = s.tarjeta;
+  const FG = "#f2f3f5";
+  const SOFT = "rgba(242,243,245,0.72)";
+  const LABEL = "rgba(242,243,245,0.58)";
 
-  // Background, then darkened top and bottom so the text always reads.
+  // --- background, with a vignette so the edges (where the text is) go dark ---
   ctx.fillStyle = "#0b0c0e";
   ctx.fillRect(0, 0, W, H);
-  if (bg) cover(ctx, bg, W, H);
-  else {
+  if (bg) {
+    cover(ctx, bg, W, H);
+    if (centred) {
+      ctx.fillStyle = "rgba(5,6,7,0.42)";
+      ctx.fillRect(0, 0, W, H);
+    }
+  } else {
     const g = ctx.createRadialGradient(W * 0.6, H * 0.42, 40, W * 0.6, H * 0.42, H * 0.7);
     g.addColorStop(0, "#2a1410");
     g.addColorStop(1, "#0b0c0e");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    ctx.save();
-    ctx.translate(W * 0.5, H * 0.42);
-    ctx.rotate(-0.12);
-    if (outline(ctx, layout, -W * 0.55, -H * 0.2, W * 1.1, H * 0.4)) {
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth = 46;
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(255,75,43,0.5)";
-      ctx.lineWidth = 5;
-      ctx.stroke();
+    if (!centred) {
+      ctx.save();
+      ctx.translate(W * 0.5, H * 0.42);
+      ctx.rotate(-0.12);
+      if (outline(ctx, layout, -W * 0.55, -H * 0.2, W * 1.1, H * 0.4)) {
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 46;
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(255,75,43,0.5)";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+      }
+      ctx.restore();
     }
-    ctx.restore();
   }
-  const top = ctx.createLinearGradient(0, 0, 0, H * 0.4);
-  top.addColorStop(0, "rgba(5,6,7,0.85)");
-  top.addColorStop(1, "rgba(5,6,7,0)");
-  ctx.fillStyle = top;
-  ctx.fillRect(0, 0, W, H * 0.4);
-  const bot = ctx.createLinearGradient(0, H * (story ? 0.5 : 0.38), 0, H);
-  bot.addColorStop(0, "rgba(5,6,7,0)");
-  bot.addColorStop(0.45, "rgba(5,6,7,0.82)");
-  bot.addColorStop(1, "rgba(5,6,7,0.96)");
-  ctx.fillStyle = bot;
-  ctx.fillRect(0, H * 0.38, W, H * 0.62);
+  const vig = ctx.createRadialGradient(W / 2, H * 0.46, Math.min(W, H) * 0.16, W / 2, H * 0.46, Math.hypot(W, H) * 0.56);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(0.45, "rgba(0,0,0,0.42)");
+  vig.addColorStop(1, "rgba(0,0,0,0.95)");
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+  if (!centred) {
+    const top = ctx.createLinearGradient(0, 0, 0, H * 0.38);
+    top.addColorStop(0, "rgba(5,6,7,0.7)");
+    top.addColorStop(1, "rgba(5,6,7,0)");
+    ctx.fillStyle = top;
+    ctx.fillRect(0, 0, W, H * 0.38);
+    const bot = ctx.createLinearGradient(0, H * (story ? 0.5 : 0.38), 0, H);
+    bot.addColorStop(0, "rgba(5,6,7,0)");
+    bot.addColorStop(0.45, "rgba(5,6,7,0.78)");
+    bot.addColorStop(1, "rgba(5,6,7,0.94)");
+    ctx.fillStyle = bot;
+    ctx.fillRect(0, H * 0.38, W, H * 0.62);
+  }
 
+  const text = (str: string, x: number, y: number, font: string, color: string, spacing = 0) => {
+    ctx.font = font;
+    ctx.letterSpacing = `${spacing}px`;
+    ctx.fillStyle = color;
+    ctx.fillText(str, x, y);
+    ctx.letterSpacing = "0px";
+  };
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#f2f3f5";
-  ctx.letterSpacing = "0px";
+  ctx.textAlign = centred ? "center" : "left";
+  const X = centred ? W / 2 : pad;
 
-  // Top: session, grand prix, circuit.
+  // --- header: session and date, the grand prix, the circuit ---
   const date = new Date(s.sesion.inicio).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+  let y = pad + 26;
   ctx.font = M(28);
   ctx.letterSpacing = "5px";
-  ctx.fillStyle = ACCENT;
-  const eyebrow = `${sessionEs(s.sesion.tipo).toUpperCase()}`;
-  ctx.fillText(eyebrow, pad, pad + 26);
-  const ew = ctx.measureText(eyebrow).width;
-  ctx.fillStyle = "rgba(242,243,245,0.72)";
-  ctx.fillText(`  ·  ${date.toUpperCase()}`, pad + ew, pad + 26);
-  ctx.letterSpacing = "0px";
-  const gp = gpName(s.sesion.track_id);
-  let y = pad + 26;
-  ctx.fillStyle = "#f2f3f5";
-  if (gp) {
-    ctx.font = D(story ? 58 : 50);
-    y += story ? 84 : 72;
-    ctx.fillText("GRAN PREMIO DE", pad, y);
-    const px = fit(ctx, gp.toUpperCase(), D, story ? 168 : 136, W - 2 * pad);
-    y += px * 0.92;
-    ctx.fillText(gp.toUpperCase(), pad - 4, y);
-  } else {
-    const px = fit(ctx, (s.sesion.pista ?? "").toUpperCase(), D, story ? 150 : 120, W - 2 * pad);
-    y += px;
-    ctx.fillText((s.sesion.pista ?? "").toUpperCase(), pad, y);
-  }
-  ctx.font = M(30);
-  ctx.letterSpacing = "3px";
-  ctx.fillStyle = "rgba(242,243,245,0.8)";
-  ctx.fillText((circuitName(s.sesion.track_id, s.sesion.pista) ?? "").toUpperCase(), pad, y + 56);
-  ctx.letterSpacing = "0px";
-
-  // Bottom up: footer, stats, then the result with the track beside it.
-  const foot = H - pad;
-  ctx.fillStyle = "#f2f3f5";
-  fit(ctx, t.nombre, (px) => `italic 700 ${px}px ${disp}`, 52, W * 0.55);
-  ctx.fillText(t.nombre, pad, foot);
-  ctx.font = M(24);
-  ctx.letterSpacing = "4px";
-  ctx.textAlign = "right";
-  ctx.fillStyle = "rgba(242,243,245,0.75)";
-  ctx.fillText("INGENIERO DE PISTA", W - pad, foot - 8);
-  const bw = ctx.measureText("INGENIERO DE PISTA").width;
-  ctx.fillStyle = ACCENT;
-  ctx.beginPath();
-  ctx.arc(W - pad - bw - 22, foot - 17, 9, 0, Math.PI * 2);
-  ctx.fill();
+  const kind = sessionEs(s.sesion.tipo).toUpperCase();
+  const rest = `  ·  ${date.toUpperCase()}`;
+  const kw = ctx.measureText(kind).width;
+  const startX = centred ? (W - kw - ctx.measureText(rest).width) / 2 : pad;
   ctx.textAlign = "left";
-  ctx.letterSpacing = "0px";
-  const lineY = foot - 78;
-  ctx.fillStyle = "rgba(242,243,245,0.22)";
-  ctx.fillRect(pad, lineY, W - 2 * pad, 2);
+  text(kind, startX, y, M(28), ACCENT, 5);
+  text(rest, startX + kw, y, M(28), SOFT, 5);
+  ctx.textAlign = centred ? "center" : "left";
+  const gp = gpName(s.sesion.track_id);
+  const title = (gp ?? s.sesion.pista ?? "").toUpperCase();
+  if (gp) {
+    y += story ? 84 : 72;
+    text("GRAN PREMIO DE", X, y, D(story ? 58 : 50), FG);
+  }
+  const px = fit(ctx, title, D, story ? 168 : 136, W - 2 * pad);
+  y += px * 0.92;
+  text(title, centred ? X : X - 4, y, D(px), FG);
+  y += 56;
+  text((circuitName(s.sesion.track_id, s.sesion.pista) ?? "").toUpperCase(), X, y, M(30), SOFT, 3);
+  const headerBottom = y;
 
-  const race = s.carrera || (s.sesion.tipo ?? "").toLowerCase().includes("qualif") || (s.sesion.tipo ?? "").toLowerCase().includes("shootout");
+  // --- footer: "by" and the app's mark, centred at the very bottom ---
+  const brandY = H - 54;
+  const word = "INGENIERO DE PISTA";
+  ctx.textAlign = "left";
+  ctx.font = `500 28px ${sans}`;
+  const byW = ctx.measureText("by").width;
+  ctx.font = D(36);
+  ctx.letterSpacing = "1px";
+  const wordW = ctx.measureText(word).width;
+  ctx.letterSpacing = "0px";
+  const icon = 44, gap = 14;
+  let bx = (W - (byW + gap + icon + 10 + wordW)) / 2;
+  text("by", bx, brandY, `500 28px ${sans}`, LABEL);
+  bx += byW + gap;
+  gauge(ctx, bx, brandY - icon + 6, icon);
+  bx += icon + 10;
+  text(word, bx, brandY, D(36), FG, 1);
+
+  // What the numbers are: the result in a race or qualifying, the best lap in practice.
+  const race = s.carrera || /qualif|shootout/i.test(s.sesion.tipo ?? "");
   const hero = race && s.resultado != null;
   const weather = t.clima ? (WEATHER_ES[t.clima] ?? t.clima) : null;
+  const weatherText = weather ? (t.temp_pista != null ? `${weather} · pista ${t.temp_pista}°` : weather) : null;
+
+  const nameY = brandY - (story ? 96 : 80);
+  const glowOutline = (lw: number) => {
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.shadowColor = ACCENT;
+    ctx.shadowBlur = 26;
+    ctx.strokeStyle = ACCENT;
+    ctx.lineWidth = lw + 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = FG;
+    ctx.lineWidth = lw;
+    ctx.stroke();
+  };
+
+  if (centred) {
+    // Strava-like: the circuit big in the middle, the numbers in a grid under it.
+    const stats: [string, string, string | null][] = [];
+    if (hero) stats.push(["POSICIÓN", `P${s.resultado}`, t.pilotos ? `de ${t.pilotos}` : null]);
+    stats.push(["MEJOR VUELTA", lapS(s.mejor_vuelta_s), null]);
+    stats.push(["VUELTAS", String(s.vueltas), null]);
+    if (weatherText) stats.push(["CLIMA", weatherText, null]);
+    if (stats.length < 4 && t.equipo) stats.push(["EQUIPO", t.equipo, null]);
+    const rows = Math.ceil(stats.length / 2);
+    const rowH = story ? 170 : 138;
+    const statsTop = nameY - 70 - rows * rowH;
+    ctx.textAlign = "center";
+    stats.forEach(([label, value, sub], i) => {
+      const cx = W / 2 + (i % 2 === 0 ? -1 : 1) * (W - 2 * pad) / 4 * (stats.length === 1 ? 0 : 1);
+      const ry = statsTop + Math.floor(i / 2) * rowH;
+      text(label, cx, ry + 30, M(story ? 24 : 22), LABEL, 4);
+      const vpx = fit(ctx, value, D7, story ? 92 : 74, (W - 2 * pad) / 2 - 30);
+      text(value, cx, ry + 30 + vpx * 0.95, D7(vpx), FG);
+      if (sub) {
+        ctx.font = D7(vpx);
+        const vw = ctx.measureText(value).width;
+        ctx.textAlign = "left";
+        text(sub, cx + vw / 2 + 12, ry + 30 + vpx * 0.95, `600 ${story ? 32 : 28}px ${sans}`, SOFT);
+        ctx.textAlign = "center";
+      }
+    });
+    const boxTop = headerBottom + (story ? 90 : 50);
+    const boxBottom = statsTop - (story ? 70 : 40);
+    ctx.save();
+    if (outline(ctx, layout, pad + 20, boxTop, W - 2 * pad - 40, boxBottom - boxTop)) glowOutline(9);
+    ctx.restore();
+    ctx.fillStyle = "rgba(242,243,245,0.22)";
+    ctx.fillRect(W / 2 - 60, nameY - 64, 120, 2);
+    ctx.textAlign = "center";
+    fit(ctx, t.nombre, D7, 56, W - 2 * pad);
+    text(t.nombre, W / 2, nameY, ctx.font, FG);
+    ctx.textAlign = "left";
+    return;
+  }
+
+  // --- classic: the result big on the left, the circuit beside it, the numbers in a row ---
+  ctx.textAlign = "left";
+  fit(ctx, t.nombre, D7, 52, W - 2 * pad);
+  text(t.nombre, pad, nameY, ctx.font, FG);
+  const lineY = nameY - 70;
+  ctx.fillStyle = "rgba(242,243,245,0.22)";
+  ctx.fillRect(pad, lineY, W - 2 * pad, 2);
   const stats: [string, string][] = [];
   if (hero) stats.push(["MEJOR VUELTA", lapS(s.mejor_vuelta_s)]);
   stats.push(["VUELTAS", String(s.vueltas)]);
-  if (weather) stats.push(["CLIMA", t.temp_pista != null ? `${weather} · pista ${t.temp_pista}°` : weather]);
+  if (weatherText) stats.push(["CLIMA", weatherText]);
   if (stats.length < 3 && t.equipo) stats.push(["EQUIPO", t.equipo]);
   const colW = (W - 2 * pad) / stats.length;
   const valY = lineY - 44;
   stats.forEach(([label, value], i) => {
     const x = pad + i * colW;
-    ctx.font = M(22);
-    ctx.letterSpacing = "4px";
-    ctx.fillStyle = "rgba(242,243,245,0.6)";
-    ctx.fillText(label, x, valY - 70);
-    ctx.letterSpacing = "0px";
-    ctx.fillStyle = "#f2f3f5";
-    fit(ctx, value, (px) => `italic 700 ${px}px ${disp}`, 66, colW - 24);
-    ctx.fillText(value, x, valY);
+    text(label, x, valY - 70, M(22), LABEL, 4);
+    const vpx = fit(ctx, value, D7, 66, colW - 24);
+    text(value, x, valY, D7(vpx), FG);
   });
-
   const heroBase = valY - 150;
   const trackBox = { w: story ? 400 : 340, h: story ? 300 : 250 };
   ctx.save();
   // With the circuit as the background the small one would only repeat it.
-  if (bg && outline(ctx, layout, W - pad - trackBox.w, heroBase - trackBox.h, trackBox.w, trackBox.h)) {
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    ctx.shadowColor = ACCENT;
-    ctx.shadowBlur = 24;
-    ctx.strokeStyle = ACCENT;
-    ctx.lineWidth = 10;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "#f2f3f5";
-    ctx.lineWidth = 4;
-    ctx.stroke();
-  }
+  if (bg && outline(ctx, layout, W - pad - trackBox.w, heroBase - trackBox.h, trackBox.w, trackBox.h)) glowOutline(4);
   ctx.restore();
-
-  ctx.fillStyle = "#f2f3f5";
   if (hero) {
-    const big = story ? 300 : 250;
-    ctx.font = D(big);
     const label = `P${s.resultado}`;
-    ctx.fillText(label, pad - 10, heroBase);
+    text(label, pad - 10, heroBase, D(story ? 300 : 250), FG);
     const lw = ctx.measureText(label).width;
-    ctx.font = `600 ${story ? 36 : 32}px ${sans}`;
-    ctx.fillStyle = "rgba(242,243,245,0.8)";
     const lines = [
       t.pilotos ? `de ${t.pilotos}` : null,
       s.largada ? `largó ${s.largada}°${s.largada > s.resultado! ? `  ▲${s.largada - s.resultado!}` : ""}` : null,
     ].filter(Boolean) as string[];
-    lines.forEach((l, i) => ctx.fillText(l, pad + lw + 18, heroBase - 26 - (lines.length - 1 - i) * 48));
+    lines.forEach((l, i) => text(l, pad + lw + 18, heroBase - 26 - (lines.length - 1 - i) * 48, `600 ${story ? 36 : 32}px ${sans}`, SOFT));
   } else {
-    ctx.font = M(24);
-    ctx.letterSpacing = "4px";
-    ctx.fillStyle = "rgba(242,243,245,0.6)";
-    ctx.fillText("MEJOR VUELTA", pad, heroBase - (story ? 190 : 160));
-    ctx.letterSpacing = "0px";
-    ctx.fillStyle = "#f2f3f5";
-    fit(ctx, lapS(s.mejor_vuelta_s), D, story ? 190 : 160, W - 2 * pad - trackBox.w - 20);
-    ctx.fillText(lapS(s.mejor_vuelta_s), pad - 6, heroBase);
+    text("MEJOR VUELTA", pad, heroBase - (story ? 190 : 160), M(24), LABEL, 4);
+    const lpx = fit(ctx, lapS(s.mejor_vuelta_s), D, story ? 190 : 160, W - 2 * pad - trackBox.w - 20);
+    text(lapS(s.mejor_vuelta_s), pad - 6, heroBase, D(lpx), FG);
   }
 }
 
@@ -239,6 +317,7 @@ export function ShareCard({ summary, onClose }: { summary: Summary; onClose: () 
   const layout = useTrackLayout(summary.sesion.track_id);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [format, setFormat] = useState<Format>("historia");
+  const [design, setDesign] = useState<Design>("centrado");
   const [bgId, setBgId] = useState<string>("paneo");
   const [photo, setPhoto] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -250,12 +329,12 @@ export function ShareCard({ summary, onClose }: { summary: Summary; onClose: () 
       await document.fonts.ready;
       const src = bgId === "foto" ? photo : BACKGROUNDS.find((b) => b.id === bgId)?.src ?? null;
       const img = src ? await loadImage(src).catch(() => null) : null;
-      if (!gone && canvas.current) draw(canvas.current, format, img, { summary, layout });
+      if (!gone && canvas.current) draw(canvas.current, format, design, img, { summary, layout });
     })();
     return () => {
       gone = true;
     };
-  }, [format, bgId, photo, summary, layout]);
+  }, [format, design, bgId, photo, summary, layout]);
 
   useEffect(() => () => {
     if (photo) URL.revokeObjectURL(photo);
@@ -317,6 +396,22 @@ export function ShareCard({ summary, onClose }: { summary: Summary; onClose: () 
                   className={`title rounded-[calc(var(--radius-control)-2px)] py-2 text-[0.9rem] ${format === f ? "bg-fg text-bg" : "text-muted"}`}
                 >
                   {FORMATS[f].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="eyebrow">Diseño</span>
+            <div className="grid grid-cols-2 gap-1 rounded-[var(--radius-control)] bg-panel-2 p-1">
+              {(["centrado", "clasico"] as Design[]).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={design === d}
+                  onClick={() => setDesign(d)}
+                  className={`title rounded-[calc(var(--radius-control)-2px)] py-2 text-[0.9rem] ${design === d ? "bg-fg text-bg" : "text-muted"}`}
+                >
+                  {d === "centrado" ? "Circuito al centro" : "Resultado grande"}
                 </button>
               ))}
             </div>
