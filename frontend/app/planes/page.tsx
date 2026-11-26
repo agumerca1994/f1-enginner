@@ -33,18 +33,8 @@ function Plans() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const preapproval = q.get("preapproval_id");
-    if (preapproval) {
-      // Back from subscribing: bind the new subscription to this account.
-      (async () => {
-        try {
-          const r = await api<{ estado: string }>(`/api/billing/subscription/confirm?preapproval_id=${encodeURIComponent(preapproval)}`, await credentials(), { method: "POST" });
-          setNote(r.estado === "aprobado" ? "Listo, ya tenés la suscripción." : "Mercado Pago todavía no confirmó la suscripción. Puede tardar unos minutos.");
-          setRev((x) => x + 1);
-        } catch {
-          setNote("No pudimos confirmar la suscripción ahora. Si la autorizaste, escribinos y la activamos.");
-        }
-        window.history.replaceState(null, "", "/planes");
-      })();
+    if (preapproval || q.get("suscripcion")) {
+      void confirmSub(preapproval);
       return;
     }
     const ref = q.get("ref");
@@ -63,6 +53,21 @@ function Plans() {
       window.history.replaceState(null, "", "/planes");
     })();
   }, [credentials]);
+
+  // Back from subscribing (or the button below): bind the new subscription to this account.
+  async function confirmSub(preapproval: string | null) {
+    setBusy("confirmar");
+    try {
+      const q = preapproval ? `?preapproval_id=${encodeURIComponent(preapproval)}` : "";
+      const r = await api<{ estado: string }>(`/api/billing/subscription/confirm${q}`, await credentials(), { method: "POST" });
+      setNote(r.estado === "aprobado" ? "Listo, ya tenés la suscripción." : "Todavía no vemos la suscripción en Mercado Pago. Si la autorizaste, probá de nuevo en un minuto.");
+      setRev((x) => x + 1);
+    } catch {
+      setNote("No pudimos confirmar la suscripción ahora. Probá de nuevo en un minuto.");
+    }
+    setBusy(null);
+    window.history.replaceState(null, "", "/planes");
+  }
 
   const buy = async (id: Product["id"]) => {
     setBusy(id);
@@ -172,6 +177,15 @@ function Plans() {
             ) : (
               <span className="mt-auto text-[0.85rem] text-[#5b616b]">Renovación cancelada</span>
             )
+          ) : b.plan === "gratis" && b.suscripcion_pendiente ? (
+            <div className="mt-auto flex flex-col gap-2">
+              <button type="button" onClick={() => void confirmSub(null)} disabled={busy != null} className="btn-ink px-5 py-3 disabled:opacity-50">
+                {busy === "confirmar" ? "Verificando…" : "Ya me suscribí: verificar"}
+              </button>
+              <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="self-start text-[0.85rem] text-[#5b616b] underline">
+                Volver a Mercado Pago
+              </button>
+            </div>
           ) : b.plan === "gratis" ? (
             <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="btn-ink mt-auto px-5 py-3 disabled:opacity-50">
               {busy === "suscripcion" ? "Abriendo Mercado Pago…" : "Suscribirme"}

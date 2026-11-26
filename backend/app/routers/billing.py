@@ -44,6 +44,9 @@ async def my_plan(user: User = Depends(get_current_user), db: AsyncSession = Dep
     out["avisos_por_mes"] = plans.FREE_RADIO_RACES_PER_MONTH
     out["prueba_inicial"] = plans.TRIAL_RACES
     out["minutos_por_carrera"] = plans.RACE_MINUTES
+    out["suscripcion_pendiente"] = out["plan"] == "gratis" and await db.scalar(
+        select(Payment.id).where(Payment.tenant_id == user.tenant_id, Payment.product == "suscripcion",
+                                 Payment.status == "pendiente").limit(1)) is not None
     out["pagos"] = "mercadopago" if mp.configured() else ("simulado" if settings.AUTH_DEV_MODE else None)
     return out
 
@@ -207,17 +210,29 @@ async def _search_payment(ref: str) -> str | None:
 
 
 @router.post("/api/billing/subscription/confirm")
-async def confirm_subscription(preapproval_id: str, user: User = Depends(get_current_user),
+async def confirm_subscription(preapproval_id: str | None = None, user: User = Depends(get_current_user),
                                db: AsyncSession = Depends(get_db)) -> dict:
-    """Back from subscribing: bind the new subscription to this account, once it is ours and authorized."""
-    if not mp.configured() or not preapproval_id.isalnum():
+    """Back from subscribing: bind the new subscription to this account, once it is ours and authorized.
+
+    Mercado Pago usually adds preapproval_id to the way back. Without it, the newest authorized
+    subscription to our plans that no account holds yet, made after this player's checkout, is taken.
+    """
+    if not mp.configured() or (preapproval_id is not None and not preapproval_id.isalnum()):
         raise HTTPException(404, "Not found")
+    pay = await db.scalar(select(Payment).where(Payment.tenant_id == user.tenant_id, Payment.product == "suscripcion",
+                                                Payment.status == "pendiente").order_by(Payment.id.desc()))
+    ours = await _our_plans(db)
     try:
-        pre = await mp.get_preapproval(preapproval_id)
+        if preapproval_id:
+            pre = await mp.get_preapproval(preapproval_id)
+        else:
+            pre = await _find_new_subscription(db, ours, pay)
+            if pre is None:
+                return {"estado": "pendiente"}
     except mp.MercadoPagoError as e:
         logger.warning("mercado pago preapproval read failed", extra={"error": str(e)})
         raise HTTPException(502, "payment_provider_error")
-    if str(pre.get("preapproval_plan_id")) not in await _our_plans(db):
+    if str(pre.get("preapproval_plan_id")) not in ours:
         raise HTTPException(404, "Not our subscription")
     taken = await db.scalar(select(BillingAccount).where(BillingAccount.mp_preapproval_id == str(pre.get("id")),
                                                          BillingAccount.tenant_id != user.tenant_id))
@@ -226,8 +241,6 @@ async def confirm_subscription(preapproval_id: str, user: User = Depends(get_cur
     acc = await plans.account(db, user.tenant_id)
     acc.mp_preapproval_id, acc.mp_preapproval_status = str(pre.get("id")), pre.get("status")
     amount = float((pre.get("auto_recurring") or {}).get("transaction_amount") or 0)
-    pay = await db.scalar(select(Payment).where(Payment.tenant_id == user.tenant_id, Payment.product == "suscripcion",
-                                                Payment.status == "pendiente").order_by(Payment.id.desc()))
     if pre.get("status") == "authorized" and pay is not None and amount + 0.01 >= float(pay.amount_ars):
         pay.mp_id = str(pre.get("id"))
         await _apply(db, pay, next_charge=_parse_date(pre.get("next_payment_date")))
@@ -235,6 +248,21 @@ async def confirm_subscription(preapproval_id: str, user: User = Depends(get_cur
         _extend(acc, _parse_date(pre.get("next_payment_date")))
     await db.commit()
     return {"estado": "aprobado" if pre.get("status") == "authorized" else "pendiente"}
+
+
+async def _find_new_subscription(db: AsyncSession, ours: set[str], pay: Payment | None) -> dict | None:
+    if pay is None:
+        return None
+    since = pay.created_at - timedelta(minutes=1)
+    for plan_id in ours:
+        for pre in await mp.search_preapprovals(plan_id):
+            created = _parse_date(pre.get("date_created"))
+            if pre.get("status") != "authorized" or (created and created < since):
+                continue
+            if await db.scalar(select(BillingAccount).where(BillingAccount.mp_preapproval_id == str(pre.get("id")))):
+                continue
+            return pre
+    return None
 
 
 @router.post("/api/billing/simulate")

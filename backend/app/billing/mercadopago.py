@@ -67,6 +67,12 @@ async def create_plan(*, title: str, amount: float, back_url: str) -> tuple[str,
     return str(body["id"]), body["init_point"]
 
 
+async def search_preapprovals(plan_id: str) -> list[dict]:
+    """The latest subscriptions to one of our plans, newest first."""
+    body = await _call("GET", f"/preapproval/search?preapproval_plan_id={plan_id}&sort=date_created:desc&limit=20")
+    return body.get("results") or []
+
+
 async def get_preapproval(preapproval_id: str) -> dict:
     return await _call("GET", f"/preapproval/{preapproval_id}")
 

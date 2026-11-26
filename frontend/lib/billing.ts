@@ -17,6 +17,8 @@ export type Billing = {
   prueba_inicial: number;
   minutos_por_carrera: number;
   pagos: "mercadopago" | "simulado" | null;
+  /** A subscription checkout was started and not confirmed yet. */
+  suscripcion_pendiente: boolean;
 };
 
 

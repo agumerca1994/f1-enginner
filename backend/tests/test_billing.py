@@ -249,3 +249,30 @@ def test_subscription_through_a_plan_is_bound_on_the_way_back(client, limits, mo
     client.post("/api/billing/mp/webhook", json={"type": "subscription_preapproval", "data": {"id": "S1"}})
     monkeypatch.setattr(settings, "MP_ACCESS_TOKEN", "")
     assert client.get("/api/billing", headers=h).json()["hasta"].startswith("2030-02-0")
+
+
+def test_subscription_found_without_preapproval_id_on_the_way_back(client, limits, monkeypatch):
+    from app.billing import mercadopago as mp
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "MP_ACCESS_TOKEN", "TEST-token")
+
+    async def fake_plan(*, title, amount, back_url):
+        return "plan9", "https://mp.test/subscribe/plan9"
+
+    found = []
+
+    async def fake_search(plan_id):  # the plan may already exist from another test at the same price
+        return [{**f, "preapproval_plan_id": plan_id} for f in found]
+
+    monkeypatch.setattr(mp, "create_plan", fake_plan)
+    monkeypatch.setattr(mp, "search_preapprovals", fake_search)
+    h = {"X-Dev-User": "sinid@planes.test"}
+    c = client.post("/api/billing/checkout", json={"producto": "suscripcion"}, headers=h).json()
+    assert client.get("/api/billing", headers=h).json()["suscripcion_pendiente"] is True
+    assert client.post("/api/billing/subscription/confirm", headers=h).json()["estado"] == "pendiente"
+    found.append({"id": "S9", "preapproval_plan_id": "plan9", "status": "authorized", "date_created": "2099-01-01T00:00:00Z",
+                  "next_payment_date": "2099-02-01T00:00:00Z", "auto_recurring": {"transaction_amount": c["ars"]}})
+    assert client.post("/api/billing/subscription/confirm", headers=h).json()["estado"] == "aprobado"
+    p = client.get("/api/billing", headers=h).json()
+    assert p["plan"] == "suscripcion" and p["suscripcion_pendiente"] is False
