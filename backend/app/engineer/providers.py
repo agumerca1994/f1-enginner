@@ -86,11 +86,13 @@ PRICES = {
 TIERS = {
     "standard": ("claude-sonnet-5-5", "claude-sonnet-5-5"),
     "pro": ("claude-sonnet-5-5", "claude-opus-5-5"),
-    # Like pro, but Opus only for the moments that set the race (the plan at the start, the
-    # debrief at the end); every other important moment goes to Sonnet thinking harder.
+    # Like pro, but Opus only where the call can change the race: the plan at the start, damage,
+    # punctures, safety cars, rain, the stop itself and the debrief. Informative moments
+    # (penalties, blisters) go to Sonnet thinking harder: on the Losail replays Sonnet said the
+    # same there, but held a broken front wing for four laps where Opus boxed at once.
     "economico": ("claude-sonnet-5-5", "claude-opus-5-5"),
 }
-KEY_MOMENTS = ("race_start", "session_end")
+KEY_MOMENTS = ("race_start", "session_end", "damage", "puncture", "safety_car", "rain_forecast", "pitted")
 # The radio lane: short calls on every routine moment, so the cheapest model. It gets
 # the full facts and a focused brief, which is what an earlier Haiku lacked when it
 # misread the race state (docs/pruebas/ingeniero-ia-real-2026-09-27.md).
