@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # Local-only: accept `X-Dev-User: <email>` instead of a Firebase token, so the
     # API can be used before the web app exists. Forced off in production.
     AUTH_DEV_MODE: bool = False
+    # Early access: signed-in players need an invite code before they can use the app.
+    ACCESS_GATE: bool = True
 
     APP_DOMAIN: str = ""
     API_DOMAIN: str = ""

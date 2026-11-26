@@ -67,14 +67,26 @@ async def authenticate_token(db: AsyncSession, *, token: str | None, dev_email: 
     return await get_or_create_user(db, email=claims["email"], firebase_uid=claims["uid"], name=claims.get("name"))
 
 
-async def get_current_user(
+async def get_signed_in_user(
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
     x_dev_user: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    """Anyone signed in, with or without early access: only the access endpoints use it."""
     user = await authenticate_token(db, token=creds.credentials if creds else None, dev_email=x_dev_user)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing, invalid or expired credentials")
+    return user
+
+
+def has_access(user: User) -> bool:
+    return not settings.ACCESS_GATE or user.access_granted_at is not None
+
+
+async def get_current_user(user: User = Depends(get_signed_in_user)) -> User:
+    """A player who is in: signed in and with early access (an invite code redeemed)."""
+    if not has_access(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "access_pending")
     return user
 
 

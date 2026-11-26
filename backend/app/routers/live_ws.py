@@ -13,7 +13,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from app.core.auth import authenticate_token, device_from_token, overlay_from_token
+from app.core.auth import authenticate_token, has_access, device_from_token, overlay_from_token
 from app.core.database import AsyncSessionLocal
 from app.engineer.runner import engineer_hub
 from app.live import snapshot
@@ -47,6 +47,7 @@ async def live_ws(ws: WebSocket):
             tenant_id = device.tenant_id if device else None
         else:
             user = await authenticate_token(db, token=first.get("token"), dev_email=first.get("dev_user"))
+            user = user if user is not None and has_access(user) else None
             tenant_id = user.tenant_id if user else None
     if tenant_id is None:
         await ws.close(code=status.WS_1008_POLICY_VIOLATION, reason="invalid credentials")

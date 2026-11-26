@@ -8,7 +8,7 @@ from starlette.routing import Route
 
 from app.core.config import settings
 from app.core.logging_config import log_queue_consumer, setup_logging
-from app.routers import box, devices, setup, engineer, ingest, internal, live, live_ws, overlay, replay_ws, screens, assets
+from app.routers import access, box, devices, setup, engineer, ingest, internal, live, live_ws, overlay, replay_ws, screens, assets
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(access.router)
 app.include_router(devices.router)
 app.include_router(ingest.router)
 app.include_router(live.router)

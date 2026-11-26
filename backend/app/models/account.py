@@ -33,6 +33,9 @@ class User(Base):
     radio_name: Mapped[str | None] = mapped_column(String(40))
     # The player's cockpit layouts (grid size and pieces), shared by all their screens.
     cockpits: Mapped[list | None] = mapped_column(JSONB)
+    # Early access: set when the player redeems an invite code (or is let in by hand). Accounts
+    # from before the access gate were let in by the migration that added it.
+    access_granted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     tenant: Mapped[Tenant] = relationship(back_populates="users")

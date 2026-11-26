@@ -15,7 +15,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import select
 
-from app.core.auth import authenticate_token
+from app.core.auth import authenticate_token, has_access
 from app.core.database import AsyncSessionLocal
 from app.engineer.runner import EngineerRunner
 from app.live import snapshot
@@ -44,6 +44,7 @@ async def replay_ws(ws: WebSocket):
 
     async with AsyncSessionLocal() as db:
         user = await authenticate_token(db, token=first.get("token"), dev_email=first.get("dev_user"))
+        user = user if user is not None and has_access(user) else None
         if user is None:
             await ws.close(code=status.WS_1008_POLICY_VIOLATION, reason="invalid credentials")
             return
