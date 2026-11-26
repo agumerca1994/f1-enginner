@@ -12,6 +12,7 @@ from app.engineer import box, debrief
 from app.engineer.review import SessionReview, review_for
 from app.engineer.runner import engineer_hub
 from app.engineer.traces import trace_json
+from app.routers.leaderboard import public_name
 from app.models import GameSession, SessionCapture, TrackLayout, User
 from app.telemetry import constants as c
 
@@ -80,6 +81,7 @@ async def summary(session_id: int, user: User = Depends(get_current_user), db: A
         "sesion": {"id": g.id, "pista": c.TRACKS.get(g.track_id) if g.track_id is not None else None,
                    "track_id": g.track_id, "tipo": tipo, "inicio": g.started_at.isoformat(), "en_curso": g.ended_at is None},
         **debrief.summary(r, tipo),
+        "tarjeta": {**debrief.card(r), "nombre": public_name(user, user.tenant_id), "juego": g.packet_format},
     }
 
 

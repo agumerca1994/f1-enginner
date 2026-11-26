@@ -194,6 +194,20 @@ def summary(r: SessionReview, session_type: str | None) -> dict[str, Any]:
     }
 
 
+def card(r: SessionReview) -> dict[str, Any]:
+    """What the shareable card shows beside the summary: the weather it was driven in, the team and the field."""
+    weathers = [pl.weather for pl in r.laps if pl.weather]
+    temps = [pl.track_temp for pl in r.laps if pl.track_temp is not None]
+    me = next((row for row in (r.classification or []) if row.get("es_el_jugador")), None)
+    return {
+        "clima": statistics.mode(weathers) if weathers else None,
+        "lluvia": any(w in ("Light rain", "Heavy rain", "Storm") for w in weathers),
+        "temp_pista": round(statistics.median(temps)) if temps else None,
+        "equipo": me.get("equipo") if me else None,
+        "pilotos": len(r.classification) if r.classification else None,
+    }
+
+
 def _setups(r: SessionReview) -> tuple[list[dict], dict[int, str]]:
     ov = box.overview(r)
     return ov.get("reglajes") or [], {lap["vuelta"]: lap["reglaje"] for lap in ov.get("vueltas") or [] if lap.get("reglaje")}

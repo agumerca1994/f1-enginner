@@ -48,6 +48,7 @@ export type Summary = {
   perdidas: Loss[];
   bien: { titulo: string; texto: string }[];
   proxima: { reglaje: SetupSuggestion[]; conduccion: Driving[] };
+  tarjeta: { clima: string | null; lluvia: boolean; temp_pista: number | null; equipo: string | null; pilotos: number | null; nombre: string; juego: number };
 };
 
 export type CircuitRow = { id: number; pista: string; sesiones: number; ultima: string; mejor_vuelta_s: number | null };

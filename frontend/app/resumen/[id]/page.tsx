@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { use } from "react";
+import { use, useState } from "react";
 
 import { RequireAuth } from "@/components/RequireAuth";
+import { ShareCard } from "@/components/session/ShareCard";
 import { RadioDock } from "@/components/ui/RadioDock";
 import { CornerThumb } from "@/components/ui/TrackOutline";
 import { academyEntry } from "@/lib/academy";
@@ -26,6 +27,7 @@ export default function SummaryPage({ params }: { params: Promise<{ id: string }
  */
 function SessionSummary({ id }: { id: number }) {
   const { data: s, error, loading } = useApi<Summary>(`/api/sessions/${id}/summary`);
+  const [sharing, setSharing] = useState(false);
   if (error) return <main className="mx-auto max-w-[900px] px-4 pt-6 text-muted">No se pudo armar el resumen: esta sesión no tiene grabación o no se pudo leer.</main>;
   if (!s) return <main className="mx-auto max-w-[900px] px-4 pt-6 text-muted">{loading ? "Armando el resumen…" : ""}</main>;
 
@@ -36,8 +38,16 @@ function SessionSummary({ id }: { id: number }) {
     <main className="mx-auto flex max-w-[1100px] flex-col gap-5 px-[max(1rem,env(safe-area-inset-left))] pt-4 lg:px-7 lg:pt-6">
       <div className="flex items-center justify-between text-[0.9rem]">
         <Link href={s.sesion.track_id != null ? `/circuitos/${s.sesion.track_id}` : "/circuitos"} className="text-muted">‹ {s.sesion.pista ?? "Circuitos"}</Link>
-        <span className="eyebrow">{shortDate(s.sesion.inicio)}</span>
+        <div className="flex items-center gap-3">
+          <span className="eyebrow">{shortDate(s.sesion.inicio)}</span>
+          {s.vueltas > 0 && (
+            <button type="button" onClick={() => setSharing(true)} className="btn-primary px-4 py-2 text-[0.85rem]">
+              Compartir
+            </button>
+          )}
+        </div>
       </div>
+      {sharing && <ShareCard summary={s} onClose={() => setSharing(false)} />}
 
       <header>
         <span className="eyebrow">Resumen · {sessionEs(s.sesion.tipo)} en {s.sesion.pista ?? "la pista"} · {s.vueltas} {s.vueltas === 1 ? "vuelta" : "vueltas"}</span>
