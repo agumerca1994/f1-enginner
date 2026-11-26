@@ -86,7 +86,11 @@ PRICES = {
 TIERS = {
     "standard": ("claude-sonnet-5-5", "claude-sonnet-5-5"),
     "pro": ("claude-sonnet-5-5", "claude-opus-5-5"),
+    # Like pro, but Opus only for the moments that set the race (the plan at the start, the
+    # debrief at the end); every other important moment goes to Sonnet thinking harder.
+    "economico": ("claude-sonnet-5-5", "claude-opus-5-5"),
 }
+KEY_MOMENTS = ("race_start", "session_end")
 # The radio lane: short calls on every routine moment, so the cheapest model. It gets
 # the full facts and a focused brief, which is what an earlier Haiku lacked when it
 # misread the race state (docs/pruebas/ingeniero-ia-real-2026-09-27.md).
@@ -130,18 +134,27 @@ class AnthropicProvider:
         self.radio_model = radio_model or RADIO_MODEL
         self.talk_model = talk_model or TALK_MODEL
         self.client = anthropic.AsyncAnthropic(api_key=api_key, timeout=60.0, max_retries=2)
+        self.tier = tier
         self.name = f"claude ({tier})"
+
+    def pick(self, request: EngineerRequest) -> tuple[str, str]:
+        """The model and effort for a full call."""
+        if not request.deep:
+            return self.fast_model, "low"
+        if self.tier == "economico" and not any(t.kind in KEY_MOMENTS for t in request.triggers):
+            return self.fast_model, "medium"
+        return self.deep_model, "medium"
 
     async def advise(self, request: EngineerRequest) -> Advice:
         """The full call: strategy, driving, setup and analysis for the pit wall, plus radio."""
-        model = self.deep_model if request.deep else self.fast_model
+        model, effort = self.pick(request)
         return await self._call(
             model,
             # The manual is the same on every call: cache it.
             system=[{"type": "text", "text": request.system, "cache_control": {"type": "ephemeral"}}],
             user=request.user,
             schema=RESPONSE_SCHEMA,
-            effort="medium" if request.deep else "low",
+            effort=effort,
             max_tokens=4096,
         )
 

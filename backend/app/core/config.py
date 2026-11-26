@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # Race engineer. Without an API key it runs on rules (no AI).
     ANTHROPIC_API_KEY: str = ""
-    ENGINEER_TIER: str = "standard"  # standard | pro
+    ENGINEER_TIER: str = "standard"  # standard | pro | economico
     ENGINEER_FAST_MODEL: str = ""  # per-lap radio; empty = the tier's default
     ENGINEER_DEEP_MODEL: str = ""  # strategy and important moments; empty = the tier's default
     ENGINEER_RADIO_MODEL: str = ""  # the quick radio lane; empty = Claude Haiku 5.5
