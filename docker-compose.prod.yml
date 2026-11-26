@@ -39,6 +39,7 @@ services:
       PLAN_LIMITS: ${PLAN_LIMITS:-false}
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
       MP_SANDBOX: ${MP_SANDBOX:-false}
+      MP_TEST_PAYER_EMAIL: ${MP_TEST_PAYER_EMAIL:-}
     volumes:
       - f1eng-captures:/data/captures
     restart: unless-stopped

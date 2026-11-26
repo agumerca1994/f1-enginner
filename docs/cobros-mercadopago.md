@@ -25,7 +25,7 @@ Los precios se cobran en pesos con el dólar de referencia: `scripts/plans.sh do
    - `MP_SANDBOX` = `true`
    - `PLAN_LIMITS` sigue en `false` mientras se prueba; las cuentas de cortesía no lo necesitan.
 4. Desplegar (`scripts/deploy.sh --yes`) y cargar el dólar: `scripts/plans.sh dolar <pesos>`.
-5. Probar con una cuenta de comprador de prueba (Mercado Pago → Cuentas de prueba): comprar un paquete y una suscripción desde Ajustes → Plan. Al volver, la pantalla revisa el pago; las notificaciones llegan a `https://f1-api.imanzanastore.com.ar/api/billing/mp/webhook` (la URL va en cada cobro, no hace falta configurarla en el panel).
+5. Para probar la suscripción, `MP_TEST_PAYER_EMAIL` = el email del comprador de prueba (Mercado Pago no acepta un pagador real con credenciales de prueba). Probar con una cuenta de comprador de prueba (Mercado Pago → Cuentas de prueba): comprar un paquete y una suscripción desde Ajustes → Plan. Al volver, la pantalla revisa el pago; las notificaciones llegan a `https://f1-api.imanzanastore.com.ar/api/billing/mp/webhook` (la URL va en cada cobro, no hace falta configurarla en el panel).
 6. Para cobrar de verdad: cambiar `MP_ACCESS_TOKEN` por el de producción, `MP_SANDBOX=false`, darte cortesía (`scripts/plans.sh cortesia <tu mail>`) y recién ahí `PLAN_LIMITS=true`.
 
 ## Seguridad

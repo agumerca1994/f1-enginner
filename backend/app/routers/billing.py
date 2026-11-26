@@ -32,6 +32,12 @@ def _api_url() -> str:
     return f"https://{settings.API_DOMAIN}" if settings.API_DOMAIN else "http://localhost:8000"
 
 
+def _payer_email(user: User) -> str:
+    if settings.MP_SANDBOX and settings.MP_TEST_PAYER_EMAIL:
+        return settings.MP_TEST_PAYER_EMAIL
+    return user.email
+
+
 @router.get("/api/billing")
 async def my_plan(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> dict:
     rate = await plans.usd_ars(db)
@@ -67,7 +73,7 @@ async def checkout(body: Checkout, user: User = Depends(get_current_user), db: A
         try:
             if body.producto == "suscripcion":
                 pay.mp_id, url = await mp.create_preapproval(ref=ref, title=f"Ingeniero de pista · {product['titulo']}",
-                                                             amount=amount, payer_email=user.email, back_url=back, notify_url=notify)
+                                                             amount=amount, payer_email=_payer_email(user), back_url=back, notify_url=notify)
             else:
                 pay.mp_id, url = await mp.create_preference(ref=ref, title=f"Ingeniero de pista · {product['titulo']}",
                                                             amount=amount, back_url=back, notify_url=notify)
