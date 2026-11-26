@@ -41,6 +41,8 @@ async def my_plan(user: User = Depends(get_current_user), db: AsyncSession = Dep
         for k, p in plans.PRODUCTS.items()
     ]
     out["carreras_por_mes"] = plans.SUB_RACES_PER_MONTH
+    out["avisos_por_mes"] = plans.FREE_RADIO_RACES_PER_MONTH
+    out["prueba_inicial"] = plans.TRIAL_RACES
     out["minutos_por_carrera"] = plans.RACE_MINUTES
     out["pagos"] = "mercadopago" if mp.configured() else ("simulado" if settings.AUTH_DEV_MODE else None)
     return out

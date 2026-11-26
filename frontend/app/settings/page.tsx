@@ -8,7 +8,7 @@ import { OverlaySection } from "@/components/OverlaySection";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ScreensSection, StatusBarSection } from "@/components/settings/ScreensSection";
 import { api } from "@/lib/api";
-import type { Billing } from "@/lib/billing";
+import { proRaces, type Billing } from "@/lib/billing";
 import { useAuth } from "@/lib/auth";
 import { useTalkAction } from "@/lib/gameButton";
 import { useSharedLive } from "@/lib/liveContext";
@@ -133,11 +133,13 @@ function Settings() {
   );
 }
 
-/** The look of the app on this device: Carbono, Clásico or Volante. */
+/** The plan, its races left, and a link to change it. */
 function PlanSection() {
   const { data: b } = useApi<Billing>("/api/billing");
   const name = b ? { gratis: "Plan gratis", suscripcion: "Suscripción", cortesia: "Plan de cortesía" }[b.plan] : "…";
-  const races = b ? (b.plan === "cortesia" ? "carreras con IA sin límite" : `${b.creditos + Math.max(0, b.carreras_mes.incluidas - b.carreras_mes.usadas)} carreras con IA`) : "";
+  const pro = b ? proRaces(b) : 0;
+  const races = !b ? "" : pro == null ? "Todo incluido" : `${pro} ${pro === 1 ? "carrera" : "carreras"} con el ingeniero Pro`
+    + (b.avisos_mes.incluidas != null ? ` · radio de avisos ${Math.max(0, b.avisos_mes.incluidas - b.avisos_mes.usadas)} de ${b.avisos_mes.incluidas} este mes` : "");
   return (
     <Link href="/planes" className="mt-5 flex items-center justify-between gap-3 card p-4 hover:border-accent">
       <div>

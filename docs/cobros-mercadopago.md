@@ -4,13 +4,15 @@ Planes (definidos en `backend/app/billing/plans.py`):
 
 | Plan | Precio | Incluye |
 |---|---|---|
-| Gratis | 0 | Todo lo que no usa IA, ingeniero con reglas, 1 pantalla vinculada |
-| Suscripción | 3,5 USD por mes | 3 carreras con IA por mes, MCP, pantallas sin límite |
-| 5 carreras | 5 USD | Ingeniero con IA en vivo, no vencen |
+| Gratis | 0 | 3 carreras Pro de prueba (una vez), radio de avisos en 5 carreras por mes, todo lo que no usa la radio, 1 pantalla vinculada |
+| Suscripción | 3,5 USD por mes | 3 carreras Pro por mes, radio de avisos sin límite, MCP, pantallas sin límite |
+| 5 carreras | 5 USD | Ingeniero Pro en vivo, no vencen |
 | 12 carreras | 10 USD | Ídem |
 | Cortesía | sin cargo | Todo, para el dueño y los acuerdos (`scripts/plans.sh cortesia`) |
 
-Una carrera es un bloque de hasta 45 minutos de una sesión del juego con el ingeniero con IA. Se descuenta la primera vez que la IA habla en ese bloque; menús y sesiones sin llamadas no cuentan. Sin carreras, el ingeniero sigue con reglas y el dock muestra "Sin IA · cargar carreras". La suscripción usa primero sus 3 carreras del mes y después el saldo de paquetes.
+Dos ingenieros: la **radio de avisos** (reglas, frases cortas de eventos, no conversa) y el **ingeniero Pro** (IA: conversa, plan de carrera, memoria, curva por curva).
+
+Una carrera es un bloque de hasta 45 minutos de una sesión del juego. Se descuenta la primera vez que el ingeniero habla en ese bloque; menús y sesiones sin llamadas no cuentan. Para el Pro se usan, en orden, las 3 del mes de la suscripción, la prueba y los paquetes. Sin carreras Pro habla la radio de avisos (dock: "Radio de avisos · pasar a Pro") y "Hablar" responde que hace falta una carrera Pro. En el plan gratis la radio de avisos cuenta 5 carreras por mes (`avisos` en `race_usages`); agotadas, la radio avisa una vez y se calla (dock: "Sin radio · ver planes"). Si se compra un paquete en medio de una carrera de avisos, ese bloque pasa a Pro y la carrera de avisos se devuelve.
 
 Los precios se cobran en pesos con el dólar de referencia: `scripts/plans.sh dolar 1450`. Se redondean hacia arriba a la centena.
 

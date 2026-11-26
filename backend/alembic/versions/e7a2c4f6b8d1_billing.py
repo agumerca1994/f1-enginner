@@ -20,6 +20,7 @@ def upgrade() -> None:
         "billing_accounts",
         sa.Column("tenant_id", sa.Integer(), sa.ForeignKey("tenants.id"), primary_key=True),
         sa.Column("race_credits", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("trial_races", sa.Integer(), server_default="3", nullable=False),
         sa.Column("plan_until", sa.DateTime(timezone=True), nullable=True),
         sa.Column("mp_preapproval_id", sa.String(64), nullable=True),
         sa.Column("mp_preapproval_status", sa.String(20), nullable=True),

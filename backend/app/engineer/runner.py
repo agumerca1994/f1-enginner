@@ -97,44 +97,88 @@ class EngineerRunner:
         self.radio_name: str | None = None
         self.conversation: list[dict] = []  # the driver's questions and the answers, this session
         self.engineer.memory = self.memory
-        # The plan: AI calls in a live session use one AI race per 45-minute block (see billing/plans.py).
+        # The plan: a live session uses one race per 45-minute block, Pro (AI) or alert radio
+        # (rules), see billing/plans.py.
         self._ai_session: int | None = None
         self._ai_started = 0.0
-        self._ai_charged: set[tuple[int, int]] = set()
+        self._charged: dict[tuple[int, int], str] = {}  # (session, block) -> "ia" | "avisos"
         self._ai_denied_until = 0.0
+        self._radio_denied_until = 0.0
+        self._told_no_radio: int | None = None  # the session where the driver heard the radio is off
 
     @property
     def provider_name(self) -> str:
-        if self._ai_denied_until > time.monotonic():
+        now = time.monotonic()
+        if self._radio_denied_until > now:
+            return "sin radio (sin carreras)"
+        if self._ai_denied_until > now and not isinstance(self.provider, RulesProvider):
             return "reglas (sin carreras con IA)"
         return self.provider.name
 
-    async def _ai_ok(self) -> bool:
-        """Whether this call may use the AI: the player's plan has a race for this block of the session."""
-        if isinstance(self.provider, RulesProvider) or self.mode != "live" or not settings.PLAN_LIMITS:
-            return True
+    async def _access(self) -> str | None:
+        """Who speaks in this block of the session: "ia" (Pro), "avisos" (the rules radio) or None.
+
+        Each block is charged once to the player's plan; a denial is looked at again after two
+        minutes, in case a pack was bought meanwhile.
+        """
+        rules_only = isinstance(self.provider, RulesProvider)
+        if self.mode != "live" or not settings.PLAN_LIMITS:
+            return "avisos" if rules_only else "ia"
         if self.game_session_id is None:
-            return False
+            return None
         now = time.monotonic()
         if self._ai_session != self.game_session_id:
             self._ai_session, self._ai_started = self.game_session_id, now
-        block = int((now - self._ai_started) // (plans.RACE_MINUTES * 60))
-        if (self.game_session_id, block) in self._ai_charged:
-            return True
-        if self._ai_denied_until > now:
-            return False
+        key = (self.game_session_id, int((now - self._ai_started) // (plans.RACE_MINUTES * 60)))
+        had = self._charged.get(key)
+        if had == "ia" or (had == "avisos" and (rules_only or self._ai_denied_until > now)):
+            return had
+        if not rules_only and self._ai_denied_until <= now:
+            if await self._charge(key, pro=True):
+                self._charged[key], self._ai_denied_until, self._radio_denied_until = "ia", 0.0, 0.0
+                return "ia"
+            self._ai_denied_until = now + 120
+        if had == "avisos":
+            return had
+        if self._radio_denied_until > now:
+            return None
+        if await self._charge(key, pro=False):
+            self._charged[key], self._radio_denied_until = "avisos", 0.0
+            return "avisos"
+        self._radio_denied_until = now + 120
+        return None
+
+    async def _charge(self, key: tuple[int, int], *, pro: bool) -> bool:
         try:
             async with AsyncSessionLocal() as db:
-                source = await plans.charge_race(db, self.tenant_id, self.game_session_id, block)
+                return await plans.charge_race(db, self.tenant_id, key[0], key[1], pro=pro) is not None
         except Exception:
-            logger.exception("could not charge an AI race", extra={"tenant_id": self.tenant_id})
-            source = None
-        if source is None:
-            self._ai_denied_until = now + 120  # look again in two minutes (a pack bought meanwhile)
+            logger.exception("could not charge a race", extra={"tenant_id": self.tenant_id})
             return False
-        self._ai_charged.add((self.game_session_id, block))
-        self._ai_denied_until = 0.0
-        return True
+
+    def _known_pro(self) -> bool:
+        """Whether this block is already known to be the Pro engineer's, without asking the plan."""
+        if isinstance(self.provider, RulesProvider):
+            return False
+        if self.mode != "live" or not settings.PLAN_LIMITS:
+            return True
+        if self._ai_session != self.game_session_id:
+            return False
+        block = int((time.monotonic() - self._ai_started) // (plans.RACE_MINUTES * 60))
+        return self._charged.get((self.game_session_id, block)) == "ia"
+
+    async def _ai_ok(self) -> bool:
+        return await self._access() == "ia"
+
+    def _no_radio(self, request: EngineerRequest) -> None:
+        """Out of races: say it once per session, then stay quiet."""
+        if self._told_no_radio == self.game_session_id:
+            return
+        self._told_no_radio = self.game_session_id
+        text = (f"Ya usaste las {plans.FREE_RADIO_RACES_PER_MONTH} carreras con radio del mes. "
+                "Con la suscripción la radio de avisos no tiene límite.")
+        self._deliver(self._message(request, Advice({"radio": text, "prioridad": "info", "tema": "plan"},
+                                                    "aviso inmediato", 0)))
 
     @property
     def _two_lanes(self) -> bool:
@@ -315,10 +359,11 @@ class EngineerRunner:
         if self._busy or self._pending is None:
             return
         request, self._pending = self._pending, None
-        if request.urgent and not isinstance(self.provider, RulesProvider):
+        said = request.urgent and self._known_pro()
+        if said:
             self._immediate(request)
         self._busy = True
-        asyncio.create_task(self._ask(request))
+        asyncio.create_task(self._ask(request, said))
 
     def _immediate(self, request: EngineerRequest) -> None:
         """An instant rules call for urgent moments, while the AI works out the full decision."""
@@ -331,7 +376,13 @@ class EngineerRunner:
 
     async def _ask_radio(self, request: EngineerRequest) -> None:
         try:
-            if await self._ai_ok():
+            access = await self._access()
+            if access is None:
+                self._no_radio(request)
+                self._busy_radio = False
+                self.dispatch()
+                return
+            if access == "ia":
                 advice = await self.provider.radio(request)
             else:
                 advice = Advice(rules_response(request), "reglas", 0)
@@ -344,14 +395,20 @@ class EngineerRunner:
         self._busy_radio = False
         self.dispatch()
 
-    async def _ask(self, request: EngineerRequest) -> None:
+    async def _ask(self, request: EngineerRequest, said: bool = False) -> None:
         try:
-            if await self._ai_ok():
+            access = await self._access()
+            if access is None:
+                self._no_radio(request)
+                self._busy = False
+                self.dispatch()
+                return
+            if access == "ia":
+                if request.urgent and not said:
+                    self._immediate(request)  # the rules call goes out now; the AI confirms or corrects it
                 advice = await self.provider.advise(request)
             else:
                 advice = Advice(rules_response(request), "reglas", 0)
-                if request.urgent:
-                    advice.response["radio"] = None  # the instant rules call already said it
         except Exception as e:  # a failed call must never stop the session
             logger.warning("engineer call failed", extra={"tenant_id": self.tenant_id, "error": str(e)})
             self._busy = False
@@ -386,6 +443,11 @@ class EngineerRunner:
                 logger.warning("engineer talk failed", extra={"tenant_id": self.tenant_id, "error": str(e)})
                 advice = Advice({"radio": "No te pude responder, repetime.", "prioridad": "info",
                                  "tema": "respuesta"}, "reglas", 0)
+        elif settings.PLAN_LIMITS and self.mode == "live" and not isinstance(self.provider, RulesProvider):
+            # Talking is the Pro engineer's: the alert radio does not converse.
+            advice = Advice({"radio": "Para hablar con el ingeniero necesitás una carrera con el ingeniero Pro. "
+                                      "La cargás en Ajustes, Plan.", "prioridad": "info", "tema": "respuesta"},
+                            "aviso inmediato", 0)
         else:
             advice = Advice({"radio": talk.rules_answer(self, live, question) if live is not None
                              else "No me llegan datos tuyos ahora.", "prioridad": "info", "tema": "respuesta"},

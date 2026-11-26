@@ -99,8 +99,13 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
       <Dot />
       {!compact && <span className="title hidden text-[1.05rem] lg:inline">Ingeniero</span>}
       {live && engineer.provider?.startsWith("reglas (sin") && (
-        <Link href="/planes" className="shrink-0 rounded-full bg-panel-2 px-2.5 py-1 text-[0.72rem] text-muted hover:text-fg" title="Sin carreras con IA: el ingeniero sigue con reglas">
-          Sin IA · cargar carreras
+        <Link href="/planes" className="shrink-0 rounded-full bg-panel-2 px-2.5 py-1 text-[0.72rem] text-muted hover:text-fg" title="Sin carreras con el ingeniero Pro: habla la radio de avisos">
+          Radio de avisos · pasar a Pro
+        </Link>
+      )}
+      {live && engineer.provider?.startsWith("sin radio") && (
+        <Link href="/planes" className="shrink-0 rounded-full bg-panel-2 px-2.5 py-1 text-[0.72rem] text-muted hover:text-fg" title="Ya usaste las carreras con radio del mes">
+          Sin radio · ver planes
         </Link>
       )}
       {typing ? (

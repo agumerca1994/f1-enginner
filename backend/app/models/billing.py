@@ -15,6 +15,8 @@ class BillingAccount(Base):
 
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), primary_key=True)
     race_credits: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # The trial: a new account's first Pro races, gifted.
+    trial_races: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
     # The paid subscription: active while plan_until is ahead (Mercado Pago's next charge plus a grace).
     plan_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     mp_preapproval_id: Mapped[str | None] = mapped_column(String(64))
@@ -27,7 +29,11 @@ class BillingAccount(Base):
 
 
 class RaceUsage(Base):
-    """One AI race used: a game session's block of up to 45 minutes with the AI engineer."""
+    """One engineer race used: a game session's block of up to 45 minutes with the radio on.
+
+    source says what paid for it: suscripcion, paquete, prueba or cortesia for a Pro (AI) race,
+    avisos for one of the free plan's monthly alert-radio races.
+    """
 
     __tablename__ = "race_usages"
     __table_args__ = (UniqueConstraint("tenant_id", "game_session_id", "block", name="uq_race_usage"),)
@@ -36,7 +42,7 @@ class RaceUsage(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
     game_session_id: Mapped[int] = mapped_column(ForeignKey("game_sessions.id"))
     block: Mapped[int] = mapped_column(Integer, default=0)
-    source: Mapped[str] = mapped_column(String(12))  # suscripcion | paquete | cortesia
+    source: Mapped[str] = mapped_column(String(12))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
