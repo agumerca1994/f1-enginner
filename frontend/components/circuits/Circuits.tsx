@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { Leaderboard } from "@/components/circuits/Leaderboard";
 import { RadioDock } from "@/components/ui/RadioDock";
 import { TrackOutline } from "@/components/ui/TrackOutline";
 import { academyEntry } from "@/lib/academy";
@@ -34,6 +35,7 @@ function value(v: SetupValues, key: string): number | null {
 export function Circuits({ selected }: { selected?: number }) {
   const { data: mine } = useApi<CircuitRow[]>("/api/setup/circuits");
   const { data: all } = useApi<{ id: number; pista: string }[]>("/api/setup/tracks");
+  const { data: ranks } = useApi<{ pistas: Record<string, { pos: number; pilotos: number }> }>("/api/leaderboard/mine");
   const [showAll, setShowAll] = useState(false);
   const current = selected ?? mine?.[0]?.id;
   const others = (all ?? []).filter((t) => !mine?.some((m) => m.id === t.id));
@@ -49,7 +51,12 @@ export function Circuits({ selected }: { selected?: number }) {
         <span className="title block truncate text-[1.2rem]">{name}</span>
         <span className="text-[0.8rem] text-dim">{detail}</span>
       </span>
-      {best != null && <span className="title num text-[1.05rem] normal-case text-soft-fg">{lapS(best).slice(0, -2)}</span>}
+      <span className="flex flex-col items-end">
+        {best != null && <span className="title num text-[1.05rem] normal-case text-soft-fg">{lapS(best).slice(0, -2)}</span>}
+        {ranks?.pistas[String(id)] && ranks.pistas[String(id)].pilotos > 1 && (
+          <span className="num text-[0.75rem] text-dim">P{ranks.pistas[String(id)].pos} de {ranks.pistas[String(id)].pilotos}</span>
+        )}
+      </span>
     </Link>
   );
 
@@ -150,6 +157,8 @@ function CircuitDetail({ id }: { id: number }) {
           )}
         </div>
       </div>
+
+      <Leaderboard trackId={id} />
 
       {c && c.sesiones.length > 0 && (
         <div className="flex flex-col gap-2">

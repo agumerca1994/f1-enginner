@@ -285,7 +285,7 @@ function RadioNameSection() {
     <section className="mt-4 card p-4">
       <h2 className="label">Ingeniero de pista</h2>
       <p className="mt-1 text-sm text-muted">
-        Cómo te llama por radio. Si lo dejás vacío no usa nombre (nunca el del piloto del juego).
+        Cómo te llama por radio, y tu nombre en las clasificaciones. Si lo dejás vacío, por radio no usa nombre (nunca el del piloto del juego) y en las clasificaciones aparecés con tu nombre e inicial.
       </p>
       <form
         className="mt-3 flex gap-2"

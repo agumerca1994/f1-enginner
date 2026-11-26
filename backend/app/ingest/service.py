@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import utcnow
 from app.core.config import settings
 from app.engineer import knowledge, memory
+from app.live import records
 from app.engineer.runner import engineer_hub
 from app.ingest.protocol import ProtocolError, decode_batch
 from app.live.state import LiveStore
@@ -293,6 +294,7 @@ class IngestConnection:
             s.received = 0
         self.rejected.clear()
         await self._save_knowledge(db)
+        await self._save_record(db)
         await memory.save(db, self.device.tenant_id, engineer_hub.runner(self.device.tenant_id).memory)
         await self._save_layout(db)
         await self._save_corners(db)
@@ -305,6 +307,15 @@ class IngestConnection:
             gs = s.game_session
             if gs.id == runner.game_session_id and gs.track_id is not None:
                 await knowledge.save(db, self.device.tenant_id, gs.track_id, runner.engineer.history)
+
+    async def _save_record(self, db: AsyncSession) -> None:
+        """The player's best valid lap of this session, if it beats their record for the track."""
+        live = self.store.get(self.device.tenant_id)
+        if live is None:
+            return
+        uid = f"{live.session_uid:016x}"
+        gs_id = next((s.game_session.id for s in self.sessions.values() if s.game_session.session_uid == uid), None)
+        await records.save(db, self.device.tenant_id, live, gs_id)
 
     async def close(self, db: AsyncSession) -> None:
         for s in self.sessions.values():
