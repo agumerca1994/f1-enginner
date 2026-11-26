@@ -69,7 +69,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def production_guards(self) -> "Settings":
-        if self.APP_DOMAIN and self.FRONTEND_URL == "http://localhost:3000":
+        if self.APP_DOMAIN and self.FRONTEND_URL in ("", "http://localhost:3000"):  # empty in the compose
             self.FRONTEND_URL = f"https://{self.APP_DOMAIN}"
         if not self.OAUTH_ISSUER_URL:
             self.OAUTH_ISSUER_URL = f"https://{self.API_DOMAIN}" if self.API_DOMAIN else "http://localhost:8000"
