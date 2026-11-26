@@ -31,6 +31,8 @@ import logging
 import time
 from collections import deque
 
+from app.billing import plans
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.engineer.engine import EngineerRequest, RaceEngineer, merge
 from app.engineer.history import Trigger
@@ -95,10 +97,44 @@ class EngineerRunner:
         self.radio_name: str | None = None
         self.conversation: list[dict] = []  # the driver's questions and the answers, this session
         self.engineer.memory = self.memory
+        # The plan: AI calls in a live session use one AI race per 45-minute block (see billing/plans.py).
+        self._ai_session: int | None = None
+        self._ai_started = 0.0
+        self._ai_charged: set[tuple[int, int]] = set()
+        self._ai_denied_until = 0.0
 
     @property
     def provider_name(self) -> str:
+        if self._ai_denied_until > time.monotonic():
+            return "reglas (sin carreras con IA)"
         return self.provider.name
+
+    async def _ai_ok(self) -> bool:
+        """Whether this call may use the AI: the player's plan has a race for this block of the session."""
+        if isinstance(self.provider, RulesProvider) or self.mode != "live" or not settings.PLAN_LIMITS:
+            return True
+        if self.game_session_id is None:
+            return False
+        now = time.monotonic()
+        if self._ai_session != self.game_session_id:
+            self._ai_session, self._ai_started = self.game_session_id, now
+        block = int((now - self._ai_started) // (plans.RACE_MINUTES * 60))
+        if (self.game_session_id, block) in self._ai_charged:
+            return True
+        if self._ai_denied_until > now:
+            return False
+        try:
+            async with AsyncSessionLocal() as db:
+                source = await plans.charge_race(db, self.tenant_id, self.game_session_id, block)
+        except Exception:
+            logger.exception("could not charge an AI race", extra={"tenant_id": self.tenant_id})
+            source = None
+        if source is None:
+            self._ai_denied_until = now + 120  # look again in two minutes (a pack bought meanwhile)
+            return False
+        self._ai_charged.add((self.game_session_id, block))
+        self._ai_denied_until = 0.0
+        return True
 
     @property
     def _two_lanes(self) -> bool:
@@ -295,7 +331,10 @@ class EngineerRunner:
 
     async def _ask_radio(self, request: EngineerRequest) -> None:
         try:
-            advice = await self.provider.radio(request)
+            if await self._ai_ok():
+                advice = await self.provider.radio(request)
+            else:
+                advice = Advice(rules_response(request), "reglas", 0)
         except Exception as e:
             logger.warning("engineer radio call failed", extra={"tenant_id": self.tenant_id, "error": str(e)})
         else:
@@ -307,7 +346,12 @@ class EngineerRunner:
 
     async def _ask(self, request: EngineerRequest) -> None:
         try:
-            advice = await self.provider.advise(request)
+            if await self._ai_ok():
+                advice = await self.provider.advise(request)
+            else:
+                advice = Advice(rules_response(request), "reglas", 0)
+                if request.urgent:
+                    advice.response["radio"] = None  # the instant rules call already said it
         except Exception as e:  # a failed call must never stop the session
             logger.warning("engineer call failed", extra={"tenant_id": self.tenant_id, "error": str(e)})
             self._busy = False
@@ -335,7 +379,7 @@ class EngineerRunner:
         if quick is not None:
             advice = Advice({"radio": quick, "prioridad": "info", "tema": "respuesta"}, "aviso inmediato",
                             int((time.monotonic() - started) * 1000))
-        elif hasattr(self.provider, "talk") and live is not None:
+        elif hasattr(self.provider, "talk") and live is not None and await self._ai_ok():
             try:
                 advice = await self.provider.talk(self, live, question)
             except Exception as e:

@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     ENGINEER_DEEP_MODEL: str = ""  # strategy and important moments; empty = the tier's default
     ENGINEER_RADIO_MODEL: str = ""  # the quick radio lane; empty = Claude Haiku 5.5
     ENGINEER_TALK_MODEL: str = ""  # answers to the driver's questions; empty = Claude Sonnet 5.5
+    # Plans: the free plan's limits (AI engineer, MCP, linked screens). Off = everything for everyone.
+    PLAN_LIMITS: bool = True
+    # Mercado Pago (Argentina). Empty = no real payments; in development a simulated checkout stands in.
+    MP_ACCESS_TOKEN: str = ""
+    MP_SANDBOX: bool = False  # send buyers to the sandbox checkout (test credentials)
+    # Where Mercado Pago sends its notifications; empty = https://API_DOMAIN.
+    PUBLIC_API_URL: str = ""
     # The engineer's voice service (tts/); empty = the dashboard uses the browser's speech.
     TTS_URL: str = ""
 

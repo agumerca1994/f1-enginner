@@ -34,7 +34,7 @@ const TABS = [
   {
     href: "/settings",
     label: "Ajustes",
-    match: (p: string) => p.startsWith("/settings") || p.startsWith("/usage") || p.startsWith("/pair") || p.startsWith("/vincular"),
+    match: (p: string) => p.startsWith("/settings") || p.startsWith("/planes") || p.startsWith("/usage") || p.startsWith("/pair") || p.startsWith("/vincular"),
     icon: (
       <>
         <circle cx="12" cy="8" r="4" />

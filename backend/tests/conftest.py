@@ -17,6 +17,7 @@ os.environ.update(
     ENVIRONMENT="test",
     AUTH_DEV_MODE="true",
     ACCESS_GATE="false",  # most tests are about the app, not early access (see test_access.py)
+    PLAN_LIMITS="false",  # nor about plans (see test_billing.py)
     INTERNAL_LOG_KEY="test-internal-key",
     ANTHROPIC_API_KEY="",  # the engineer runs on rules in tests; never spend on an API
     CAPTURE_DIR=CAPTURE_DIR,

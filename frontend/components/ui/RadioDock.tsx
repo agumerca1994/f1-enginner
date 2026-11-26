@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useGameTalkButton } from "@/lib/gameButton";
@@ -97,6 +98,11 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
     <div className={`${place} paper flex flex-wrap items-center gap-x-3 gap-y-2 py-2 pl-4 pr-2 shadow-[0_10px_30px_rgb(0_0_0/0.45)] sm:flex-nowrap`}>
       <Dot />
       {!compact && <span className="title hidden text-[1.05rem] lg:inline">Ingeniero</span>}
+      {live && engineer.provider?.startsWith("reglas (sin") && (
+        <Link href="/planes" className="shrink-0 rounded-full bg-panel-2 px-2.5 py-1 text-[0.72rem] text-muted hover:text-fg" title="Sin carreras con IA: el ingeniero sigue con reglas">
+          Sin IA · cargar carreras
+        </Link>
+      )}
       {typing ? (
         <form
           className="flex min-w-0 flex-1 gap-2"

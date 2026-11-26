@@ -8,9 +8,11 @@ import { OverlaySection } from "@/components/OverlaySection";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ScreensSection, StatusBarSection } from "@/components/settings/ScreensSection";
 import { api } from "@/lib/api";
+import type { Billing } from "@/lib/billing";
 import { useAuth } from "@/lib/auth";
 import { useTalkAction } from "@/lib/gameButton";
 import { useSharedLive } from "@/lib/liveContext";
+import { useApi } from "@/lib/sessions";
 import { chooseVoice, chosenVoice, previewVoice, spanishVoices } from "@/lib/voice";
 import { THEMES, useTheme } from "@/lib/theme";
 
@@ -58,6 +60,8 @@ function Settings() {
   return (
     <main className="mx-auto max-w-2xl px-[max(1rem,env(safe-area-inset-left))] py-6">
       <h1 className="display text-[2.4rem] uppercase">Ajustes</h1>
+
+      <PlanSection />
 
       <div className="mt-5 flex flex-col gap-6">
         <ScreensSection />
@@ -130,6 +134,22 @@ function Settings() {
 }
 
 /** The look of the app on this device: Carbono, Clásico or Volante. */
+function PlanSection() {
+  const { data: b } = useApi<Billing>("/api/billing");
+  const name = b ? { gratis: "Plan gratis", suscripcion: "Suscripción", cortesia: "Plan de cortesía" }[b.plan] : "…";
+  const races = b ? (b.plan === "cortesia" ? "carreras con IA sin límite" : `${b.creditos + Math.max(0, b.carreras_mes.incluidas - b.carreras_mes.usadas)} carreras con IA`) : "";
+  return (
+    <Link href="/planes" className="mt-5 flex items-center justify-between gap-3 card p-4 hover:border-accent">
+      <div>
+        <h2 className="label">Plan</h2>
+        <p className="mt-1 title text-[1.2rem]">{name}</p>
+        {b && <p className="text-sm text-muted">{races}</p>}
+      </div>
+      <span className="btn shrink-0 px-3 py-1.5 text-sm">{b?.plan === "gratis" ? "Mejorar" : "Ver"}</span>
+    </Link>
+  );
+}
+
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   return (

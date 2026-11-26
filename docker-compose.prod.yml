@@ -35,6 +35,10 @@ services:
       # Race engineer: without a key it runs on rules (no AI).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ENGINEER_TIER: ${ENGINEER_TIER:-standard}
+      # Plans: off until Mercado Pago is set up (true = the free plan's limits apply).
+      PLAN_LIMITS: ${PLAN_LIMITS:-false}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_SANDBOX: ${MP_SANDBOX:-false}
     volumes:
       - f1eng-captures:/data/captures
     restart: unless-stopped

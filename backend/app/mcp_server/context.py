@@ -16,6 +16,7 @@ from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.fastmcp.exceptions import ToolError
 from sqlalchemy import select
 
+from app.billing import plans
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.models import User
@@ -54,6 +55,11 @@ async def current_caller() -> McpCaller:
         raise ToolError("Token sin identidad de jugador")
     if READ_SCOPE not in token.scopes:
         raise ToolError(f"El token no tiene permiso de lectura ({READ_SCOPE})")
+    tenant_id = int(claims["tenant_id"])
+    async with AsyncSessionLocal() as db:
+        if not await plans.can_mcp(db, tenant_id):
+            raise ToolError("El conector con Claude es parte de la suscripción del Ingeniero de pista. "
+                            "Activala en la app, en Ajustes → Plan.")
     return McpCaller(
         user_id=int(claims["user_id"]),
         tenant_id=int(claims["tenant_id"]),

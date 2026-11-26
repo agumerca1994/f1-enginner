@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.billing import plans
 from app.core.auth import get_current_user, overlay_from_token
 from app.core.database import get_db
 from app.core.security import OVERLAY_TOKEN_PREFIX, hash_token, overlay_token
@@ -108,6 +109,12 @@ async def pair_confirm(body: PairConfirmIn, user: User = Depends(get_current_use
     active = await db.scalars(select(OverlayToken.id).where(OverlayToken.tenant_id == user.tenant_id, OverlayToken.revoked_at.is_(None)))
     if len(active.all()) >= MAX_ACTIVE_TOKENS:
         raise HTTPException(409, "Too many linked screens and panels; remove one first")
+    limit = await plans.screen_limit(db, user.tenant_id)
+    if limit is not None:
+        screens = await db.scalars(select(OverlayToken.id).where(
+            OverlayToken.tenant_id == user.tenant_id, OverlayToken.revoked_at.is_(None), OverlayToken.role.is_not(None)))
+        if len(screens.all()) >= limit:
+            raise HTTPException(402, "plan_screen_limit")
     nonce = secrets.token_hex(16)
     raw = overlay_token(_secret(), nonce)
     row = OverlayToken(
