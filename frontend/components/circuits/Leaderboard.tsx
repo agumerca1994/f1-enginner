@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import type { GroupRow } from "@/lib/groups";
 import { lapS, useApi } from "@/lib/sessions";
 
 type Row = { pos: number; nombre: string; tiempo_ms: number; sectores_ms: number[]; dif_ms: number | null; equipo: string | null; fecha: string | null; soy_yo: boolean };
@@ -28,13 +29,34 @@ function Toggle<T extends string>({ value, options, onChange, label }: { value: 
   );
 }
 
-/** The track's board: every player's best valid lap, in the same game, assists and weather. */
-export function Leaderboard({ trackId }: { trackId: number }) {
+/**
+ * The track's board: every player's best valid lap, in the same game, assists and weather.
+ * With `grupo` it is that group's board; without it, the player picks everyone or one of their groups.
+ */
+export function Leaderboard({ trackId, grupo }: { trackId: number; grupo?: number }) {
   const [categoria, setCategoria] = useState<"sin_ayudas" | "con_ayudas">("sin_ayudas");
   const [clima, setClima] = useState<"seco" | "mojado">("seco");
   const [juego, setJuego] = useState<number | null>(null);
-  const q = `/api/leaderboard?track_id=${trackId}&categoria=${categoria}&clima=${clima}${juego ? `&juego=${juego}` : ""}`;
-  const { data: b } = useApi<Board>(q);
+  const [picked, setPicked] = useState<number | null>(null);
+  const { data: groups } = useApi<{ grupos: GroupRow[] }>(grupo == null ? "/api/groups" : null);
+  useEffect(() => {
+    // A link from a group's page opens the circuit on that group's board.
+    const fromUrl = Number(new URLSearchParams(window.location.search).get("grupo"));
+    if (fromUrl) setPicked(fromUrl);
+  }, []);
+  const group = grupo ?? (groups?.grupos.some((g) => g.id === picked) ? picked : null);
+  const q = `/api/leaderboard?track_id=${trackId}&categoria=${categoria}&clima=${clima}${juego ? `&juego=${juego}` : ""}${group ? `&grupo=${group}` : ""}`;
+  const { data: b, loading } = useApi<Board>(q);
+  const [touched, setTouched] = useState(false);
+  useEffect(() => {
+    // Open on a board that has laps: the default (no assists, dry) is often empty in a small group.
+    if (touched || !b || b.filas.length > 0 || b.opciones.length === 0) return;
+    const best = [...b.opciones].sort((x, y) => y.pilotos - x.pilotos)[0];
+    setTouched(true);
+    setCategoria(best.categoria as "sin_ayudas" | "con_ayudas");
+    setClima(best.clima as "seco" | "mojado");
+    setJuego(best.juego);
+  }, [b, touched]);
   const games = [...new Map((b?.opciones ?? []).map((o) => [o.juego, o.juego_nombre])).entries()];
   const rows = b?.filas ?? [];
   const meOutside = b?.yo && !rows.some((r) => r.soy_yo) ? b.yo : null;
@@ -57,16 +79,24 @@ export function Leaderboard({ trackId }: { trackId: number }) {
     <div className="card flex flex-col gap-3 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="eyebrow">Clasificación</h2>
+          <h2 className="eyebrow">{grupo != null ? "Clasificación del grupo" : "Clasificación"}</h2>
           <p className="mt-1 text-[0.82rem] text-muted">
             La mejor vuelta válida de cada piloto{b?.juego_nombre ? ` en ${b.juego_nombre}` : ""}{b?.pilotos ? ` · ${b.pilotos} ${b.pilotos === 1 ? "piloto" : "pilotos"}` : ""}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Toggle label="Ayudas" value={categoria} onChange={setCategoria} options={[["sin_ayudas", "Sin ayudas"], ["con_ayudas", "Con ayudas"]]} />
-          <Toggle label="Clima" value={clima} onChange={setClima} options={[["seco", "Seco"], ["mojado", "Lluvia"]]} />
+          {grupo == null && (groups?.grupos.length ?? 0) > 0 && (
+            <select value={group ?? ""} onChange={(e) => setPicked(e.target.value ? Number(e.target.value) : null)} aria-label="Contra quién" className="h-[34px] rounded-[8px] border border-line bg-bg px-2 text-[0.82rem]">
+              <option value="">Todos</option>
+              {groups!.grupos.map((g) => (
+                <option key={g.id} value={g.id}>{g.nombre}</option>
+              ))}
+            </select>
+          )}
+          <Toggle label="Ayudas" value={categoria} onChange={(v) => { setTouched(true); setCategoria(v); }} options={[["sin_ayudas", "Sin ayudas"], ["con_ayudas", "Con ayudas"]]} />
+          <Toggle label="Clima" value={clima} onChange={(v) => { setTouched(true); setClima(v); }} options={[["seco", "Seco"], ["mojado", "Lluvia"]]} />
           {games.length > 1 && (
-            <select value={juego ?? b?.juego ?? ""} onChange={(e) => setJuego(Number(e.target.value))} aria-label="Juego" className="h-[34px] rounded-[8px] border border-line bg-bg px-2 text-[0.82rem]">
+            <select value={juego ?? b?.juego ?? ""} onChange={(e) => { setTouched(true); setJuego(Number(e.target.value)); }} aria-label="Juego" className="h-[34px] rounded-[8px] border border-line bg-bg px-2 text-[0.82rem]">
               {games.map(([g, name]) => (
                 <option key={g} value={g}>{name}</option>
               ))}
@@ -74,7 +104,9 @@ export function Leaderboard({ trackId }: { trackId: number }) {
           )}
         </div>
       </div>
-      {rows.length === 0 ? (
+      {rows.length === 0 && (loading || (!touched && (b?.opciones.length ?? 0) > 0)) ? (
+        <p className="py-4 text-[0.92rem] text-dim">Cargando…</p>
+      ) : rows.length === 0 ? (
         <p className="py-4 text-[0.92rem] text-muted">
           Todavía nadie marcó una vuelta válida acá {categoria === "sin_ayudas" ? "sin ayudas" : "con ayudas"} y {clima === "seco" ? "en seco" : "con lluvia"}. La tuya entra sola cuando corras.
         </p>

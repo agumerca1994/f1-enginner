@@ -5,10 +5,11 @@ from app.models.device import Device, PairingRequest
 from app.models.engineer_memory import EngineerMemory
 from app.models.engineer_message import EngineerMessage
 from app.models.lap_record import LapRecord
+from app.models.group import Group, GroupMember
 from app.models.game_session import GameSession, SessionCapture, meaningful_session
 from app.models.mcp_auth import McpAuthCode, McpOAuthAuthorization, McpOAuthClient, McpToken
 from app.models.overlay_token import OverlayToken
 from app.models.track_knowledge import TrackKnowledge
 from app.models.track_layout import TrackLayout
 
-__all__ = ["AccessRequest", "AppLog", "InviteCode", "LapRecord", "Device", "EngineerMemory", "EngineerMessage", "GameSession", "McpAuthCode", "McpOAuthAuthorization", "McpOAuthClient", "McpToken", "OverlayToken", "PairingRequest", "SessionCapture", "Tenant", "TrackKnowledge", "TrackLayout", "User", "meaningful_session"]
+__all__ = ["AccessRequest", "AppLog", "InviteCode", "LapRecord", "Device", "EngineerMemory", "EngineerMessage", "GameSession", "Group", "GroupMember", "McpAuthCode", "McpOAuthAuthorization", "McpOAuthClient", "McpToken", "OverlayToken", "PairingRequest", "SessionCapture", "Tenant", "TrackKnowledge", "TrackLayout", "User", "meaningful_session"]

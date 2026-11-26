@@ -4,14 +4,14 @@ import asyncio
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
-from sqlalchemy import func, select
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import AsyncSessionLocal, get_db
 from app.live import records
-from app.models import GameSession, LapRecord, SessionCapture, User
+from app.models import GameSession, GroupMember, LapRecord, SessionCapture, User
 from app.routers.internal import require_internal_key
 from app.telemetry import constants as c
 
@@ -38,13 +38,20 @@ async def leaderboard(
     categoria: str = Query("sin_ayudas", pattern="^(sin_ayudas|con_ayudas)$"),
     clima: str = Query("seco", pattern="^(seco|mojado)$"),
     limit: int = Query(50, ge=1, le=200),
+    grupo: int | None = Query(None, description="only this group's members (you must be one)"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    only = LapRecord.track_id == track_id
+    if grupo is not None:
+        tenants = list(await db.scalars(select(GroupMember.tenant_id).where(GroupMember.group_id == grupo)))
+        if user.tenant_id not in tenants:
+            raise HTTPException(404, "Group not found")
+        only = and_(only, LapRecord.tenant_id.in_(tenants))
     # Which games and categories have laps on this track, so the screen offers only those.
     have = (await db.execute(
         select(LapRecord.packet_format, LapRecord.category, LapRecord.weather, func.count())
-        .where(LapRecord.track_id == track_id).group_by(LapRecord.packet_format, LapRecord.category, LapRecord.weather)
+        .where(only).group_by(LapRecord.packet_format, LapRecord.category, LapRecord.weather)
     )).all()
     if juego is None and have:
         totals: dict[int, int] = {}
@@ -53,7 +60,7 @@ async def leaderboard(
         juego = max(totals, key=totals.get)
     rows = (await db.execute(
         select(LapRecord, User).outerjoin(User, User.tenant_id == LapRecord.tenant_id)
-        .where(LapRecord.track_id == track_id, LapRecord.packet_format == juego,
+        .where(only, LapRecord.packet_format == juego,
                LapRecord.category == categoria, LapRecord.weather == clima)
         .order_by(LapRecord.lap_ms, LapRecord.set_at)
     )).all()

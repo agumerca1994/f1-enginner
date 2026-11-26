@@ -28,7 +28,7 @@ const TABS = [
   {
     href: "/circuitos",
     label: "Circuitos",
-    match: (p: string) => p.startsWith("/circuitos") || p.startsWith("/sessions"),
+    match: (p: string) => p.startsWith("/circuitos") || p.startsWith("/sessions") || p.startsWith("/grupos"),
     icon: <path d="M5 18c-2-3 0-6 3-6s3-5 6-6 6 2 5 5-4 2-4 5 3 4 0 5-8 0-10-3Z" />,
   },
   {

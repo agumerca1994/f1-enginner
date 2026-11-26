@@ -7,6 +7,8 @@ import { Leaderboard } from "@/components/circuits/Leaderboard";
 import { RadioDock } from "@/components/ui/RadioDock";
 import { TrackOutline } from "@/components/ui/TrackOutline";
 import { academyEntry } from "@/lib/academy";
+import { circuitName } from "@/lib/gp";
+import type { GroupRow } from "@/lib/groups";
 import type { SetupValues } from "@/lib/box";
 import { lapS, sessionEs, shortDate, useApi, type Circuit, type CircuitRow, type Summary } from "@/lib/sessions";
 
@@ -36,6 +38,7 @@ export function Circuits({ selected }: { selected?: number }) {
   const { data: mine } = useApi<CircuitRow[]>("/api/setup/circuits");
   const { data: all } = useApi<{ id: number; pista: string }[]>("/api/setup/tracks");
   const { data: ranks } = useApi<{ pistas: Record<string, { pos: number; pilotos: number }> }>("/api/leaderboard/mine");
+  const { data: groups } = useApi<{ grupos: GroupRow[] }>("/api/groups");
   const [showAll, setShowAll] = useState(false);
   const current = selected ?? mine?.[0]?.id;
   const others = (all ?? []).filter((t) => !mine?.some((m) => m.id === t.id));
@@ -63,6 +66,20 @@ export function Circuits({ selected }: { selected?: number }) {
   return (
     <main className="mx-auto grid max-w-[1600px] gap-0 lg:grid-cols-[300px_minmax(0,1fr)]">
       <nav className={`flex flex-col gap-1 border-line px-[max(1rem,env(safe-area-inset-left))] py-4 lg:border-r lg:px-4 ${selected != null ? "hidden lg:flex" : ""}`} aria-label="Tus circuitos">
+        <div className="mb-3 flex flex-col gap-1">
+          <h2 className="eyebrow mb-1 px-1">Tus grupos</h2>
+          {groups?.grupos.map((g) => (
+            <Link key={g.id} href={`/grupos/${g.id}`} className="flex items-center gap-3 rounded-[10px] px-3 py-2 hover:bg-panel">
+              <span className="min-w-0 flex-1">
+                <span className="title block truncate text-[1.05rem]">{g.nombre}</span>
+                <span className="text-[0.78rem] text-dim">{g.miembros} {g.miembros === 1 ? "piloto" : "pilotos"}{g.fecha ? ` · Fecha: ${circuitName(g.fecha.track_id, g.fecha.pista)}` : ""}</span>
+              </span>
+            </Link>
+          ))}
+          <Link href="/grupos" className="px-1 text-[0.88rem] text-accent-ink">
+            {groups?.grupos.length ? "Crear o unirte a otro" : "Armá un grupo con amigos o tu liga"}
+          </Link>
+        </div>
         <h1 className="eyebrow mb-1 px-1">Tus circuitos</h1>
         {mine?.length === 0 && <p className="px-1 text-[0.9rem] text-muted">Todavía no corriste ninguno. Elegí una pista para ver su reglaje base.</p>}
         {mine?.map((c) => item(c.id, c.pista, `${c.sesiones} ${c.sesiones === 1 ? "sesión" : "sesiones"} · ${shortDate(c.ultima)}`, c.mejor_vuelta_s))}
