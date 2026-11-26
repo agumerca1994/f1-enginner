@@ -18,15 +18,18 @@ Los precios se cobran en pesos con el dólar de referencia: `scripts/plans.sh do
 
 ## Puesta en marcha
 
-1. Entrar a https://www.mercadopago.com.ar/developers con la cuenta que va a cobrar y crear una aplicación (producto: pagos online, Checkout Pro y suscripciones).
-2. En la aplicación, copiar el **Access Token de prueba** (credenciales de prueba).
+Las "credenciales de prueba" de la cuenta real dan "Hubo un error" dentro del checkout. Se prueba con una cuenta vendedora de prueba y sus credenciales de producción:
+
+1. En https://www.mercadopago.com.ar/developers, con la cuenta real, crear una aplicación (pagos online, Checkout Pro y suscripciones) y en *Cuentas de prueba* crear un **vendedor** y un **comprador**, los dos de Argentina.
+2. En una ventana de incógnito, entrar a Mercado Pago con el **vendedor de prueba** (usuario `TESTUSER…`, su contraseña; si pide código, los últimos 6 dígitos de su User ID). En el panel de desarrolladores de esa cuenta crear una aplicación y copiar su **Access Token de producción**.
 3. En Easypanel → Entorno del servicio:
-   - `MP_ACCESS_TOKEN` = el access token de prueba
-   - `MP_SANDBOX` = `true`
-   - `PLAN_LIMITS` sigue en `false` mientras se prueba; las cuentas de cortesía no lo necesitan.
-4. Desplegar (`scripts/deploy.sh --yes`) y cargar el dólar: `scripts/plans.sh dolar <pesos>`.
-5. Para probar la suscripción, `MP_TEST_PAYER_EMAIL` = el email del comprador de prueba (Mercado Pago no acepta un pagador real con credenciales de prueba). Probar con una cuenta de comprador de prueba (Mercado Pago → Cuentas de prueba): comprar un paquete y una suscripción desde Ajustes → Plan. Al volver, la pantalla revisa el pago; las notificaciones llegan a `https://f1-api.imanzanastore.com.ar/api/billing/mp/webhook` (la URL va en cada cobro, no hace falta configurarla en el panel).
-6. Para cobrar de verdad: cambiar `MP_ACCESS_TOKEN` por el de producción, `MP_SANDBOX=false`, darte cortesía (`scripts/plans.sh cortesia <tu mail>`) y recién ahí `PLAN_LIMITS=true`.
+   - `MP_ACCESS_TOKEN` = ese token
+   - `MP_SANDBOX` = `false`
+   - `MP_TEST_PAYER_EMAIL` = `test_user_<UserID del comprador>@testuser.com` (para la suscripción)
+   - `PLAN_LIMITS` sigue en `false`.
+4. Desplegar y cargar el dólar: `scripts/plans.sh dolar <pesos>`.
+5. En otra ventana de incógnito, comprar desde Ajustes → Plan y pagar entrando con el **comprador de prueba**, con tarjeta de prueba (titular `APRO`). Las notificaciones llegan a `https://f1-api.imanzanastore.com.ar/api/billing/mp/webhook` (la URL va en cada cobro).
+6. Para cobrar de verdad: `MP_ACCESS_TOKEN` = el de producción de la cuenta real, borrar `MP_TEST_PAYER_EMAIL`, darte cortesía (`scripts/plans.sh cortesia <tu mail>`) y recién ahí `PLAN_LIMITS=true`.
 
 ## Seguridad
 

@@ -40,7 +40,8 @@ class Settings(BaseSettings):
     # Mercado Pago (Argentina). Empty = no real payments; in development a simulated checkout stands in.
     MP_ACCESS_TOKEN: str = ""
     MP_SANDBOX: bool = False  # send buyers to the sandbox checkout (test credentials)
-    # Sandbox only: Mercado Pago wants a test user as the subscription payer, not the player's real email.
+    # Testing only (a test seller's token): Mercado Pago wants a test user as the subscription payer.
+    # Leave empty in production.
     MP_TEST_PAYER_EMAIL: str = ""
     # Where Mercado Pago sends its notifications; empty = https://API_DOMAIN.
     PUBLIC_API_URL: str = ""

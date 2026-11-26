@@ -33,7 +33,7 @@ def _api_url() -> str:
 
 
 def _payer_email(user: User) -> str:
-    if settings.MP_SANDBOX and settings.MP_TEST_PAYER_EMAIL:
+    if settings.MP_TEST_PAYER_EMAIL:  # testing with a test seller's account: the payer must be a test user too
         return settings.MP_TEST_PAYER_EMAIL
     return user.email
 
