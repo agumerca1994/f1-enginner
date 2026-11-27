@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Barlow, JetBrains_Mono, Saira_Condensed, Share_Tech_Mono } from "next/font/google";
 
 import { AppNav } from "@/components/AppNav";
+import { IntroSplash } from "@/components/brand/IntroSplash";
 import { ErrorReporter } from "@/components/ErrorReporter";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { INTRO_BOOT } from "@/lib/appRoutes";
 import { AuthProvider } from "@/lib/auth";
 import { THEME_BOOT } from "@/lib/theme";
 
@@ -41,9 +43,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="es" className={fonts} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: INTRO_BOOT }} />
       </head>
       <body className="min-h-dvh antialiased">
         <AuthProvider>
+          <IntroSplash />
           <AppNav>{children}</AppNav>
           <ErrorReporter />
         </AuthProvider>

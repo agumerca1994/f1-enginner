@@ -185,3 +185,6 @@ body {
 .intro-gantry i::before, .intro-gantry i::after { content: ""; display: block; width: 8.4cqw; height: 8.4cqw; border-radius: 50%; background: #17191d; box-shadow: inset 0 0 0 .6cqw #24272d; }
 .intro-gantry i.on::before, .intro-gantry i.on::after { background: radial-gradient(circle at 40% 35%, #ff7a63, #ff2a17 55%, #c4160a); box-shadow: 0 0 5.8cqw 1.2cqw rgba(255, 42, 23, .55); }
 html.intro-playing [data-brand-mark] { opacity: 0; }
+
+/* Before the intro mounts, the first paint is the intro's dark, not the loading screen. */
+html.intro-boot body::after { content: ""; position: fixed; inset: 0; z-index: 99; background: #14161a; }

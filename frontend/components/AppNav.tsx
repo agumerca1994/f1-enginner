@@ -3,17 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { IntroSplash } from "@/components/brand/IntroSplash";
 import { LogoMark } from "@/components/brand/LogoMark";
 import { StatusBar } from "@/components/ui/StatusBar";
 import { useAuth } from "@/lib/auth";
+import { BARE, NO_LIVE } from "@/lib/appRoutes";
 import { LiveProvider } from "@/lib/liveContext";
 
-// Screens that draw their own full-screen layout: overlays for OBS, linked screens,
-// the cockpit, the replay player and the sign-in flow.
-const BARE = ["/overlay", "/oauth", "/volante", "/replay", "/pantalla", "/cockpit"];
-// Linked screens and overlays watch with their own token, outside the signed-in app.
-const NO_LIVE = ["/overlay", "/oauth", "/pantalla"];
 
 const TABS = [
   {
@@ -55,7 +50,6 @@ export function AppNav({ children }: { children: React.ReactNode }) {
 
   return (
     <LiveProvider>
-      <IntroSplash />
       <div className="sticky top-0 z-30 bg-bg/95 pt-[env(safe-area-inset-top)] backdrop-blur">
         <StatusBar />
         <nav className="hidden border-b border-line lg:block" aria-label="Secciones">

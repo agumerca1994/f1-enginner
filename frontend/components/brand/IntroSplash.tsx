@@ -1,11 +1,12 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { INTRO_SEEN_KEY as SEEN_KEY, INTRO_SKIP as SKIP } from "@/lib/appRoutes";
 import { introModel, type IntroData } from "@/lib/brand/intro";
 import { DARK, FG, RED, carSvg, loadBrand, marksGradient, prefersReducedMotion } from "@/lib/brand/scene";
 
-const SEEN_KEY = "pel-intro-v1"; // once per browser session
 const LAND_MS = 750; // the flight from the middle of the screen to the logo in the header
 
 function seen(): boolean {
@@ -19,11 +20,15 @@ function seen(): boolean {
 /**
  * The start-up intro: start lights, the cars on the run up to the P inside the logo's square, and when the
  * logo is formed it flies to the logo in the header ([data-brand-mark]). Once per session; skippable;
- * not shown with reduced motion. Sound needs a tap on most browsers, so it starts silent with a button.
+ * not shown with reduced motion. It takes over the start-up loading (see INTRO_BOOT). When the browser
+ * refuses sound until a tap, it waits for one ("Tocá para largar") so the start always has its sound.
  */
 export function IntroSplash() {
   const [phase, setPhase] = useState<"off" | "play" | "land">("off");
   const [soundBlocked, setSoundBlocked] = useState(false);
+  const [waitTap, setWaitTap] = useState(false);
+  const startClockRef = useRef<() => void>(() => {});
+  const startWithTapRef = useRef<() => void>(() => {});
   const overlayRef = useRef<HTMLDivElement>(null);
   const winRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -32,16 +37,21 @@ export function IntroSplash() {
   const startRef = useRef(0);
   const landRef = useRef<() => void>(() => {});
 
+  const path = usePathname() || "/";
   useEffect(() => {
-    if (seen() || prefersReducedMotion()) return;
+    const html = document.documentElement;
+    if (seen() || prefersReducedMotion() || SKIP.some((p) => path.startsWith(p))) {
+      html.classList.remove("intro-boot");
+      return;
+    }
     setPhase("play");
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- decided once, at start-up
 
   const finish = useCallback(() => {
     try {
       sessionStorage.setItem(SEEN_KEY, "1");
     } catch {}
-    document.documentElement.classList.remove("intro-playing");
+    document.documentElement.classList.remove("intro-playing", "intro-boot");
     setPhase("off");
   }, []);
 
@@ -73,13 +83,12 @@ export function IntroSplash() {
   useEffect(() => {
     if (phase !== "play") return;
     document.documentElement.classList.add("intro-playing");
+    document.documentElement.classList.remove("intro-boot"); // the overlay is up now
     let raf = 0;
     let alive = true;
     const audio = new Audio("/brand/intro-audio.mp3");
     audio.preload = "auto";
     audioRef.current = audio;
-    const tryPlay = audio.play();
-    if (tryPlay && tryPlay.catch) tryPlay.catch(() => alive && setSoundBlocked(true));
 
     loadBrand<IntroData>("/brand/intro.json")
       .then((D) => {
@@ -111,7 +120,6 @@ export function IntroSplash() {
         const cars: SVGGElement[] = [];
         svg.querySelectorAll<SVGGElement>(".car").forEach((g) => (cars[Number(g.dataset.k)] = g));
         const pods = Array.from(gantryRef.current?.children ?? []) as HTMLElement[];
-        startRef.current = performance.now();
         const tick = (now: number) => {
           const t = (now - startRef.current) / 1000;
           const c = m.camera(t);
@@ -133,16 +141,65 @@ export function IntroSplash() {
           }
           raf = requestAnimationFrame(tick);
         };
-        raf = requestAnimationFrame(tick);
+        // the picture starts with the sound (or without it, if the visitor never allows it)
+        let started = false;
+        startClockRef.current = () => {
+          if (started || !alive) return;
+          started = true;
+          setWaitTap(false);
+          startRef.current = performance.now();
+          raf = requestAnimationFrame(tick);
+        };
+        // Browsers refuse sound until the visitor has touched the page. Try; if refused, the intro
+        // waits on the dark screen for a tap ("Tocá para largar") and that tap starts it with sound.
+        let settled = false;
+        const refused = () => {
+          if (settled || !alive) return;
+          settled = true;
+          audio.pause();
+          setWaitTap(true);
+        };
+        const timer = window.setTimeout(refused, 1200); // some browsers leave play() pending
+        const p = audio.play();
+        if (p && p.then)
+          p.then(() => {
+            window.clearTimeout(timer);
+            if (settled) return audio.pause();
+            settled = true;
+            startClockRef.current();
+          }).catch(() => {
+            window.clearTimeout(timer);
+            refused();
+          });
       })
       .catch(() => finish());
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
+      audio.pause();
     };
   }, [phase === "play", finish]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // the sound was blocked: a tap starts it, in step with the picture
+  // the tap that starts the intro: play inside the gesture (what phones require), the clock on "playing"
+  const startWithTap = () => {
+    if (!waitTap) return;
+    const audio = audioRef.current;
+    setWaitTap(false);
+    if (!audio) return startClockRef.current();
+    try {
+      if (audio.readyState > 0) audio.currentTime = 0;
+    } catch {}
+    audio.addEventListener("playing", () => startClockRef.current(), { once: true });
+    const p = audio.play();
+    if (p && p.catch)
+      p.catch(() => {
+        setSoundBlocked(true);
+        startClockRef.current();
+      });
+    window.setTimeout(() => startClockRef.current(), 1500); // a slow network never holds the picture
+  };
+
+  // the sound was refused even after the tap: the button starts it, in step with the picture
   const enableSound = () => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -174,9 +231,23 @@ export function IntroSplash() {
     land();
   };
 
+  // a key works as the tap on a computer
+  useEffect(() => {
+    if (!waitTap) return;
+    const onKey = () => startWithTapRef.current();
+    window.addEventListener("keydown", onKey, { once: true });
+    return () => window.removeEventListener("keydown", onKey);
+  }, [waitTap]);
+  startWithTapRef.current = startWithTap;
+
   if (phase === "off") return null;
   return (
-    <div ref={overlayRef} className="fixed inset-0 z-[100] flex items-center justify-center" style={{ backgroundColor: DARK }}>
+    <div
+      ref={overlayRef}
+      className={`fixed inset-0 z-[100] flex items-center justify-center ${waitTap ? "cursor-pointer" : ""}`}
+      style={{ backgroundColor: DARK }}
+      onClick={startWithTap}
+    >
       <div
         ref={winRef}
         aria-hidden="true"
@@ -190,14 +261,25 @@ export function IntroSplash() {
         </div>
         <svg ref={svgRef} viewBox="0 0 256 256" className="absolute inset-0 h-full w-full" />
       </div>
+      {phase === "play" && waitTap && (
+        <p className="intro-tap pointer-events-none animate-pulse absolute inset-x-0 top-[calc(50%+min(33vmin,230px)+1.5rem)] text-center text-[1rem] font-semibold uppercase tracking-[0.18em] text-[#f2f3f5]">
+          {typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? "Tocá para largar" : "Hacé clic para largar"}
+        </p>
+      )}
       {phase === "play" && (
         <div className="absolute inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] flex justify-center gap-3">
           {soundBlocked && (
-            <button type="button" className="btn px-4 py-2 text-[0.9rem]" onClick={enableSound}>
+            <button type="button" className="btn px-4 py-2 text-[0.9rem]" onClick={(e) => {
+                e.stopPropagation();
+                enableSound();
+              }}>
               Activar sonido
             </button>
           )}
-          <button type="button" className="btn px-4 py-2 text-[0.9rem] text-muted" onClick={skip}>
+          <button type="button" className="btn px-4 py-2 text-[0.9rem] text-muted" onClick={(e) => {
+              e.stopPropagation();
+              skip();
+            }}>
             Saltar
           </button>
         </div>
