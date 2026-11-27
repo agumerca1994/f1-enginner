@@ -43,3 +43,6 @@ fixtures/local/
 .claude/settings.local.json
 assets-src/
 brag-output/
+
+# Brand working files (logo rounds, intro renders and audio); the shipped assets live in frontend/public/brand
+docs/marca/
