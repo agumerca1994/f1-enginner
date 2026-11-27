@@ -87,4 +87,4 @@ Production diagnostics use `GET /internal/{devices,sessions,live,logs,logs/summa
 - Code comments are in English.
 - UI text is in Spanish (Argentina).
 - The product is **Pit en línea** (logo "PIT EN LÍNEA", since 2026-11-27; formerly "Ingeniero de carrera"). The radio persona stays "Tu ingeniero" / "Ingeniero" and the desktop app "Ingeniero Bridge". Internal ids (`ingeniero-de-carrera` MCP name, domains, repo) are unchanged.
-- Never use "F1", "Formula 1" or "EA" in product naming. The public line (web, app and videos) is "Compatible con la telemetría de los juegos EA SPORTS F1® en todas las plataformas"; the detail (F1® 24, F1® 25 and the 2026 season, no guarantee for earlier editions, consoles need Ingeniero Bridge on a computer) lives in the FAQ (`landing/preguntas.html`), not in headlines.
+- Never use "F1", "Formula 1" or "EA" in product naming. The public line (web, app and videos) is "Compatible con la telemetría de los juegos EA SPORTS F1®"; the detail (F1® 24, F1® 25 and the 2026 season, no guarantee for earlier editions, consoles need Ingeniero Bridge on a computer) lives in the FAQ (`landing/preguntas.html`), not in headlines.

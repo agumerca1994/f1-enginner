@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Pit en línea",
     short_name: "Pit en línea",
-    description: "Telemetría en vivo y tu ingeniero de pista por radio. Compatible con la telemetría de los juegos EA SPORTS F1® en todas las plataformas.",
+    description: "Telemetría en vivo y tu ingeniero de pista por radio. Compatible con la telemetría de los juegos EA SPORTS F1®.",
     start_url: "/",
     display: "standalone",
     orientation: "any",

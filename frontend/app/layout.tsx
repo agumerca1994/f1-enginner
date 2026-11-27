@@ -21,7 +21,7 @@ const shareTech = Share_Tech_Mono({ variable: "--font-share-tech", subsets: ["la
 
 export const metadata: Metadata = {
   title: "Pit en línea",
-  description: "Tu ingeniero de pista por radio: telemetría en vivo, estrategia y avisos por voz. Compatible con la telemetría de los juegos EA SPORTS F1® en todas las plataformas.",
+  description: "Tu ingeniero de pista por radio: telemetría en vivo, estrategia y avisos por voz. Compatible con la telemetría de los juegos EA SPORTS F1®.",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Pit en línea", statusBarStyle: "black-translucent" },
 };
