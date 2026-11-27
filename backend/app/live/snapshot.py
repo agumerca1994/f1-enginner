@@ -118,6 +118,10 @@ def build(live: LiveSession) -> dict[str, Any]:
             "pit_stops": int(lap["num_pit_stops"]),
             "penalties_s": int(lap["penalties"]),
             "warnings": int(lap["total_warnings"]),
+            # Stop-go and drive-through penalties still to serve, and whether this stop serves one.
+            "unserved_stop_go": int(lap["num_unserved_stop_go_pens"]),
+            "unserved_drive_through": int(lap["num_unserved_drive_through_pens"]),
+            "serve_penalty_at_stop": bool(lap["pit_stop_should_serve_pen"]),
             "grid_position": int(lap["grid_position"]),
             # Against the best complete clean lap seen this session, at the same lap distance.
             "delta_best_ms": live.timing.delta.delta_ms(lap),

@@ -9,8 +9,10 @@ enough context (sample size, estimated or measured) to judge how much to trust i
 import statistics
 from typing import Any
 
+from app.engineer import adjust
 from app.engineer.setup_sheet import setup_values  # noqa: F401  (re-exported)
-from app.engineer.history import PUNCTURE_JUMP, PUNCTURE_PCT, PlayerLap, SessionHistory, pit_loss_samples
+from app.engineer.history import (PUNCTURE_JUMP, PUNCTURE_PCT, PlayerLap, SessionHistory, pit_loss_samples,
+                                  sanction_text)
 from app.live import snapshot
 from app.live.state import LiveSession
 from app.telemetry import constants as c
@@ -66,6 +68,8 @@ def build(live: LiveSession, history: SessionHistory, prior: dict[str, Any] | No
         "reglamento_2026": _regulations_2026(snap, laps),
         "estrategia_calculos": _strategy(snap, history, laps, session, prior),
         "reglaje_actual": _setup(live),
+        "ajustes_en_carrera": _adjustments(live, history, snap) if _locked(session) else None,
+        "incidentes": incidents(snap, history),
         "eventos_recientes": _events(history, snap.get("cars") or []),
         "calidad_datos": {
             "recepcion_telemetria": snap["link"].get("reception"),
@@ -311,6 +315,10 @@ def _tyres(snap: dict, laps: list[PlayerLap]) -> dict[str, Any]:
             {"vuelta": pl.lap, **dict(zip(WHEELS, pl.inner_temp_avg))} for pl in laps[-5:] if pl.inner_temp_avg
         ],
         "temp_superficie_instantanea_c": dict(zip(WHEELS, (car.get("tyres_surface_temperature_c") or {}).values())) or None,
+        "temp_interna_instantanea_c": dict(zip(WHEELS, (car.get("tyres_inner_temperature_c") or {}).values())) or None,
+        "nota_temperaturas": ("Lo que el piloto ve en la pantalla del juego es el valor instantáneo: si pregunta por "
+                              "las temperaturas, dale las instantáneas (superficie e interna) y aclarale si usás un "
+                              "promedio de vuelta. La superficie sube y baja en cada curva; la interna se mueve lento."),
         "presion_psi": dict(zip(WHEELS, (car.get("tyres_pressure_psi") or {}).values())) or None,
         "temp_frenos_c": dict(zip(WHEELS, (car.get("brakes_temperature_c") or {}).values())) or None,
         "muestras_del_stint": len(stint),
@@ -578,12 +586,23 @@ def snapshot_track_length(session: dict) -> float | None:
     return session.get("track_length_m")
 
 
+# Events between other cars that do not concern the player: they would push the player's own out.
+_FIELD_EVENTS = ("OVTK", "COLL", "PENA")
+_EVENT_SLOTS = ("vehicle_idx", "vehicle1_idx", "vehicle2_idx", "overtaking_vehicle_idx", "being_overtaken_vehicle_idx",
+                "other_vehicle_idx")
+
+
+def _concerns(e: dict, player: int | None) -> bool:
+    return e["code"] not in _FIELD_EVENTS or player in (e.get(k) for k in _EVENT_SLOTS)
+
+
 def _events(history: SessionHistory, cars: list[dict]) -> list[dict]:
-    """Recent events with driver names instead of the game's car slots."""
+    """Recent events that concern the player, with driver names instead of the game's car slots."""
     names = {car["index"]: ("VOS" if car["is_player"] else car["name"]) for car in cars}
+    player = next((car["index"] for car in cars if car["is_player"]), None)
     out = []
-    for e in history.events[-8:]:
-        item = {"evento": e["code"], "vuelta": e.get("lap")}
+    for e in [e for e in history.events if e["code"] not in ("FLBK", "SPTP") and _concerns(e, player)][-8:]:
+        item = {"evento": c.EVENT_NAMES_ES.get(e["code"], e["code"]), "vuelta": e.get("lap")}
         for key, value in e.items():
             if key.endswith("_idx"):
                 item[key.removesuffix("_idx").replace("vehicle", "auto")] = names.get(value, f"auto {value}")
@@ -593,6 +612,20 @@ def _events(history: SessionHistory, cars: list[dict]) -> list[dict]:
     return out
 
 
+def _locked(session: dict) -> bool:
+    """Qualifying and race run under parc fermé: the garage setup no longer moves."""
+    kind = session.get("type") or ""
+    return kind.startswith(("Race", "Qualifying", "Short Qualifying", "One-Shot", "Sprint Shootout"))
+
+
+def _adjustments(live: LiveSession, history: SessionHistory, snap: dict) -> dict[str, Any]:
+    coach = history.corners
+    last = sorted(coach.passes)[-1] if coach.passes else None
+    exit_losses = {k.number for k in coach.corners
+                   if last is not None and coach.describe(last, k).get("donde_pierde") == "salida"}
+    return adjust.in_session(coach, _setup(live), (snap.get("status") or {}).get("brake_bias"), exit_losses)
+
+
 def _setup(live: LiveSession) -> dict[str, Any] | None:
     packet = live.last.get("car_setups")
     return None if packet is None else setup_values(packet)
@@ -600,3 +633,92 @@ def _setup(live: LiveSession) -> dict[str, Any] | None:
 
 def _s(ms) -> float | None:
     return None if not ms else round(ms / 1000, 3)
+
+
+CONTACT_GAP_S = 10.0  # contacts with the same car closer than this are one incident
+NEARBY_PLACES = 3  # rivals this many places around the player count as "around"
+
+
+def incidents(snap: dict, history: SessionHistory) -> dict[str, Any]:
+    """What happened on track around the player: who hit them, their sanctions (and what is still to
+    serve), who passed whom, retirements and the rivals around who just stopped."""
+    cars = snap.get("cars") or []
+    names = {car["index"]: car["name"] for car in cars}
+    me = next((car for car in cars if car["is_player"]), None)
+    player = me["index"] if me else None
+    lap = snap.get("lap") or {}
+    now = history._last_t or 0.0
+    name = lambda i: names.get(i) or history.names.get(i) or f"auto {i}"  # noqa: E731
+
+    contacts: list[dict] = []
+    for e in history.events:
+        if e["code"] != "COLL" or player not in (e.get("vehicle1_idx"), e.get("vehicle2_idx")):
+            continue
+        other = e["vehicle2_idx"] if e.get("vehicle1_idx") == player else e.get("vehicle1_idx")
+        if contacts and contacts[-1]["_i"] == other and e["session_time"] - contacts[-1]["_t"] < CONTACT_GAP_S:
+            contacts[-1]["_t"] = e["session_time"]
+            continue
+        contacts.append({"_i": other, "_t": e["session_time"], "vuelta": e.get("lap"), "con": name(other)})
+    for x in contacts:
+        x["hace_s"] = round(max(0.0, now - x.pop("_t")))
+        x.pop("_i")
+
+    sanctions = [{"vuelta": e.get("lap"), "que": sanction_text(e, {**history.names, **names}),
+                  "tipo": c.PENALTY_TYPES_ES.get(e.get("penalty_type"))}
+                 for e in history.events
+                 if e["code"] == "PENA" and e.get("vehicle_idx") == player
+                 and e.get("penalty_type") not in c.LAP_INVALIDATED_TYPES]
+
+    passes: list[dict] = []
+    for e in history.events:
+        if e["code"] != "OVTK":
+            continue
+        if e.get("overtaking_vehicle_idx") == player:
+            item = {"vuelta": e.get("lap"), "pasaste_a": name(e.get("being_overtaken_vehicle_idx"))}
+        elif e.get("being_overtaken_vehicle_idx") == player:
+            item = {"vuelta": e.get("lap"), "te_paso": name(e.get("overtaking_vehicle_idx"))}
+        else:
+            continue
+        rival = item.get("pasaste_a") or item.get("te_paso")
+        if passes and (passes[-1].get("pasaste_a") or passes[-1].get("te_paso")) == rival:
+            passes[-1] = item  # a back-and-forth with the same car: only how it ended matters
+        else:
+            passes.append(item)
+
+    retired = [{"piloto": name(e.get("vehicle_idx")), "vuelta": e.get("lap")}
+               for e in history.events if e["code"] == "RTMT" and e.get("vehicle_idx") != player]
+
+    # Rivals within a few places that pitted in their last two laps.
+    stops = []
+    if me is not None:
+        for car in cars:
+            if car["is_player"] or abs(car["position"] - me["position"]) > NEARBY_PLACES:
+                continue
+            laps = history.car_laps.get(car["index"]) or []
+            if len(laps) >= 2 and laps[-1].pit_stops > laps[-3 if len(laps) >= 3 else 0].pit_stops:
+                stops.append({"piloto": car["name"], "posicion": car["position"], "vuelta": laps[-1].lap,
+                              "gomas_nuevas": c.COMPOUNDS_ES.get(laps[-1].compound, laps[-1].compound)})
+
+    others = []
+    for e in history.events[-40:]:
+        if e["code"] != "COLL" or player in (e.get("vehicle1_idx"), e.get("vehicle2_idx")):
+            continue
+        others.append({"vuelta": e.get("lap"), "entre": [name(e.get("vehicle1_idx")), name(e.get("vehicle2_idx"))]})
+
+    return {
+        "mis_toques": contacts[-5:],
+        "mis_sanciones": sanctions[-6:],
+        "sanciones_pendientes": {
+            "stop_and_go": lap.get("unserved_stop_go"),
+            "drive_through": lap.get("unserved_drive_through"),
+            "se_cumple_en_esta_parada": lap.get("serve_penalty_at_stop"),
+            "segundos_de_penalizacion": lap.get("penalties_s"),
+        },
+        "adelantamientos": passes[-4:],
+        "abandonos": retired[-5:],
+        "paradas_rivales_cerca": stops,
+        "toques_entre_otros": others[-3:],
+        "nota": "mis_toques: contactos del juego con el auto del piloto (con quién y hace cuántos segundos). "
+                "Un stop and go o drive through pendiente se cumple en la próxima parada (o entrando a boxes); "
+                "los segundos de penalización se suman al tiempo final o se cumplen en la parada.",
+    }

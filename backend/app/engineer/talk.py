@@ -84,6 +84,9 @@ def brief_status(runner, live) -> dict[str, Any]:
         "danos_mayores_5pct": {k: v for k, v in (pl.get("danos_pct") or {}).items() if isinstance(v, (int, float)) and v > 5},
         "penalizacion_s": pl.get("penalizacion_s"),
         "advertencias": pl.get("advertencias"),
+        "sanciones_pendientes": f["incidentes"]["sanciones_pendientes"],
+        "ultimas_sanciones": f["incidentes"]["mis_sanciones"][-3:],
+        "ultimos_toques": f["incidentes"]["mis_toques"][-3:],
         "delta_vs_mejor_vuelta_s": ((f.get("sectores") or {}).get("vuelta_en_curso") or {}).get("delta_vs_mejor_vuelta_s"),
         "sector_actual": ((f.get("sectores") or {}).get("vuelta_en_curso") or {}).get("sector_actual"),
         "antiguedad_s": _age(snap),
@@ -132,6 +135,15 @@ def sector_analysis(runner, live, n: int) -> dict[str, Any]:
     }
 
 
+def track_incidents(runner, live) -> dict[str, Any]:
+    """Contacts with the player and who it was, sanctions and what is still to serve, passes,
+    retirements and the rivals around who just stopped."""
+    if live is None:
+        return {"en_vivo": False}
+    return {**analysis.incidents(snapshot.build(live), runner.engineer.history),
+            "safety_car": (snapshot.build(live).get("session") or {}).get("safety_car")}
+
+
 def tyres(runner, live) -> dict[str, Any]:
     f = analysis.build(live, runner.engineer.history)
     return {**f["neumaticos"], "juegos": f["estrategia_calculos"].get("juegos_de_neumaticos"),
@@ -162,8 +174,11 @@ def setup_status(runner, live) -> dict[str, Any]:
         "reglaje_leido_del_juego": current,
         "acordado_pendiente": [a for a in d["reglaje_acordado"] if a.get("estado") == "pendiente"],
         "historial": d["historial_reglaje"][-8:],
+        "ajustes_en_carrera": (analysis.build(live, runner.engineer.history).get("ajustes_en_carrera")
+                               if live is not None else None),
         "nota": "Compará el acordado con el leído del juego: si no coincide, avisá primero. En clasificación y "
-                "carrera el reglaje está bloqueado (sólo presiones y alerón delantero en boxes).",
+                "carrera el reglaje de garaje está bloqueado, pero desde el volante se cambian el reparto de frenada "
+                "y el diferencial al acelerar, y en una parada el alerón delantero.",
     }
 
 
@@ -200,7 +215,13 @@ TOOLS = [
      "por pérdida. Para '¿dónde pierdo en el sector 1?'.",
      "input_schema": {"type": "object", "properties": {"n": {"type": "integer"}}, "required": ["n"],
                       "additionalProperties": False}},
-    {"name": "neumaticos", "description": "Desgaste y temperatura por goma, desgaste por vuelta (y la que más se "
+    {"name": "incidentes", "description": "Lo que pasó en la pista: con quién chocó el piloto y cuándo, sus "
+     "sanciones (motivo, segundos, stop and go o drive through pendientes), quién lo pasó y a quién pasó, abandonos, "
+     "rivales cerca que pararon y toques entre otros. Para '¿quién me chocó?', '¿por qué me penalizaron?', "
+     "'¿qué pasó adelante?'.",
+     "input_schema": {"type": "object", "properties": {}, "additionalProperties": False}},
+    {"name": "neumaticos", "description": "Desgaste y temperatura por goma (instantánea, como la ve el piloto en la "
+     "pantalla, y promedio de la última vuelta), desgaste por vuelta (y la que más se "
      "gasta), vueltas hasta 60/70% y juegos disponibles.",
      "input_schema": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"name": "estrategia", "description": "Pérdida en boxes medida, dónde sale si para ahora, rivales con gaps y "
@@ -238,6 +259,8 @@ def run_tool(runner, live, name: str, args: dict) -> dict[str, Any]:
         return corner_analysis(runner, int(args["numero"]), int(args.get("vueltas") or 3))
     if name == "sector":
         return sector_analysis(runner, live, int(args["n"]))
+    if name == "incidentes":
+        return track_incidents(runner, live)
     if name == "neumaticos":
         return tyres(runner, live)
     if name == "estrategia":

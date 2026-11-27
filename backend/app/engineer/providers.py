@@ -327,8 +327,16 @@ def rules_response(request: EngineerRequest) -> dict:
         radio = "Viene lluvia en los próximos 15 minutos: preparate para intermedios."
         priority = "importante"
     elif "penalty" in kinds:
-        radio = (f"Ojo con los límites de pista: llevás {_count(pl.get('advertencias'), 'advertencia', 'advertencias')}."
-                 if not pl.get("penalizacion_s") else f"Tenemos {pl['penalizacion_s']} segundos de penalización.")
+        d = next(t.detail for t in request.triggers if t.kind == "penalty")
+        pending = (f.get("incidentes") or {}).get("sanciones_pendientes") or {}
+        if pending.get("stop_and_go") or pending.get("drive_through"):
+            kind = "stop and go" if pending.get("stop_and_go") else "drive through"
+            radio = f"Nos dieron un {kind}" + (f": {d['sancion'].split(' por ', 1)[1]}" if " por " in (d.get("sancion") or "") else "") \
+                + ". Lo cumplimos en la próxima parada."
+        elif pl.get("penalizacion_s"):
+            radio = f"Tenemos {pl['penalizacion_s']} segundos de penalización."
+        else:
+            radio = f"Ojo con los límites de pista: llevás {_count(pl.get('advertencias'), 'advertencia', 'advertencias')}."
         priority = "importante"
     elif "rival_overtake" in kinds:
         d = next(t.detail for t in request.triggers if t.kind == "rival_overtake")

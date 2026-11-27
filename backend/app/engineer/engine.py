@@ -69,6 +69,14 @@ def moment_text(t: Trigger) -> str:
         if flats:
             text.append(TRIGGER_TEXT["puncture"].format(ruedas=" y ".join(flats)))
         return " ".join(text)
+    if t.kind == "penalty":
+        d = t.detail
+        text = f"Nueva sanción: {d['sancion']}." if d.get("sancion") else "Nueva sanción o advertencia."
+        pending = [f"{n} {what} sin cumplir" for n, what in ((d.get("stop_go"), "stop and go"),
+                                                              (d.get("drive_through"), "drive through")) if n]
+        text += f" Lleva {d.get('penalties_s') or 0} s de penalización y {d.get('warnings') or 0} advertencias"
+        text += (", y " + " y ".join(pending) + ": se cumple en la próxima parada, avisale." if pending else ".")
+        return text
     if t.kind in STRUCTURED_TRIGGERS:
         return TRIGGER_TEXT[t.kind].format(detalle=json.dumps(t.detail, ensure_ascii=False))
     return TRIGGER_TEXT[t.kind].format(lap=t.lap, **t.detail)

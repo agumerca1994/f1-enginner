@@ -163,6 +163,8 @@ class SessionHistory:
         self._rebaseline_damage = False
         self._penalties = 0
         self._warnings = 0
+        self._unserved = 0  # stop-go and drive-through penalties still to serve
+        self.names: dict[int, str] = {}  # car slot -> driver name, from Participants
         self._pit_stops = 0
         self._started = False
         self.corners = CornerCoach()
@@ -219,6 +221,9 @@ class SessionHistory:
             if flag == "blue" and self._fia_flag != "blue":
                 new.append(Trigger("blue_flag", t, self._player_lap(live)))
             self._fia_flag = flag
+        elif packet.name == "participants":
+            self.names = {i: p["name"].decode("utf-8", "replace").strip("\x00")
+                          for i, p in enumerate(packet.body["participants"])}
         elif packet.name == "tyre_sets":
             if int(packet.body["car_idx"]) == packet.player_car_index:
                 self.tyre_sets = packet.body
@@ -473,13 +478,25 @@ class SessionHistory:
             out.append(Trigger("pitted", packet.session_time, int(me["current_lap_num"]), {"stops": stops}))
         self._pit_stops = max(self._pit_stops, stops)
         pen, warn = int(me["penalties"]), int(me["total_warnings"])
-        if pen > self._penalties or warn > self._warnings:
+        unserved = int(me["num_unserved_stop_go_pens"]) + int(me["num_unserved_drive_through_pens"])
+        if pen > self._penalties or warn > self._warnings or unserved > self._unserved:
             out.append(Trigger("penalty", packet.session_time, int(me["current_lap_num"]),
-                               {"penalties_s": pen, "warnings": warn}))
+                               {"penalties_s": pen, "warnings": warn,
+                                "stop_go": int(me["num_unserved_stop_go_pens"]),
+                                "drive_through": int(me["num_unserved_drive_through_pens"]),
+                                "sancion": self.last_sanction(player)}))
         # The highest seen, not the last: a flashback takes a warning back and the next lap
         # earns the same one again, which is not news.
         self._penalties, self._warnings = max(self._penalties, pen), max(self._warnings, warn)
+        self._unserved = unserved  # these go down when served: the last value, not the highest
         return out
+
+    def last_sanction(self, player: int) -> str | None:
+        """The player's newest penalty event, in words: "stop and go de 10 s por choque fuerte con PÉREZ"."""
+        for e in reversed(self.events[-12:]):
+            if e["code"] == "PENA" and e.get("vehicle_idx") == player:
+                return sanction_text(e, self.names)
+        return None
 
     def _player_sector_triggers(self, me, t: float, live: LiveSession) -> list[Trigger]:
         """Capture S1/S2 as the player crosses them, and flag a notable sector."""
@@ -647,3 +664,17 @@ def _average(samples: list[list[int]]) -> list[float] | None:
 
 def _ms(minutes, ms) -> int:
     return int(minutes) * 60_000 + int(ms)
+
+
+def sanction_text(e: dict, names: dict[int, str]) -> str:
+    """A PENA event in the engineer's words: "stop and go de 10 s por choque fuerte con PÉREZ"."""
+    kind = c.PENALTY_TYPES_ES.get(e.get("penalty_type"), "sanción")
+    secs = e.get("time")
+    text = kind + (f" de {secs} s" if secs and e.get("penalty_type") in c.TIME_PENALTY_TYPES else "")
+    why = c.INFRINGEMENTS_ES.get(e.get("infringement_type"))
+    if why:
+        text += f" por {why}"
+    other = e.get("other_vehicle_idx")
+    if other is not None and other in names:
+        text += f" con {names[other]}"
+    return text

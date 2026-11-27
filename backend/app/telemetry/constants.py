@@ -79,3 +79,46 @@ DAMAGE_PARTS_ES = {
 # Visual compounds as the engineer says them ("ponemos medios").
 COMPOUNDS_ES = {"Soft": "blandos", "Medium": "medios", "Hard": "duros", "Intermediate": "intermedios", "Wet": "de lluvia"}
 
+
+# Event PENA: penalty types, in the engineer's words (appendix of the game's UDP specification).
+PENALTY_TYPES_ES = {
+    0: "drive through", 1: "stop and go", 2: "penalización en la grilla", 3: "recordatorio de penalización",
+    4: "penalización de tiempo", 5: "advertencia", 6: "descalificación", 7: "sacado de la vuelta de formación",
+    8: "tiempo de estacionado", 9: "reglamento de neumáticos", 10: "vuelta anulada", 11: "vuelta y la siguiente anuladas",
+    12: "vuelta anulada", 13: "vuelta y la siguiente anuladas", 14: "vuelta y la anterior anuladas",
+    15: "vuelta y la anterior anuladas", 16: "retiro", 17: "bandera negra",
+}
+# Penalty types that cost time or a stop: what the driver must hear about.
+TIME_PENALTY_TYPES = (0, 1, 2, 4, 6, 17)
+# Lap invalidations: not news for the radio (the lap time already shows it).
+LAP_INVALIDATED_TYPES = range(10, 16)
+
+# Event PENA: why the penalty was given.
+INFRINGEMENTS_ES = {
+    0: "bloquear yendo lento", 1: "bloquear en contramano", 2: "retroceder en la largada", 3: "choque fuerte",
+    4: "toque", 5: "no devolver el puesto tras un choque", 6: "no devolver los puestos tras un choque",
+    7: "cortar camino y ganar tiempo", 8: "cortar camino al adelantar", 9: "cortar camino al adelantar a varios",
+    10: "pisar la línea de salida de boxes", 11: "ignorar banderas azules", 12: "ignorar banderas amarillas",
+    13: "no cumplir el drive through", 14: "demasiados drive through", 15: "cumplir el drive through en las próximas vueltas",
+    16: "cumplir el drive through en esta vuelta", 17: "exceso de velocidad en boxes", 18: "estacionado demasiado tiempo",
+    19: "reglamento de neumáticos", 20: "demasiadas penalizaciones", 21: "varias advertencias",
+    22: "cerca de la descalificación", 23: "elegir neumáticos", 24: "elegir neumáticos", 25: "cortar camino",
+    26: "pasarse de los límites de pista", 27: "pasarse de los límites de pista", 28: "pasarse de los límites de pista y ganar tiempo",
+    29: "pasarse de los límites de pista y ganar mucho tiempo", 30: "ir por el muro", 31: "usar un flashback",
+    32: "volver a la pista", 33: "bloquear la calle de boxes", 34: "largada en falso", 35: "chocar con el safety car",
+    36: "adelantar bajo safety car", 37: "ir más rápido de lo permitido bajo safety car",
+    38: "ir más rápido de lo permitido bajo virtual safety car", 39: "ir lento en la vuelta de formación",
+    40: "estacionar en la vuelta de formación", 41: "falla mecánica", 42: "daño terminal", 43: "quedarse atrás del safety car",
+    44: "bandera negra", 45: "no cumplir un stop and go", 46: "no cumplir un drive through",
+    47: "cambio de motor", 48: "cambio de caja", 49: "cambio en parque cerrado", 50: "penalización de la liga",
+    51: "reintento", 52: "ganar tiempo ilegalmente", 53: "parada obligatoria", 54: "atributo asignado",
+}
+
+# Event codes the engineer sees, in its words.
+EVENT_NAMES_ES = {
+    "SSTA": "arranca la sesión", "SEND": "termina la sesión", "FTLP": "vuelta rápida", "RTMT": "abandono",
+    "DRSE": "DRS habilitado", "DRSD": "DRS deshabilitado", "TMPT": "compañero en boxes", "CHQF": "bandera a cuadros",
+    "RCWN": "ganador", "PENA": "sanción", "SPTP": "trampa de velocidad", "STLG": "luces de largada",
+    "LGOT": "largada", "DTSV": "drive through cumplido", "SGSV": "stop and go cumplido", "FLBK": "flashback",
+    "BUTN": "botón", "RDFL": "bandera roja", "OVTK": "adelantamiento", "SCAR": "safety car", "COLL": "toque",
+}
