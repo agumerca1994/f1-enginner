@@ -50,7 +50,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <div className="eyebrow">Ingeniero de pista</div>
+      <div className="eyebrow">Pit en línea</div>
       <h1 className="display mt-2 text-[2.6rem] uppercase">Tu box, fuera del juego</h1>
       <p className="mt-3 text-muted">Telemetría en vivo, reglaje y un ingeniero que te habla por radio. Entrá con tu cuenta de Google.</p>
       <button onClick={() => signIn().catch((e) => setError(e.message))} className="btn-primary mt-8 px-4 py-3.5">

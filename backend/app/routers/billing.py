@@ -69,9 +69,9 @@ async def checkout(body: Checkout, user: User = Depends(get_current_user), db: A
     if mp.configured():
         try:
             if body.producto == "suscripcion":
-                pay.mp_id, url = await _plan(db, amount, f"Ingeniero de pista · {product['titulo']}")
+                pay.mp_id, url = await _plan(db, amount, f"Pit en línea · {product['titulo']}")
             else:
-                pay.mp_id, url = await mp.create_preference(ref=ref, title=f"Ingeniero de pista · {product['titulo']}",
+                pay.mp_id, url = await mp.create_preference(ref=ref, title=f"Pit en línea · {product['titulo']}",
                                                             amount=amount, back_url=back, notify_url=notify)
         except mp.MercadoPagoError as e:
             logger.warning("mercado pago checkout failed", extra={"error": str(e), "tenant_id": user.tenant_id})

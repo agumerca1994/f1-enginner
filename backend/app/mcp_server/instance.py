@@ -11,8 +11,9 @@ from mcp.types import ToolAnnotations
 from app.core.config import settings
 
 INSTRUCTIONS = """\
-Ingeniero de carrera: telemetría de las sesiones de un jugador de un juego de
-autos de carrera (compatible con la telemetría de EA SPORTS F1® 24). Un bridge en
+Pit en línea, el ingeniero de carrera: telemetría de las sesiones de un jugador de
+un juego de autos de carrera (compatible con la telemetría de los juegos EA SPORTS
+F1®). Un bridge en
 la computadora del jugador manda los datos del juego; acá podés leer la sesión en
 vivo y las sesiones grabadas. Todo es lectura, salvo anotar lo que siente el
 piloto en la memoria del ingeniero (`save_driver_report`).

@@ -75,7 +75,7 @@ type statusWindow struct {
 }
 
 func newStatusWindow(c *controller) *statusWindow {
-	w := &statusWindow{c: c, win: c.app.NewWindow("Ingeniero de carrera · Bridge")}
+	w := &statusWindow{c: c, win: c.app.NewWindow("Pit en línea · Ingeniero Bridge")}
 
 	w.dot = canvas.NewCircle(levelColors[1])
 	w.headline = widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})

@@ -66,7 +66,7 @@ def _protected_resource_metadata() -> dict:
         "authorization_servers": [settings.OAUTH_ISSUER_URL],
         "scopes_supported": [READ_SCOPE],
         "bearer_methods_supported": ["header"],
-        "resource_name": "Ingeniero de carrera",
+        "resource_name": "Pit en línea",
         "resource_documentation": settings.FRONTEND_URL,
     }
 

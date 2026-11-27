@@ -193,7 +193,7 @@ function draw(canvas: HTMLCanvasElement, format: Format, design: Design, bg: HTM
 
   // --- footer: "by" and the app's mark, centred at the very bottom ---
   const brandY = H - 54;
-  const word = "INGENIERO DE PISTA";
+  const word = "PIT EN LÍNEA";
   ctx.textAlign = "left";
   ctx.font = `500 28px ${sans}`;
   const byW = ctx.measureText("by").width;

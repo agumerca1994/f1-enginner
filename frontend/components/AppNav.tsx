@@ -58,7 +58,7 @@ export function AppNav({ children }: { children: React.ReactNode }) {
         <nav className="hidden border-b border-line lg:block" aria-label="Secciones">
           <div className="mx-auto flex h-[60px] max-w-[1600px] items-center gap-7 px-6">
             <Link href="/" className="display text-[1.4rem] tracking-wide">
-              INGENIERO
+              PIT EN LÍNEA
             </Link>
             <div className="flex gap-1">
               {TABS.map((t) => (
@@ -79,7 +79,7 @@ export function AppNav({ children }: { children: React.ReactNode }) {
         </nav>
         <header className="flex h-[52px] items-center justify-between border-b border-line px-[max(1.1rem,env(safe-area-inset-left))] lg:hidden">
           <Link href="/" className="display text-[1.3rem]">
-            INGENIERO
+            PIT EN LÍNEA
           </Link>
           <span className="eyebrow">{TABS.find((t) => t.match(path))?.label ?? ""}</span>
         </header>

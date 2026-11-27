@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Ingeniero de carrera",
-    short_name: "Ingeniero",
+    name: "Pit en línea",
+    short_name: "Pit en línea",
     description: "Telemetría en vivo y tu ingeniero de pista por radio. Compatible con la telemetría de los juegos EA SPORTS F1® en todas las plataformas.",
     start_url: "/",
     display: "standalone",

@@ -20,10 +20,10 @@ const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["lati
 const shareTech = Share_Tech_Mono({ variable: "--font-share-tech", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
-  title: "Ingeniero de carrera",
+  title: "Pit en línea",
   description: "Tu ingeniero de pista por radio: telemetría en vivo, estrategia y avisos por voz. Compatible con la telemetría de los juegos EA SPORTS F1® en todas las plataformas.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Ingeniero", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Pit en línea", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

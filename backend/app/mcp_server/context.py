@@ -58,7 +58,7 @@ async def current_caller() -> McpCaller:
     tenant_id = int(claims["tenant_id"])
     async with AsyncSessionLocal() as db:
         if not await plans.can_mcp(db, tenant_id):
-            raise ToolError("El conector con Claude es parte de la suscripción del Ingeniero de pista. "
+            raise ToolError("El conector con Claude es parte de la suscripción de Pit en línea. "
                             "Activala en la app, en Ajustes → Plan.")
     return McpCaller(
         user_id=int(claims["user_id"]),
