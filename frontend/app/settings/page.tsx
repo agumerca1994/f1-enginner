@@ -8,7 +8,7 @@ import { OverlaySection } from "@/components/OverlaySection";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ScreensSection, StatusBarSection } from "@/components/settings/ScreensSection";
 import { api } from "@/lib/api";
-import { proRaces, type Billing } from "@/lib/billing";
+import { PLAN_NAMES, planLine, type Billing } from "@/lib/billing";
 import { useAuth } from "@/lib/auth";
 import { useTalkAction } from "@/lib/gameButton";
 import { useSharedLive } from "@/lib/liveContext";
@@ -63,91 +63,102 @@ function Settings() {
 
       <PlanSection />
 
-      <div className="mt-5 flex flex-col gap-6">
-        <ScreensSection />
-        <StatusBarSection />
-      </div>
+      <Group title="Tu ingeniero">
+        <RadioNameSection />
+        <VoiceSection />
+        <TalkButtonSection />
+      </Group>
 
-      <AppearanceSection />
-
-      <section className="mt-4 card p-4">
-        <h2 className="label">Cuenta</h2>
-        <div className="mt-2 flex items-center justify-between">
-          <span>{email}</span>
-          <button onClick={signOut} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
-            Salir
-          </button>
-        </div>
-      </section>
-
-      <RadioNameSection />
-      <VoiceSection />
-      <TalkButtonSection />
-
-      <section className="mt-4 flex items-center justify-between card p-4">
-        <div>
-          <h2 className="label">Consumo de IA</h2>
-          <p className="mt-1 text-sm text-muted">Cuánto usó y costó el ingeniero de pista, por día, sesión y modelo.</p>
-        </div>
-        <Link href="/usage" className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm hover:border-accent">
-          Ver detalle
-        </Link>
-      </section>
-
-      <section className="mt-4 card p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="label">Computadoras con el Bridge</h2>
-          <Link href="/pair" className="text-sm text-accent underline">
-            Vincular otra
-          </Link>
-        </div>
-        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-        {devices?.length === 0 && <p className="mt-3 text-sm text-muted">Todavía no vinculaste ninguna computadora.</p>}
-        <ul className="mt-3 divide-y divide-line">
-          {devices?.map((d) => (
-            <li key={d.id} className="flex items-center justify-between gap-3 py-3">
-              <div className="min-w-0">
-                <div className="truncate">{d.name}</div>
-                <div className="text-xs text-muted">
-                  {d.revoked_at
-                    ? "Desvinculado"
-                    : d.last_seen_at
-                      ? `Última conexión ${new Date(d.last_seen_at).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hour12: false })}`
-                      : "Nunca se conectó"}
-                  {d.last_reception != null && !d.revoked_at && ` · señal ${Math.round(d.last_reception * 100)}%`}
+      <Group title="Conexión">
+        <section className="card p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="label">Computadoras con el Bridge</h2>
+            <Link href="/pair" className="text-sm text-accent underline">
+              Vincular otra
+            </Link>
+          </div>
+          {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+          {devices?.length === 0 && <p className="mt-3 text-sm text-muted">Todavía no vinculaste ninguna.</p>}
+          <ul className="mt-3 divide-y divide-line">
+            {devices?.map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <div className="truncate">{d.name}</div>
+                  <div className="text-xs text-muted">
+                    {d.revoked_at
+                      ? "Desvinculada"
+                      : d.last_seen_at
+                        ? `Última conexión ${new Date(d.last_seen_at).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short", hour12: false })}`
+                        : "Nunca se conectó"}
+                    {d.last_reception != null && !d.revoked_at && ` · señal ${Math.round(d.last_reception * 100)}%`}
+                  </div>
                 </div>
-              </div>
-              {!d.revoked_at && (
-                <button onClick={() => revoke(d)} className="text-sm text-danger">
-                  Desvincular
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+                {!d.revoked_at && (
+                  <button onClick={() => revoke(d)} className="text-sm text-danger">
+                    Desvincular
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <ScreensSection />
+      </Group>
 
-      <OverlaySection />
-      <McpConnectorSection />
+      <Group title="Cómo se ve">
+        <AppearanceSection />
+        <StatusBarSection />
+      </Group>
+
+      <Group title="Extras">
+        <OverlaySection />
+        <McpConnectorSection />
+        <section className="flex items-center justify-between card p-4">
+          <div>
+            <h2 className="label">Consumo del ingeniero</h2>
+            <p className="mt-1 text-sm text-muted">Cuánto habló por sesión.</p>
+          </div>
+          <Link href="/usage" className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm hover:border-accent">
+            Ver
+          </Link>
+        </section>
+      </Group>
+
+      <Group title="Cuenta">
+        <section className="card flex items-center justify-between gap-3 p-4">
+          <span className="min-w-0 truncate">{email}</span>
+          <button onClick={signOut} className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">
+            Cerrar sesión
+          </button>
+        </section>
+      </Group>
     </main>
   );
 }
 
-/** The plan, its races left, and a link to change it. */
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-9">
+      <h2 className="display mb-3 text-[1.5rem] uppercase leading-none">{title}</h2>
+      <div className="flex flex-col gap-3 [&>section]:mt-0">{children}</div>
+    </div>
+  );
+}
+
+/** The plan as a card at the top: its name, what is left, and the way to more. */
 function PlanSection() {
   const { data: b } = useApi<Billing>("/api/billing");
-  const name = b ? { gratis: "Plan gratis", suscripcion: "Suscripción", cortesia: "Plan de cortesía" }[b.plan] : "…";
-  const pro = b ? proRaces(b) : 0;
-  const races = !b ? "" : pro == null ? "Todo incluido" : `${pro} ${pro === 1 ? "carrera" : "carreras"} con el ingeniero Pro`
-    + (b.avisos_mes.incluidas != null ? ` · radio de avisos ${Math.max(0, b.avisos_mes.incluidas - b.avisos_mes.usadas)} de ${b.avisos_mes.incluidas} este mes` : "");
+  const free = b?.plan === "gratis";
   return (
-    <Link href="/planes" className="mt-5 flex items-center justify-between gap-3 card p-4 hover:border-accent">
-      <div>
-        <h2 className="label">Plan</h2>
-        <p className="mt-1 title text-[1.2rem]">{name}</p>
-        {b && <p className="text-sm text-muted">{races}</p>}
+    <Link href="/planes" className={`${free ? "card" : "paper"} mt-5 flex flex-col gap-3 p-5 hover:border-accent sm:flex-row sm:items-center sm:justify-between`}>
+      <div className="min-w-0">
+        <span className="eyebrow">Tu plan</span>
+        <p className="display mt-1 text-[2.2rem] uppercase leading-none">{b ? PLAN_NAMES[b.plan] : "…"}</p>
+        {b && <p className={`mt-2 text-[0.92rem] ${free ? "text-muted" : "text-[#3d434c]"}`}>{planLine(b)}</p>}
       </div>
-      <span className="btn shrink-0 px-3 py-1.5 text-sm">{b?.plan === "gratis" ? "Mejorar" : "Ver"}</span>
+      <span className={`${free ? "btn-primary" : "btn-ink"} shrink-0 self-start px-4 py-2 text-[0.92rem] sm:self-center`}>
+        {free ? "Pasate a Temporada" : "Ver mi plan"}
+      </span>
     </Link>
   );
 }
@@ -155,9 +166,9 @@ function PlanSection() {
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   return (
-    <section className="mt-6 card p-4">
-      <h2 className="label">Apariencia</h2>
-      <p className="mt-1 text-sm text-muted">Se guarda en este dispositivo: podés usar uno en el teléfono del volante y otro en la tablet.</p>
+    <section className="card p-4">
+      <h2 className="label">Tema</h2>
+      <p className="mt-1 text-sm text-muted">Vale para este dispositivo.</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         {THEMES.map((t) => (
           <button
@@ -195,11 +206,8 @@ function VoiceSection() {
 
   return (
     <section className="mt-4 card p-4">
-      <h2 className="label">Voz del ingeniero</h2>
-      <p className="mt-1 text-sm text-muted">
-        La radio la lee una voz de este dispositivo, y cada uno trae las suyas. Arriba quedan las más naturales; probá y quedate con la
-        que mejor suene. En Chrome las de Google y en Edge las «Natural» suelen ser las mejores.
-      </p>
+      <h2 className="label">Voz</h2>
+      <p className="mt-1 text-sm text-muted">Probá y quedate con la que mejor suene en este dispositivo.</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <select
           value={uri}
@@ -243,11 +251,9 @@ function TalkButtonSection() {
 
   return (
     <section className="mt-4 card p-4">
-      <h2 className="label">Hablar desde el juego</h2>
+      <h2 className="label">Botón para hablar</h2>
       <p className="mt-1 text-sm text-muted">
-        Un botón del volante o del mando para hablarle al ingeniero sin soltar el auto: mantenelo apretado mientras hablás, o tocalo
-        una vez y te escucha hasta que lo vuelvas a tocar. En el juego, en Ajustes → Controles, asigná «Acción UDP» (UDP Action) con
-        el número que elijas acá a un botón libre. Te escucha el micrófono de este dispositivo.
+        Hablale sin soltar el volante. En el juego, en Controles, asigná «Acción UDP» con este número a un botón libre.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <select
@@ -305,10 +311,8 @@ function RadioNameSection() {
 
   return (
     <section className="mt-4 card p-4">
-      <h2 className="label">Ingeniero de pista</h2>
-      <p className="mt-1 text-sm text-muted">
-        Cómo te llama por radio, y tu nombre en las clasificaciones. Si lo dejás vacío, por radio no usa nombre (nunca el del piloto del juego) y en las clasificaciones aparecés con tu nombre e inicial.
-      </p>
+      <h2 className="label">Tu nombre en la radio</h2>
+      <p className="mt-1 text-sm text-muted">Así te llama el ingeniero y así aparecés en las clasificaciones.</p>
       <form
         className="mt-3 flex gap-2"
         onSubmit={(e) => {
@@ -323,7 +327,7 @@ function RadioNameSection() {
             setState("idle");
           }}
           maxLength={40}
-          placeholder="Tu nombre para la radio"
+          placeholder="Ej.: Juanma"
           className="min-w-0 flex-1 rounded-lg border border-line bg-panel-2 px-3 py-1.5 text-sm focus:border-accent focus:outline-none"
         />
         <button

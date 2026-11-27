@@ -73,14 +73,13 @@ export function OverlaySection() {
   return (
     <section className="mt-4 card p-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="label">Paneles flotantes</h2>
+        <h2 className="label">Paneles para transmitir</h2>
         <button onClick={create} className="text-sm text-accent underline">
           Crear link
         </button>
       </div>
       <p className="mt-1 text-sm text-muted">
-        Paneles sueltos con fondo transparente: delta, relativos, tiempos, posiciones, pedales y la radio del ingeniero.
-        En OBS se agregan como “Navegador”. Cualquiera con el link puede mirar tu sesión en vivo, pero nada más; si lo compartiste de más, revocalo.
+        Delta, posiciones, pedales y la radio sobre tu stream. En OBS, agregá el link como «Navegador».
       </p>
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 

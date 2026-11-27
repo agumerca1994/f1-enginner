@@ -27,3 +27,18 @@ export function proRaces(b: Billing): number | null {
   if (b.plan === "cortesia") return null;
   return b.creditos + b.prueba + Math.max(0, b.carreras_mes.incluidas - b.carreras_mes.usadas);
 }
+
+/** The plans' names as players see them. */
+export const PLAN_NAMES: Record<Billing["plan"], string> = { gratis: "Debut", suscripcion: "Temporada", cortesia: "Pase libre" };
+
+const left = (n: number) => `${n} ${n === 1 ? "carrera" : "carreras"}`;
+
+/** One plain line: what the player has left. */
+export function planLine(b: Billing): string {
+  if (b.plan === "cortesia" || !b.limites) return "Todo incluido: el ingeniero Pro en todas tus carreras.";
+  const pro = proRaces(b) ?? 0;
+  const radio = b.avisos_mes.incluidas == null ? null : Math.max(0, b.avisos_mes.incluidas - b.avisos_mes.usadas);
+  const proText = pro > 0 ? `Te quedan ${left(pro)} con el ingeniero Pro` : "No te quedan carreras con el ingeniero Pro";
+  if (radio == null) return `${proText}. La radio de avisos está en todas tus carreras.`;
+  return `${proText} y ${left(radio)} con radio de avisos este mes.`;
+}

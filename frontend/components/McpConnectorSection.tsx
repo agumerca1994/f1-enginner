@@ -77,10 +77,9 @@ export function McpConnectorSection() {
 
   return (
     <section className="mt-4 card p-4">
-      <h2 className="label">Conectar con una IA (MCP)</h2>
+      <h2 className="label">Tus carreras en Claude y ChatGPT</h2>
       <p className="mt-1 text-sm text-muted">
-        Charlá con Claude u otra IA sobre tus carreras: en la app agregá un conector personalizado con esta URL y
-        autorizalo con tu cuenta. Sólo puede leer.
+        Preguntale dónde perdiste tiempo o cómo mejorar el reglaje. Agregá esta dirección como conector en la app.
       </p>
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       {url && (

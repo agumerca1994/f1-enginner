@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { proRaces, type Billing, type Product } from "@/lib/billing";
+import { PLAN_NAMES, planLine, proRaces, type Billing, type Product } from "@/lib/billing";
 import { shortDate, useApi } from "@/lib/sessions";
 
 export default function PlansPage() {
@@ -18,9 +18,8 @@ export default function PlansPage() {
 }
 
 const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
-const PLAN_NAME = { gratis: "Plan gratis", suscripcion: "Suscripción", cortesia: "Plan de cortesía" };
 
-/** The plan: what the account has, its AI races, and the two ways to pay (subscription or a race pack). */
+/** The plans page: what the player has, how each engineer sounds, and the ways to pay. */
 function Plans() {
   const { credentials } = useAuth();
   const [rev, setRev] = useState(0);
@@ -45,7 +44,7 @@ function Plans() {
     (async () => {
       try {
         const r = await api<{ estado: string }>(`/api/billing/sync?ref=${encodeURIComponent(ref)}`, await credentials(), { method: "POST" });
-        setNote(r.estado === "aprobado" ? "Listo, el pago entró." : "Mercado Pago todavía no confirmó el pago. Puede tardar unos minutos; esta pantalla se actualiza sola.");
+        setNote(r.estado === "aprobado" ? "Listo, ya tenés tus carreras Pro." : "Mercado Pago todavía no confirmó el pago. Puede tardar unos minutos; esta pantalla se actualiza sola.");
         setRev((x) => x + 1);
       } catch {
         setNote("No pudimos revisar el pago ahora. Si pagaste, se acredita solo en unos minutos.");
@@ -60,10 +59,10 @@ function Plans() {
     try {
       const q = preapproval ? `?preapproval_id=${encodeURIComponent(preapproval)}` : "";
       const r = await api<{ estado: string }>(`/api/billing/subscription/confirm${q}`, await credentials(), { method: "POST" });
-      setNote(r.estado === "aprobado" ? "Listo, ya tenés la suscripción." : "Todavía no vemos la suscripción en Mercado Pago. Si la autorizaste, probá de nuevo en un minuto.");
+      setNote(r.estado === "aprobado" ? "Listo, arrancó tu Temporada." : "Mercado Pago todavía no nos avisó. Si ya pagaste, probá de nuevo en un minuto.");
       setRev((x) => x + 1);
     } catch {
-      setNote("No pudimos confirmar la suscripción ahora. Probá de nuevo en un minuto.");
+      setNote("No pudimos revisarlo ahora. Probá de nuevo en un minuto.");
     }
     setBusy(null);
     window.history.replaceState(null, "", "/planes");
@@ -91,21 +90,20 @@ function Plans() {
   };
 
   const cancel = async () => {
-    if (!confirm("¿Cancelar la renovación? Seguís con la suscripción hasta el final del mes pagado.")) return;
+    if (!confirm("¿Cancelar la Temporada? La seguís usando hasta el final del mes que pagaste.")) return;
     await api("/api/billing/cancel", await credentials(), { method: "POST" });
     setRev((x) => x + 1);
   };
 
-  if (!b) return <main className="mx-auto max-w-[900px] px-4 pt-6 text-muted">Cargando…</main>;
-  const sub = b.productos.find((p) => p.id === "suscripcion")!;
+  if (!b) return <main className="mx-auto max-w-[1000px] px-4 pt-6 text-muted">Cargando…</main>;
+  const season = b.productos.find((p) => p.id === "suscripcion")!;
   const packs = b.productos.filter((p) => p.id !== "suscripcion");
   const pro = proRaces(b);
-  const radio = b.avisos_mes;
+  const radioLeft = b.avisos_mes.incluidas == null ? null : Math.max(0, b.avisos_mes.incluidas - b.avisos_mes.usadas);
+  const inSeason = b.plan === "suscripcion";
 
   return (
-    <main className="mx-auto flex max-w-[1000px] flex-col gap-5 px-[max(1rem,env(safe-area-inset-left))] py-5 lg:py-8">
-      <Link href="/settings" className="text-[0.9rem] text-muted">‹ Ajustes</Link>
-
+    <main className="mx-auto flex max-w-[1000px] flex-col gap-8 px-[max(1rem,env(safe-area-inset-left))] py-5 lg:gap-10 lg:py-8">
       {back?.simulated && (
         <section className="paper flex flex-wrap items-center justify-between gap-3 px-5 py-4">
           <span>Pagos de prueba: no hay Mercado Pago configurado en este entorno.</span>
@@ -113,126 +111,217 @@ function Plans() {
         </section>
       )}
 
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <span className="eyebrow">Tu plan</span>
-          <h1 className="display mt-1 text-[3rem] uppercase leading-[0.9]">{PLAN_NAME[b.plan]}</h1>
-          {b.hasta && b.plan !== "gratis" && (
-            <p className="mt-2 text-muted">
-              {b.plan === "suscripcion" ? (b.renovacion === "cancelled" ? "Activa hasta el " : "Se renueva cerca del ") : "Hasta el "}
-              {shortDate(b.hasta)}
-            </p>
-          )}
-          {b.plan === "cortesia" && !b.hasta && <p className="mt-2 text-muted">Todo incluido, sin vencimiento.</p>}
-        </div>
-        <div className="flex flex-wrap gap-6">
-          <div>
-            <span className="eyebrow">Ingeniero Pro</span>
-            <div className="display text-[2.6rem]">{pro == null ? "∞" : pro}</div>
-            {b.prueba > 0 && b.plan !== "cortesia" && <span className="text-[0.8rem] text-muted">{b.prueba} de regalo</span>}
+      {/* Where the player stands */}
+      <header className="flex flex-col gap-4">
+        <Link href="/settings" className="text-[0.9rem] text-muted">‹ Ajustes</Link>
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+          <div className="min-w-0">
+            <span className="eyebrow">Tu plan</span>
+            <h1 className="display mt-1 text-[3.4rem] uppercase leading-[0.9] lg:text-[4.2rem]">{PLAN_NAMES[b.plan]}</h1>
+            <p className="mt-3 max-w-[34rem] text-[1.02rem] text-muted">{planLine(b)}</p>
+            {inSeason && b.hasta && (
+              <p className="mt-1 text-[0.9rem] text-dim">
+                {b.renovacion === "cancelled" ? `Termina el ${shortDate(b.hasta)}.` : `Se renueva sola cerca del ${shortDate(b.hasta)}.`}
+              </p>
+            )}
           </div>
-          <div>
-            <span className="eyebrow">Radio de avisos</span>
-            <div className="display text-[2.6rem]">{radio.incluidas == null ? "∞" : Math.max(0, radio.incluidas - radio.usadas)}</div>
-            {radio.incluidas != null && <span className="text-[0.8rem] text-muted">de {radio.incluidas} este mes</span>}
-          </div>
-          {b.plan === "suscripcion" && (
-            <div>
-              <span className="eyebrow">Pro del mes</span>
-              <div className="display text-[2.6rem]">{b.carreras_mes.usadas}/{b.carreras_mes.incluidas}</div>
+          {b.plan !== "cortesia" && b.limites && (
+            <div className="flex gap-3">
+              <Counter label="Ingeniero Pro" value={pro ?? 0} />
+              <Counter label="Radio de avisos" value={radioLeft} sub={radioLeft == null ? "sin límite" : "este mes"} />
             </div>
           )}
         </div>
+        {note && <p className="paper px-4 py-3 text-[0.95rem]">{note}</p>}
+        {!b.limites && <p className="text-[0.85rem] text-dim">Mientras dure la beta, todo está incluido para todos.</p>}
       </header>
-      {note && <p className="paper px-4 py-3 text-[0.95rem]">{note}</p>}
-      {!b.limites && <p className="text-[0.85rem] text-dim">Durante la beta todo está incluido para todos.</p>}
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <div className={`card flex flex-col gap-3 p-5 ${b.plan === "gratis" ? "ring-1 ring-line" : ""}`}>
-          <span className="title text-[1.3rem]">Gratis</span>
-          <span className="display text-[2.2rem]">$ 0</span>
-          <ul className="flex flex-col gap-1.5 text-[0.92rem] text-muted">
-            <li><b className="text-fg">{b.prueba_inicial} carreras con el ingeniero Pro</b> de regalo para probarlo</li>
-            <li>Radio de avisos en {b.avisos_por_mes} carreras por mes</li>
-            <li>Historial, telemetría y comparación de vueltas</li>
-            <li>Reglaje sugerido y lo aprendido por pista</li>
-            <li>Clasificaciones, grupos y tarjeta para compartir</li>
-            <li>1 pantalla vinculada</li>
-          </ul>
+      {/* How each engineer sounds */}
+      <section className="flex flex-col gap-4">
+        <h2 className="display text-[2rem] uppercase leading-none">Escuchá la diferencia</h2>
+        <p className="text-muted">Entra el safety car. Esto te dice cada uno:</p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Radio
+            name="Radio de avisos"
+            tag="Debut y Temporada"
+            lines={[
+              { who: "ing", text: "Safety car. Box, box." },
+              { who: "ing", text: "Pinchazo atrás a la izquierda. Box esta vuelta." },
+              { who: "ing", text: "Llega lluvia en diez minutos." },
+            ]}
+            foot="Te avisa lo importante: safety car, pinchazos, daños, lluvia y sanciones."
+          />
+          <Radio
+            name="Ingeniero Pro"
+            tag="Con carreras Pro"
+            pro
+            lines={[
+              { who: "ing", text: "Safety car. Entrá ahora: salís sexto con duras nuevas y llegás al final sin volver a parar." },
+              { who: "vos", text: "¿Y el de atrás?" },
+              { who: "ing", text: "Se queda afuera. Lo tenés en la relanzada, cuidá la tracción en la 4." },
+            ]}
+            foot="Le hablás y te contesta. Arma la estrategia, la cambia sobre la marcha y se acuerda de todo el fin de semana."
+          />
         </div>
+      </section>
 
-        <div className="paper flex flex-col gap-3 p-5">
-          <span className="title text-[1.3rem]">Suscripción</span>
-          <span className="display text-[2.2rem]">{pesos(sub.ars)}<span className="text-[1rem] not-italic text-[#5b616b]"> /mes</span></span>
-          <ul className="flex flex-col gap-1.5 text-[0.92rem]">
-            <li><b>{b.carreras_por_mes} carreras por mes con el ingeniero Pro</b></li>
-            <li>Radio de avisos sin límite</li>
-            <li>Todo lo del plan gratis</li>
-            <li>Conector con Claude (MCP) para analizar tus sesiones</li>
-            <li>Pantallas vinculadas sin límite</li>
-          </ul>
-          {b.plan === "suscripcion" ? (
-            b.renovacion !== "cancelled" ? (
-              <button type="button" onClick={() => void cancel()} className="mt-auto self-start text-[0.85rem] text-[#5b616b] underline">Cancelar la renovación</button>
-            ) : (
-              <span className="mt-auto text-[0.85rem] text-[#5b616b]">Renovación cancelada</span>
-            )
-          ) : b.plan === "gratis" && b.suscripcion_pendiente ? (
+      {/* The plans */}
+      <section className="flex flex-col gap-4">
+        <h2 className="display text-[2rem] uppercase leading-none">Elegí cómo correr</h2>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className={`card flex flex-col gap-4 p-5 ${b.plan === "gratis" ? "ring-1 ring-line" : ""}`}>
+            <PlanHead name="Debut" price="$ 0" current={b.plan === "gratis"} />
+            <ul className="flex flex-col gap-2 text-[0.95rem]">
+              <Item strong>{b.prueba_inicial} carreras con el ingeniero Pro, de regalo</Item>
+              <Item>Radio de avisos en {b.avisos_por_mes} carreras por mes</Item>
+              <Item>Telemetría, reglaje y clasificaciones</Item>
+            </ul>
+          </div>
+
+          <div className="paper relative flex flex-col gap-4 p-5">
+            <span className="absolute -top-3 left-5 rounded-full bg-accent px-3 py-0.5 text-[0.72rem] font-semibold uppercase tracking-wider text-white">
+              La más elegida
+            </span>
+            <PlanHead name="Temporada" price={pesos(season.ars)} per="/mes" current={inSeason} light />
+            <ul className="flex flex-col gap-2 text-[0.95rem]">
+              <Item strong>{b.carreras_por_mes} carreras Pro todos los meses</Item>
+              <Item>Radio de avisos en todas tus carreras</Item>
+              <Item>Tus sesiones en Claude y ChatGPT</Item>
+              <Item>Todas las pantallas que quieras</Item>
+            </ul>
             <div className="mt-auto flex flex-col gap-2">
-              <button type="button" onClick={() => void confirmSub(null)} disabled={busy != null} className="btn-ink px-5 py-3 disabled:opacity-50">
-                {busy === "confirmar" ? "Verificando…" : "Ya me suscribí: verificar"}
-              </button>
-              <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="self-start text-[0.85rem] text-[#5b616b] underline">
-                Volver a Mercado Pago
-              </button>
+              {inSeason ? (
+                b.renovacion !== "cancelled" ? (
+                  <button type="button" onClick={() => void cancel()} className="self-start text-[0.85rem] text-[#5b616b] underline">Cancelar la Temporada</button>
+                ) : (
+                  <span className="text-[0.85rem] text-[#5b616b]">Cancelada: la usás hasta que termine el mes.</span>
+                )
+              ) : b.plan === "gratis" && b.suscripcion_pendiente ? (
+                <>
+                  <button type="button" onClick={() => void confirmSub(null)} disabled={busy != null} className="btn-ink px-5 py-3 disabled:opacity-50">
+                    {busy === "confirmar" ? "Revisando…" : "Ya pagué: activar"}
+                  </button>
+                  <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="self-start text-[0.85rem] text-[#5b616b] underline">
+                    Volver a Mercado Pago
+                  </button>
+                </>
+              ) : b.plan === "gratis" ? (
+                <>
+                  <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="btn-ink px-5 py-3 disabled:opacity-50">
+                    {busy === "suscripcion" ? "Abriendo Mercado Pago…" : "Empezar la Temporada"}
+                  </button>
+                  <span className="text-center text-[0.8rem] text-[#5b616b]">Cancelás cuando quieras</span>
+                </>
+              ) : null}
             </div>
-          ) : b.plan === "gratis" ? (
-            <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="btn-ink mt-auto px-5 py-3 disabled:opacity-50">
-              {busy === "suscripcion" ? "Abriendo Mercado Pago…" : "Suscribirme"}
-            </button>
-          ) : null}
-        </div>
+          </div>
 
-        <div className="card flex flex-col gap-3 p-5">
-          <span className="title text-[1.3rem]">Carreras Pro</span>
-          <p className="text-[0.92rem] text-muted">
-            El ingeniero Pro cuando quieras, sin suscripción. Se suman a las del plan y no vencen.
-          </p>
-          <div className="mt-auto flex flex-col gap-2">
-            {packs.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => void buy(p.id)}
-                disabled={busy != null}
-                className="btn flex items-center justify-between px-4 py-3 disabled:opacity-50"
-              >
-                <span>{p.carreras} carreras</span>
-                <span className="font-mono">{busy === p.id ? "…" : pesos(p.ars)}</span>
-              </button>
-            ))}
+          <div className="card flex flex-col gap-4 p-5">
+            <PlanHead name="Carreras Pro" price={`desde ${pesos(Math.min(...packs.map((p) => Math.round(p.ars / p.carreras / 10) * 10)))}`} per="c/u" />
+            <p className="text-[0.95rem] text-muted">El ingeniero Pro cuando lo quieras, sin abono. Se suman a tu plan y no vencen.</p>
+            <div className="mt-auto flex flex-col gap-2">
+              {packs.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => void buy(p.id)}
+                  disabled={busy != null}
+                  className="btn flex items-center justify-between gap-3 px-4 py-3 text-left disabled:opacity-50"
+                >
+                  <span>
+                    <span className="block font-semibold">{p.carreras} carreras</span>
+                    <span className="block text-[0.78rem] text-muted">
+                      {pesos(Math.round(p.ars / p.carreras / 10) * 10)} cada una{i === packs.length - 1 ? " · la que más conviene" : ""}
+                    </span>
+                  </span>
+                  <span className="shrink-0 whitespace-nowrap font-mono">{busy === p.id ? "…" : pesos(p.ars)}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="card flex flex-col gap-2 p-5">
-          <span className="eyebrow">Radio de avisos</span>
-          <p className="text-[0.92rem] text-muted">
-            Te avisa lo importante en frases cortas: safety car y si conviene parar, pinchazos y daños, lluvia que llega, sanciones, combustible y gomas.
-          </p>
-        </div>
-        <div className="paper flex flex-col gap-2 p-5">
-          <span className="eyebrow">Ingeniero Pro</span>
-          <p className="text-[0.92rem]">
-            Un ingeniero de verdad: le hablás y te responde lo que le preguntás, arma la estrategia en la largada y la ajusta, decide cuando se juntan daño, gomas y safety car, te guía curva por curva y se acuerda de lo que hablaron en el fin de semana.
-          </p>
-        </div>
+      {/* Short answers */}
+      <section className="grid gap-5 border-t border-line pt-6 md:grid-cols-3">
+        <Faq q="¿Qué cuenta como una carrera?">
+          Cada vez que salís a pista y el ingeniero te habla: una práctica, una qualy o una carrera de hasta {b.minutos_por_carrera} minutos. Menús y boxes no cuentan.
+        </Faq>
+        <Faq q="¿Y si me quedo sin carreras Pro?">
+          Te sigue hablando la radio de avisos. Cuando cargás más, vuelve el ingeniero Pro, incluso en medio de la carrera.
+        </Faq>
+        <Faq q="¿Cómo pago?">
+          Con Mercado Pago, en pesos: tarjeta, débito o dinero en cuenta. La Temporada se cancela desde esta pantalla.
+        </Faq>
       </section>
-
-      <p className="text-[0.8rem] text-dim">
-        Pagás con Mercado Pago, en pesos. Una carrera es una sesión de hasta {b.minutos_por_carrera} minutos y se descuenta recién cuando el ingeniero habla en ella. Si no te quedan carreras Pro, habla la radio de avisos.
-      </p>
     </main>
+  );
+}
+
+function Counter({ label, value, sub }: { label: string; value: number | null; sub?: string }) {
+  return (
+    <div className="card min-w-[8.5rem] px-4 py-3">
+      <span className="eyebrow">{label}</span>
+      <div className="display text-[2.6rem] leading-none">{value == null ? "∞" : value}</div>
+      <span className="text-[0.78rem] text-dim">{sub ?? (value === 1 ? "carrera" : "carreras")}</span>
+    </div>
+  );
+}
+
+function PlanHead({ name, price, per, current, light }: { name: string; price: string; per?: string; current?: boolean; light?: boolean }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="title text-[1.4rem]">{name}</span>
+        {current && <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${light ? "bg-black/10" : "bg-panel-2 text-muted"}`}>Tu plan</span>}
+      </div>
+      <span className="display mt-1 block text-[2.3rem] leading-none">
+        {price}
+        {per && <span className={`ml-1 text-[1rem] not-italic ${light ? "text-[#5b616b]" : "text-muted"}`}>{per}</span>}
+      </span>
+    </div>
+  );
+}
+
+function Item({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
+  return (
+    <li className="flex gap-2">
+      <span aria-hidden className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+      <span className={strong ? "font-semibold" : ""}>{children}</span>
+    </li>
+  );
+}
+
+function Radio({ name, tag, lines, foot, pro }: {
+  name: string; tag: string; lines: { who: "ing" | "vos"; text: string }[]; foot: string; pro?: boolean;
+}) {
+  return (
+    <div className={`${pro ? "paper" : "card"} flex flex-col gap-3 p-5`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="title text-[1.3rem]">{name}</span>
+        <span className={`text-[0.75rem] ${pro ? "text-[#5b616b]" : "text-dim"}`}>{tag}</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {lines.map((l, i) => (
+          <div key={i} className={`max-w-[92%] rounded-2xl px-3.5 py-2 text-[0.95rem] ${
+            l.who === "vos" ? "self-end bg-accent text-white" : pro ? "bg-black/[0.06]" : "bg-panel-2"}`}>
+            <span className={`mr-1.5 text-[0.7rem] font-semibold uppercase tracking-wider ${l.who === "vos" ? "text-white/80" : "opacity-60"}`}>
+              {l.who === "vos" ? "Vos" : "Ingeniero"}
+            </span>
+            {l.text}
+          </div>
+        ))}
+      </div>
+      <p className={`mt-auto text-[0.88rem] ${pro ? "text-[#3d434c]" : "text-muted"}`}>{foot}</p>
+    </div>
+  );
+}
+
+function Faq({ q, children }: { q: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-semibold">{q}</h3>
+      <p className="mt-1 text-[0.92rem] text-muted">{children}</p>
+    </div>
   );
 }
