@@ -84,7 +84,7 @@ function Consent() {
               <strong>Va a poder leer</strong> tus sesiones grabadas, la carrera en vivo y lo que te dijo el
               ingeniero por radio.
             </p>
-            <p className="mt-2 text-muted">No puede cambiar nada ni manejar tu bridge.</p>
+            <p className="mt-2 text-muted">No puede cambiar nada ni manejar tu Ingeniero Bridge.</p>
           </div>
 
           <div className="mt-4 space-y-1 text-xs text-muted">

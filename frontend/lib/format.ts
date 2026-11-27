@@ -63,6 +63,7 @@ export const WEATHER_ES: Record<string, string> = {
   "Light rain": "Lluvia leve",
   "Heavy rain": "Lluvia fuerte",
   Storm: "Tormenta",
+  Unknown: "—",
 };
 
 /** Fill colour for a tyre from its surface temperature: cold blue, in window green, hot amber/red. */
@@ -89,3 +90,15 @@ export function damageColor(percent: number): string {
   if (percent < 50) return "#fbbf24";
   return "#f43f5e";
 }
+
+/** Who answers on the radio, in the plan's words: the backend sends "claude (pro)", "reglas",
+ * "reglas (sin carreras con IA)" or "sin radio (sin carreras)". */
+export function providerLabel(provider: string | null | undefined): string {
+  if (!provider) return "—";
+  if (provider.startsWith("sin radio")) return "Sin radio";
+  if (provider.startsWith("reglas")) return "Radio de avisos";
+  return "Ingeniero Pro";
+}
+
+export const isRulesProvider = (provider: string | null | undefined) =>
+  !!provider && (provider.startsWith("reglas") || provider.startsWith("sin radio"));

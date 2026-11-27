@@ -21,7 +21,7 @@ const shareTech = Share_Tech_Mono({ variable: "--font-share-tech", subsets: ["la
 
 export const metadata: Metadata = {
   title: "Ingeniero de carrera",
-  description: "Tu ingeniero de IA para EA SPORTS F1® 24: telemetría en vivo, estrategia y avisos por voz.",
+  description: "Tu ingeniero de pista por radio: telemetría en vivo, estrategia y avisos por voz. Compatible con la telemetría de EA SPORTS F1® 24.",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Ingeniero", statusBarStyle: "black-translucent" },
 };

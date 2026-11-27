@@ -43,9 +43,9 @@ function PairForm() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6">
-      <h1 className="text-2xl font-semibold">Vincular el bridge</h1>
+      <h1 className="text-2xl font-semibold">Vincular Ingeniero Bridge</h1>
       <p className="mt-2 text-sm text-muted">
-        Escribí el código que muestra <code className="num text-fg">bridge pair</code> en tu computadora.
+        Abrí Ingeniero Bridge en tu computadora y escribí el código que te muestra.
       </p>
       {state === "done" ? (
         <>

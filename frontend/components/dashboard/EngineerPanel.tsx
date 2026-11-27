@@ -8,6 +8,7 @@ import { useDictation } from "@/lib/listen";
 import { useEngineerVoice } from "@/lib/voice";
 import { COMPOUND_COLORS } from "@/lib/teams";
 import type { EngineerState } from "@/lib/types";
+import { isRulesProvider, providerLabel } from "@/lib/format";
 
 const COMPOUND_ES: Record<string, string> = {
   Soft: "Blando",
@@ -42,7 +43,7 @@ export function EngineerPanel({
   const lastRadio = [...engineer.messages].reverse().find((m) => m.radio);
   const history = engineer.messages.filter((m) => m.radio && m.id !== lastRadio?.id).slice(-5).reverse();
   const cost = engineer.messages.reduce((sum, m) => sum + (m.cost_usd || 0), 0);
-  const ai = engineer.provider && engineer.provider !== "reglas";
+  const ai = engineer.provider && !isRulesProvider(engineer.provider);
 
   return (
     <Panel
@@ -52,7 +53,7 @@ export function EngineerPanel({
         <div className="flex items-center gap-2">
           {engineer.provider && (
             <span className="rounded bg-panel-2 px-2 py-0.5 text-[0.65rem] text-muted" title="Quién responde">
-              {ai ? engineer.provider : "Reglas (sin IA)"}
+              {providerLabel(engineer.provider)}
             </span>
           )}
           {voice.supported && engineer.active && (

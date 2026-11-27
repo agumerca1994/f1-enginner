@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Ingeniero de carrera",
     short_name: "Ingeniero",
-    description: "Telemetría en vivo y tu ingeniero de IA para EA SPORTS F1® 24",
+    description: "Telemetría en vivo y tu ingeniero de pista por radio. Compatible con la telemetría de EA SPORTS F1® 24.",
     start_url: "/",
     display: "standalone",
     orientation: "any",

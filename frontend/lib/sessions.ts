@@ -67,9 +67,10 @@ export const SESSION_ES: Record<string, string> = {
   "Practice 1": "Práctica 1", "Practice 2": "Práctica 2", "Practice 3": "Práctica 3", "Short Practice": "Práctica corta",
   "Qualifying 1": "Clasificación 1", "Qualifying 2": "Clasificación 2", "Qualifying 3": "Clasificación 3", "Short Qualifying": "Clasificación corta",
   "One-Shot Qualifying": "Clasificación a una vuelta", "Time Trial": "Contrarreloj",
+  "Short Sprint Shootout": "Clasificación sprint corta", "One-Shot Sprint Shootout": "Clasificación sprint a una vuelta",
 };
 
-export const sessionEs = (t: string | null | undefined) => (t ? SESSION_ES[t] ?? t : "Sesión");
+export const sessionEs = (t: string | null | undefined) => (t && t !== "Unknown" ? SESSION_ES[t] ?? t : "Sesión");
 
 /** 116.883 → "1:56,883". */
 export function lapS(s: number | null | undefined): string {

@@ -206,7 +206,7 @@ function LinkBadge({ reception }: { reception: number | null }) {
   return (
     <span
       className="chip px-2.5 py-1.5 text-sm"
-      title="Porcentaje de la telemetría del juego que llega al bridge. Con la consola por cable suele ser 100%."
+      title="Porcentaje de la telemetría del juego que llega a Ingeniero Bridge. Con la consola por cable suele ser 100%."
     >
       Señal <span className={`num font-semibold ${cls}`}>{pct}%</span>
     </span>

@@ -7,6 +7,7 @@ import { sessionName } from "@/components/dashboard/Cards";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { providerLabel } from "@/lib/format";
 
 type Bucket = { calls: number; cost_usd: number; input_tokens: number; output_tokens: number; cache_read_tokens: number };
 type Usage = {
@@ -60,8 +61,8 @@ function UsageView() {
         </Link>
       </div>
       <p className="mt-1 text-sm text-muted">
-        Lo que usó el ingeniero de pista con IA. Los avisos por reglas y los inmediatos no tienen costo.
-        {usage && <> Hoy responde: <span className="text-fg">{usage.provider_now === "reglas" ? "reglas (sin IA)" : usage.provider_now}</span>.</>}
+        Lo que usó el ingeniero Pro. La radio de avisos y los avisos inmediatos no tienen costo.
+        {usage && <> Hoy responde: <span className="text-fg">{providerLabel(usage.provider_now)}</span>.</>}
       </p>
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {!usage && !error && <p className="mt-8 text-muted">Cargando…</p>}

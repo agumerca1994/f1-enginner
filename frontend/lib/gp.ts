@@ -9,15 +9,14 @@ const GP: Record<number, string> = {
   40: "Austria", 41: "Países Bajos", 42: "España",
 };
 
-// The circuit's own name, for the line under the grand prix.
+// The circuit's name, for the line under the grand prix: the same names the API sends (backend TRACKS).
 const CIRCUIT: Record<number, string> = {
-  0: "Albert Park", 1: "Paul Ricard", 2: "Shanghái", 3: "Sakhir", 4: "Barcelona-Catalunya", 5: "Montecarlo",
-  6: "Gilles Villeneuve", 7: "Silverstone", 8: "Hockenheim", 9: "Hungaroring", 10: "Spa-Francorchamps",
-  11: "Monza", 12: "Marina Bay", 13: "Suzuka", 14: "Yas Marina", 15: "Circuito de las Américas",
-  16: "Interlagos", 17: "Red Bull Ring", 18: "Sochi", 19: "Hermanos Rodríguez", 20: "Bakú",
-  21: "Sakhir corto", 22: "Silverstone corto", 23: "Austin corto", 24: "Suzuka corto", 25: "Hanói",
+  0: "Melbourne", 1: "Paul Ricard", 2: "Shanghái", 3: "Sakhir", 4: "Barcelona", 5: "Mónaco", 6: "Montreal",
+  7: "Silverstone", 8: "Hockenheim", 9: "Hungaroring", 10: "Spa", 11: "Monza", 12: "Singapur", 13: "Suzuka",
+  14: "Abu Dabi", 15: "Austin", 16: "Interlagos", 17: "Red Bull Ring", 18: "Sochi", 19: "Ciudad de México",
+  20: "Bakú", 21: "Sakhir corto", 22: "Silverstone corto", 23: "Austin corto", 24: "Suzuka corto", 25: "Hanói",
   26: "Zandvoort", 27: "Imola", 28: "Portimão", 29: "Yeda", 30: "Miami", 31: "Las Vegas", 32: "Lusail",
-  39: "Silverstone invertido", 40: "Red Bull Ring invertido", 41: "Zandvoort invertido", 42: "Madring",
+  39: "Silverstone invertido", 40: "Red Bull Ring invertido", 41: "Zandvoort invertido", 42: "Madrid",
 };
 
 export const gpName = (trackId: number | null | undefined) => (trackId != null && GP[trackId] ? GP[trackId] : null);

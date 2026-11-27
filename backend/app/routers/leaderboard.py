@@ -17,7 +17,7 @@ from app.telemetry import constants as c
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["leaderboard"])
-GAMES = {2024: "F1 24", 2025: "F1 25", 2026: "Temporada 2026"}
+GAMES = {2024: "Edición 2024", 2025: "Edición 2025", 2026: "Temporada 2026"}
 
 
 def public_name(user: User | None, tenant_id: int) -> str:

@@ -55,7 +55,7 @@ def build(live: LiveSession) -> dict[str, Any]:
         s = p.body
         out["session"] = {
             "age_s": _age(live, "session"),
-            "track": c.TRACKS.get(int(s["track_id"]), f"Track {int(s['track_id'])}"),
+            "track": c.TRACKS.get(int(s["track_id"]), f"Pista {int(s['track_id'])}"),
             "type": c.SESSION_TYPES.get(int(s["session_type"]), "Unknown"),
             "sprint": _is_sprint(s),
             "weather": c.WEATHER.get(int(s["weather"]), "Unknown"),

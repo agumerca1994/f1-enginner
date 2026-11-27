@@ -255,7 +255,7 @@ function Box() {
 
       {error && <p className="mt-3 text-[0.9rem] text-warn">{error}</p>}
       {sessions?.length === 0 && (
-        <p className="card mt-6 px-6 py-8 text-center text-muted">Todavía no hay sesiones grabadas. Corré una con el Bridge encendido y va a aparecer acá.</p>
+        <p className="card mt-6 px-6 py-8 text-center text-muted">Todavía no hay sesiones grabadas. Corré una con Ingeniero Bridge abierto y va a aparecer acá.</p>
       )}
       {loading && !overview && <p className="mt-8 text-center text-[0.9rem] text-muted">Leyendo la telemetría de la sesión…</p>}
 

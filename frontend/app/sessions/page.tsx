@@ -53,7 +53,7 @@ function Sessions() {
       <div className="flex items-center justify-between">
         <h1 className="display text-3xl">Sesiones</h1>
       </div>
-      <p className="mt-1 text-sm text-muted">Cada sesión que corriste con el bridge queda grabada: podés volver a verla con todos los datos.</p>
+      <p className="mt-1 text-sm text-muted">Cada sesión que corriste con Ingeniero Bridge queda grabada: podés volver a verla con todos los datos.</p>
       <label className="mt-2 flex items-center gap-2 text-xs text-muted">
         <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
         Mostrar también las sesiones cortas (menús y reinicios de menos de un minuto y medio)
@@ -62,7 +62,7 @@ function Sessions() {
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {sessions?.length === 0 && (
         <p className="mt-8 rounded-2xl border border-dashed border-line p-6 text-center text-muted">
-          Todavía no hay sesiones. Corré una con el bridge encendido y va a aparecer acá.
+          Todavía no hay sesiones grabadas. Corré una con Ingeniero Bridge abierto y va a aparecer acá.
         </p>
       )}
 
@@ -74,7 +74,7 @@ function Sessions() {
               <div className="text-sm text-muted">
                 {s.session_type ? sessionName(s.session_type) : "Sesión"}
                 {s.total_laps ? ` · ${s.total_laps} vueltas` : ""}
-                {s.online ? " · online" : ""}
+                {s.online ? " · en línea" : ""}
               </div>
               <div className="num mt-0.5 text-xs text-muted">
                 {new Date(s.started_at).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short", hour12: false })}
@@ -85,7 +85,7 @@ function Sessions() {
             {s.has_recording ? (
               <div className="flex shrink-0 gap-2">
                 <Link href={`/box?s=${s.id}`} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold hover:border-accent">
-                  Box
+                  Telemetría
                 </Link>
                 <Link href={`/replay/${s.id}`} className="rounded-xl bg-fg px-4 py-2 text-sm font-semibold text-bg hover:opacity-90">
                   Ver repetición

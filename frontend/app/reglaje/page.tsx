@@ -9,7 +9,7 @@ import { CarViewer } from "@/components/setup/CarViewer";
 import { ACADEMY, ACADEMY_ALIAS, type AcademyEntry, academyEntry, GROUPS, SYMPTOMS } from "@/lib/academy";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { BoxOverview, Run, SetupSuggestion, SetupValues } from "@/lib/box";
+import { COMPOUND_ES, type BoxOverview, type Run, type SetupSuggestion, type SetupValues } from "@/lib/box";
 
 type GameSession = {
   id: number;
@@ -370,7 +370,7 @@ function StartCard({
   const explain: Record<Source, string> = {
     tanda: `Lo que usaste en la tanda ${lastRun?.tanda ?? ""}${lastRun?.mejor_vuelta_s ? ` (mejor vuelta ${lapS(lastRun.mejor_vuelta_s)})` : ""}, con lo que te sugiere el ingeniero para la próxima.`,
     mejor: base?.tu_mejor
-      ? `El reglaje de tu mejor vuelta limpia en esta pista (${lapS(base.tu_mejor.vuelta_s)}${base.tu_mejor.compuesto ? `, ${base.tu_mejor.compuesto}` : ""}). Buen punto de partida para hoy.`
+      ? `El reglaje de tu mejor vuelta limpia en esta pista (${lapS(base.tu_mejor.vuelta_s)}${base.tu_mejor.compuesto ? `, con ${(COMPOUND_ES[base.tu_mejor.compuesto] ?? base.tu_mejor.compuesto).toLowerCase()}` : ""}). Buen punto de partida para hoy.`
       : "",
     base: base ? `${base.caracteristicas.nota} ${base.nota}` : "",
   };

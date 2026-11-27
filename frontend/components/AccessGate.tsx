@@ -19,7 +19,7 @@ export type AccessStatus = {
   solicitud: AccessRequest | null;
 };
 
-const GAMES = ["F1 24", "F1 25", "Assetto Corsa / ACC", "iRacing", "Otro"];
+const GAMES = ["Edición 2024", "Edición 2025", "Assetto Corsa / ACC", "iRacing", "Otro"];
 const PLATFORMS = ["PC", "PlayStation", "Xbox"];
 
 const field =
@@ -71,7 +71,7 @@ export function AccessGate({
   const [tipo, setTipo] = useState<"jugador" | "local">(
     prev?.tipo ?? "jugador",
   );
-  const [juego, setJuego] = useState(prev?.juego ?? "F1 24");
+  const [juego, setJuego] = useState(prev?.juego ?? "Edición 2024");
   const [plataforma, setPlataforma] = useState(
     prev?.plataforma ?? "PlayStation",
   );

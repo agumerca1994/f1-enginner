@@ -156,7 +156,7 @@ function Plans() {
             tag="Con carreras Pro"
             pro
             lines={[
-              { who: "ing", text: "Safety car. Entrá ahora: salís sexto con duras nuevas y llegás al final sin volver a parar." },
+              { who: "ing", text: "Safety car. Entrá ahora: salís sexto con duros nuevos y llegás al final sin volver a parar." },
               { who: "vos", text: "¿Y el de atrás?" },
               { who: "ing", text: "Se queda afuera. Lo tenés en la relanzada, cuidá la tracción en la 4." },
             ]}
@@ -245,7 +245,7 @@ function Plans() {
       {/* Short answers */}
       <section className="grid gap-5 border-t border-line pt-6 md:grid-cols-3">
         <Faq q="¿Qué cuenta como una carrera?">
-          Cada vez que salís a pista y el ingeniero te habla: una práctica, una qualy o una carrera de hasta {b.minutos_por_carrera} minutos. Menús y boxes no cuentan.
+          Cada vez que salís a pista y el ingeniero te habla: una práctica, una clasificación o una carrera de hasta {b.minutos_por_carrera} minutos. Menús y boxes no cuentan.
         </Faq>
         <Faq q="¿Y si me quedo sin carreras Pro?">
           Te sigue hablando la radio de avisos. Cuando cargás más, vuelve el ingeniero Pro, incluso en medio de la carrera.

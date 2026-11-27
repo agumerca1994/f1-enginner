@@ -1,28 +1,15 @@
 import { Bar, Empty, Panel } from "@/components/dashboard/Panel";
 import { EVENT_LABELS, gap, lapTime, WEATHER_ES } from "@/lib/format";
 import { COMPOUND_COLORS, COMPOUND_LETTER, teamColor } from "@/lib/teams";
+import { sessionEs } from "@/lib/sessions";
 import type { CarRow, Snapshot } from "@/lib/types";
+import { COMPOUND_ES } from "@/lib/box";
 
-const SESSION_ES: Record<string, string> = {
-  Race: "Carrera",
-  "Race 2": "Carrera 2",
-  "Race 3": "Carrera 3",
-  "Time Trial": "Contrarreloj",
-  "Practice 1": "Práctica 1",
-  "Practice 2": "Práctica 2",
-  "Practice 3": "Práctica 3",
-  "Short Practice": "Práctica corta",
-  "Qualifying 1": "Clasificación 1",
-  "Qualifying 2": "Clasificación 2",
-  "Qualifying 3": "Clasificación 3",
-  "Short Qualifying": "Clasificación corta",
-  "One-Shot Qualifying": "Clasificación a una vuelta",
-};
 const FUEL_MIX_ES: Record<string, string> = { Lean: "pobre", Standard: "estándar", Rich: "rica", Max: "máxima" };
 const ERS_MODE_ES: Record<string, string> = { None: "recarga", Medium: "normal", Hotlap: "vuelta rápida", Overtake: "adelantamiento" };
 
 export function sessionName(type: string): string {
-  return type === "Unknown" ? "Sesión" : (SESSION_ES[type] ?? type);
+  return sessionEs(type);
 }
 
 // --- Session -----------------------------------------------------------------
@@ -40,7 +27,7 @@ export function SessionCard({ s }: { s: Snapshot }) {
           <div className="truncate text-xl font-semibold">{se.track}</div>
           <div className="text-sm text-muted">
             {sessionName(se.type)}
-            {se.online && " · online"}
+            {se.online && " · en línea"}
           </div>
         </div>
         {lap && (
@@ -438,7 +425,7 @@ function fastestLap(cars: CarRow[] | undefined): number | null {
 
 // --- Standings ---------------------------------------------------------------
 
-const RESULT_ES: Record<string, string> = { retired: "ABD", dnf: "ABD", dsq: "DSQ", not_classified: "NC", finished: "FIN" };
+const RESULT_ES: Record<string, string> = { retired: "ABD", dnf: "ABD", dsq: "DESC", not_classified: "NC", finished: "FIN" };
 
 export function StandingsCard({ s }: { s: Snapshot }) {
   const cars = s.cars ?? [];
@@ -475,7 +462,7 @@ export function StandingsCard({ s }: { s: Snapshot }) {
                   <span
                     className="flex h-4 w-4 items-center justify-center rounded-full border-2 text-[0.5rem] font-bold"
                     style={{ borderColor: COMPOUND_COLORS[c.tyre] }}
-                    title={c.tyre}
+                    title={c.tyre ? COMPOUND_ES[c.tyre] ?? c.tyre : undefined}
                   >
                     {COMPOUND_LETTER[c.tyre]}
                   </span>

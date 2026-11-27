@@ -7,6 +7,7 @@ import { Strategy } from "@/components/dashboard/EngineerPanel";
 import { useDictation } from "@/lib/listen";
 import { teamColor } from "@/lib/teams";
 import type { CarRow, EngineerMessage, EngineerState, Snapshot } from "@/lib/types";
+import { isRulesProvider } from "@/lib/format";
 
 /** Seconds as said on the radio: "+0,21", "−1,4". */
 export function signedSecs(ms: number | null | undefined, digits = 2): string {
@@ -134,11 +135,11 @@ export function RadioFeed({
   const said = engineer.messages.filter((m) => m.radio);
   const last = said.slice(-1)[0];
   const before = said.slice(-4, -1);
-  const rules = engineer.provider === "reglas";
+  const rules = isRulesProvider(engineer.provider);
   return (
     <section className="card flex flex-col gap-2.5 p-4">
       <header className="flex items-center justify-between gap-2">
-        <div className="label">Radio{rules ? " · sin IA" : ""}</div>
+        <div className="label">{rules ? "Radio de avisos" : "Radio"}</div>
         <div className="flex items-center gap-2">
           {voice.supported && engineer.active && (
             <button onClick={voice.toggle} className={`chip px-2.5 py-1 text-xs ${voice.enabled ? "!border-accent text-accent" : "text-muted"}`}>

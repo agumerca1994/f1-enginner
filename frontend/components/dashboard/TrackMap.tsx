@@ -182,7 +182,7 @@ export function TrackMap({ s }: { s: Snapshot }) {
             )}
           </div>
         )}
-        {se && se.safety_car !== "None" && (
+        {se && (se.safety_car === "Full safety car" || se.safety_car === "Virtual safety car") && (
           <div className="absolute right-2 top-2 rounded-lg bg-warn px-2.5 py-1 text-xs font-bold text-bg">
             {se.safety_car === "Virtual safety car" ? "VSC" : "SAFETY CAR"}
           </div>
