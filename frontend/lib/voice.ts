@@ -274,3 +274,16 @@ export function useEngineerVoice(messages: EngineerMessage[], { alwaysOn = false
 
   return { supported, enabled, toggle };
 }
+
+/** Call inside a tap: wakes the audio and the browser's speech so an answer that arrives
+ *  seconds later can still be heard (phones only allow sound that a gesture started). */
+export function unlockVoice(): void {
+  radioTones([]);
+  try {
+    if ("speechSynthesis" in window && !window.speechSynthesis.speaking) {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    }
+  } catch {}
+}

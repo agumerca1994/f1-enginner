@@ -1,0 +1,2350 @@
+{
+ "pista": "Austin",
+ "estado_breve": {
+  "sesion": "Race",
+  "pista": "Austin",
+  "vuelta": 4,
+  "vueltas_restantes": 2,
+  "tiempo_restante_s": null,
+  "posicion": 8,
+  "en_boxes": false,
+  "paradas": 0,
+  "adelante": {
+   "piloto": "VERSTAPPEN",
+   "gap_s": 0.567,
+   "tendencia": "se achica 0.69 s/vuelta (vueltas 1-3)"
+  },
+  "atras": {
+   "piloto": "GASLY",
+   "tendencia": "se achica 0.65 s/vuelta (vueltas 1-3)",
+   "alcance": {
+    "piloto": "GASLY",
+    "gap_s": 0.255,
+    "su_ritmo_s": null,
+    "quien_persigue": "rival",
+    "estado": "faltan vueltas limpias",
+    "descuento_s_por_vuelta": null,
+    "vueltas_para_alcanzar": null
+   }
+  },
+  "gaps_por": "tiempo de carrera",
+  "gomas": {
+   "compuesto": "Intermediate",
+   "edad_vueltas": 3,
+   "desgaste_max_pct": 2.0,
+   "goma_mas_gastada": "tras_izq",
+   "desgaste_por_vuelta_max": {
+    "rueda": "tras_izq",
+    "pct": 1.0
+   }
+  },
+  "bateria_pct": 100.0,
+  "combustible_vueltas_de_sobra": 2.86,
+  "clima": "Light rain",
+  "lluvia_proxima": [
+   {
+    "in_minutes": 0,
+    "weather": "Light rain",
+    "rain_percent": 73
+   },
+   {
+    "in_minutes": 5,
+    "weather": "Light rain",
+    "rain_percent": 74
+   }
+  ],
+  "danos_mayores_5pct": {
+   "front_right_wing": 49
+  },
+  "penalizacion_s": 0,
+  "advertencias": 1,
+  "sanciones_pendientes": {
+   "stop_and_go": 0,
+   "drive_through": 0,
+   "se_cumple_en_esta_parada": false,
+   "segundos_de_penalizacion": 0
+  },
+  "ultimas_sanciones": [
+   {
+    "vuelta": 3,
+    "que": "advertencia por toque con NORRIS",
+    "tipo": "advertencia"
+   }
+  ],
+  "ultimos_toques": [
+   {
+    "vuelta": 3,
+    "con": "NORRIS",
+    "hace_s": 55
+   },
+   {
+    "vuelta": 3,
+    "con": "VERSTAPPEN",
+    "hace_s": 23
+   }
+  ],
+  "delta_vs_mejor_vuelta_s": -0.718,
+  "sector_actual": 1,
+  "antiguedad_s": 0.3,
+  "recepcion": null
+ },
+ "neumaticos": {
+  "compuesto": "Intermediate",
+  "compuesto_real": "Intermediate",
+  "edad_vueltas": 3,
+  "desgaste_pct": {
+   "tras_izq": 2.0,
+   "tras_der": 2.0,
+   "del_izq": 2.0,
+   "del_der": 2.0
+  },
+  "desgaste_por_vuelta_pct": {
+   "tras_izq": 1.0,
+   "tras_der": 1.0,
+   "del_izq": 1.0,
+   "del_der": 1.0
+  },
+  "desgaste_por_vuelta_max": {
+   "rueda": "tras_izq",
+   "pct": 1.0
+  },
+  "vueltas_hasta_60pct": 58.0,
+  "vueltas_hasta_70pct": 68.0,
+  "temp_superficie_promedio_ultima_vuelta_c": {
+   "tras_izq": 38.3,
+   "tras_der": 38.3,
+   "del_izq": 36.6,
+   "del_der": 36.2
+  },
+  "temp_interna_promedio_ultima_vuelta_c": {
+   "tras_izq": 69.3,
+   "tras_der": 68.8,
+   "del_izq": 64.1,
+   "del_der": 63.2
+  },
+  "temp_interna_promedio_por_vuelta_c": [
+   {
+    "vuelta": 1,
+    "tras_izq": 67.2,
+    "tras_der": 67.1,
+    "del_izq": 65.4,
+    "del_der": 65.3
+   },
+   {
+    "vuelta": 2,
+    "tras_izq": 67.3,
+    "tras_der": 66.8,
+    "del_izq": 63.1,
+    "del_der": 62.5
+   },
+   {
+    "vuelta": 3,
+    "tras_izq": 69.3,
+    "tras_der": 68.8,
+    "del_izq": 64.1,
+    "del_der": 63.2
+   }
+  ],
+  "temp_superficie_instantanea_c": {
+   "tras_izq": 37.0,
+   "tras_der": 37.0,
+   "del_izq": 34.0,
+   "del_der": 34.0
+  },
+  "temp_interna_instantanea_c": {
+   "tras_izq": 69.0,
+   "tras_der": 69.0,
+   "del_izq": 64.0,
+   "del_der": 63.0
+  },
+  "nota_temperaturas": "Lo que el piloto ve en la pantalla del juego es el valor instantáneo: si pregunta por las temperaturas, dale las instantáneas (superficie e interna) y aclarale si usás un promedio de vuelta. La superficie sube y baja en cada curva; la interna se mueve lento.",
+  "presion_psi": {
+   "tras_izq": 20.9,
+   "tras_der": 20.9,
+   "del_izq": 23.8,
+   "del_der": 23.7
+  },
+  "temp_frenos_c": {
+   "tras_izq": 628.0,
+   "tras_der": 631.0,
+   "del_izq": 658.0,
+   "del_der": 665.0
+  },
+  "muestras_del_stint": 3,
+  "ampollas_pct": null,
+  "pinchazos": [],
+  "juegos": [
+   {
+    "compuesto": "Medium",
+    "desgaste_pct": 0,
+    "puesto": false,
+    "cantidad": 2,
+    "ids": [
+     0,
+     13
+    ],
+    "vida_util_vueltas": 34,
+    "delta_ritmo_vs_puesto_s": 8.82
+   },
+   {
+    "compuesto": "Hard",
+    "desgaste_pct": 0,
+    "puesto": false,
+    "cantidad": 1,
+    "ids": [
+     1
+    ],
+    "vida_util_vueltas": 47,
+    "delta_ritmo_vs_puesto_s": 8.97
+   },
+   {
+    "compuesto": "Intermediate",
+    "desgaste_pct": 0,
+    "puesto": false,
+    "cantidad": 3,
+    "ids": [
+     2,
+     16,
+     17
+    ],
+    "vida_util_vueltas": 57,
+    "delta_ritmo_vs_puesto_s": -0.02
+   },
+   {
+    "compuesto": "Wet",
+    "desgaste_pct": 0,
+    "puesto": false,
+    "cantidad": 3,
+    "ids": [
+     3,
+     18,
+     19
+    ],
+    "vida_util_vueltas": 42,
+    "delta_ritmo_vs_puesto_s": 1.5
+   },
+   {
+    "compuesto": "Soft",
+    "desgaste_pct": 0,
+    "puesto": false,
+    "cantidad": 3,
+    "ids": [
+     8,
+     9,
+     10
+    ],
+    "vida_util_vueltas": 23,
+    "delta_ritmo_vs_puesto_s": 8.74
+   },
+   {
+    "compuesto": "Intermediate",
+    "desgaste_pct": 2,
+    "puesto": true,
+    "cantidad": 1,
+    "ids": [
+     15
+    ],
+    "vida_util_vueltas": 57,
+    "delta_ritmo_vs_puesto_s": 0.0
+   }
+  ],
+  "antiguedad_s": null
+ },
+ "estrategia": {
+  "ahora": {
+   "sesion": {
+    "tipo": "Race",
+    "vuelta_actual": 4,
+    "vueltas_restantes": 2,
+    "safety_car": "None"
+   },
+   "calculos": {
+    "perdida_box_s": 22.0,
+    "perdida_box_origen": "estimación genérica, sin paradas medidas todavía",
+    "si_para_ahora": {
+     "posicion_estimada_al_salir": 22,
+     "auto_delante_al_salir": "HULKENBERG",
+     "distancia_al_de_adelante_s": 17.5,
+     "auto_detras_al_salir": null,
+     "distancia_al_de_atras_s": null
+    },
+    "regla_dos_compuestos": {
+     "compuestos_secos_usados": [],
+     "cumplida": false,
+     "aplica": false
+    },
+    "juegos_de_neumaticos": [
+     {
+      "compuesto": "Medium",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 2,
+      "ids": [
+       0,
+       13
+      ],
+      "vida_util_vueltas": 34,
+      "delta_ritmo_vs_puesto_s": 8.82
+     },
+     {
+      "compuesto": "Hard",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 1,
+      "ids": [
+       1
+      ],
+      "vida_util_vueltas": 47,
+      "delta_ritmo_vs_puesto_s": 8.97
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       2,
+       16,
+       17
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": -0.02
+     },
+     {
+      "compuesto": "Wet",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       3,
+       18,
+       19
+      ],
+      "vida_util_vueltas": 42,
+      "delta_ritmo_vs_puesto_s": 1.5
+     },
+     {
+      "compuesto": "Soft",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       8,
+       9,
+       10
+      ],
+      "vida_util_vueltas": 23,
+      "delta_ritmo_vs_puesto_s": 8.74
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 2,
+      "puesto": true,
+      "cantidad": 1,
+      "ids": [
+       15
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": 0.0
+     }
+    ]
+   },
+   "rivales": {
+    "adelante": [
+     {
+      "pos": 6,
+      "piloto": "NORRIS",
+      "equipo": "McLaren",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.074,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.668,
+      "gap_al_lider_s": 12.064,
+      "tendencia_gap_con_piloto": "se agranda 0.84 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 7,
+      "piloto": "VERSTAPPEN",
+      "equipo": "Red Bull Racing",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.296,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.832,
+      "gap_al_lider_s": 12.909,
+      "tendencia_gap_con_piloto": "se achica 0.69 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "atras": [
+     {
+      "pos": 9,
+      "piloto": "GASLY",
+      "equipo": "Alpine",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.473,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.689,
+      "gap_al_lider_s": 13.813,
+      "tendencia_gap_con_piloto": "se achica 0.65 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 10,
+      "piloto": "LINDBLAD",
+      "equipo": "Racing Bulls",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.16,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.708,
+      "gap_al_lider_s": 14.2,
+      "tendencia_gap_con_piloto": "se achica 0.80 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "lider": {
+     "pos": 1,
+     "piloto": "PIASTRI",
+     "equipo": "McLaren",
+     "gomas": "Intermediate/3",
+     "paradas": 0,
+     "en_boxes": false,
+     "ultima_s": 113.503,
+     "promedio_ult3_s": null,
+     "vueltas_con_tiempo": 2,
+     "mejor_vuelta_s": 113.503,
+     "gap_al_lider_s": null,
+     "tendencia_gap_con_piloto": "se agranda 4.06 s/vuelta (vueltas 1-3)",
+     "adelantamiento_activo": null
+    },
+    "abandonos": [],
+    "paradas_del_resto": {
+     "sin_parar": 21,
+     "con_1_o_mas": 0
+    },
+    "alcance": {
+     "mi_ritmo_s": null,
+     "adelante": {
+      "piloto": "VERSTAPPEN",
+      "gap_s": 0.567,
+      "su_ritmo_s": null,
+      "quien_persigue": "piloto",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "atras": {
+      "piloto": "GASLY",
+      "gap_s": 0.255,
+      "su_ritmo_s": null,
+      "quien_persigue": "rival",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "nota": "Ritmo = mediana de las últimas vueltas limpias (mínimo 3). Descuento positivo: el que persigue es más rápido."
+    }
+   },
+   "neumaticos": {
+    "compuesto": "Intermediate",
+    "edad_vueltas": 3,
+    "desgaste_por_vuelta_max": {
+     "rueda": "tras_izq",
+     "pct": 1.0
+    },
+    "vueltas_hasta_60pct": 58.0,
+    "vueltas_hasta_70pct": 68.0
+   },
+   "plan_acordado": null
+  },
+  "4": {
+   "sesion": {
+    "tipo": "Race",
+    "vuelta_actual": 4,
+    "vueltas_restantes": 2,
+    "safety_car": "None"
+   },
+   "calculos": {
+    "perdida_box_s": 22.0,
+    "perdida_box_origen": "estimación genérica, sin paradas medidas todavía",
+    "si_para_ahora": {
+     "posicion_estimada_al_salir": 22,
+     "auto_delante_al_salir": "HULKENBERG",
+     "distancia_al_de_adelante_s": 17.5,
+     "auto_detras_al_salir": null,
+     "distancia_al_de_atras_s": null
+    },
+    "regla_dos_compuestos": {
+     "compuestos_secos_usados": [],
+     "cumplida": false,
+     "aplica": false
+    },
+    "juegos_de_neumaticos": [
+     {
+      "compuesto": "Medium",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 2,
+      "ids": [
+       0,
+       13
+      ],
+      "vida_util_vueltas": 34,
+      "delta_ritmo_vs_puesto_s": 8.82
+     },
+     {
+      "compuesto": "Hard",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 1,
+      "ids": [
+       1
+      ],
+      "vida_util_vueltas": 47,
+      "delta_ritmo_vs_puesto_s": 8.97
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       2,
+       16,
+       17
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": -0.02
+     },
+     {
+      "compuesto": "Wet",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       3,
+       18,
+       19
+      ],
+      "vida_util_vueltas": 42,
+      "delta_ritmo_vs_puesto_s": 1.5
+     },
+     {
+      "compuesto": "Soft",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       8,
+       9,
+       10
+      ],
+      "vida_util_vueltas": 23,
+      "delta_ritmo_vs_puesto_s": 8.74
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 2,
+      "puesto": true,
+      "cantidad": 1,
+      "ids": [
+       15
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": 0.0
+     }
+    ]
+   },
+   "rivales": {
+    "adelante": [
+     {
+      "pos": 6,
+      "piloto": "NORRIS",
+      "equipo": "McLaren",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.074,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.668,
+      "gap_al_lider_s": 12.064,
+      "tendencia_gap_con_piloto": "se agranda 0.84 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 7,
+      "piloto": "VERSTAPPEN",
+      "equipo": "Red Bull Racing",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.296,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.832,
+      "gap_al_lider_s": 12.909,
+      "tendencia_gap_con_piloto": "se achica 0.69 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "atras": [
+     {
+      "pos": 9,
+      "piloto": "GASLY",
+      "equipo": "Alpine",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.473,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.689,
+      "gap_al_lider_s": 13.813,
+      "tendencia_gap_con_piloto": "se achica 0.65 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 10,
+      "piloto": "LINDBLAD",
+      "equipo": "Racing Bulls",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.16,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.708,
+      "gap_al_lider_s": 14.2,
+      "tendencia_gap_con_piloto": "se achica 0.80 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "lider": {
+     "pos": 1,
+     "piloto": "PIASTRI",
+     "equipo": "McLaren",
+     "gomas": "Intermediate/3",
+     "paradas": 0,
+     "en_boxes": false,
+     "ultima_s": 113.503,
+     "promedio_ult3_s": null,
+     "vueltas_con_tiempo": 2,
+     "mejor_vuelta_s": 113.503,
+     "gap_al_lider_s": null,
+     "tendencia_gap_con_piloto": "se agranda 4.06 s/vuelta (vueltas 1-3)",
+     "adelantamiento_activo": null
+    },
+    "abandonos": [],
+    "paradas_del_resto": {
+     "sin_parar": 21,
+     "con_1_o_mas": 0
+    },
+    "alcance": {
+     "mi_ritmo_s": null,
+     "adelante": {
+      "piloto": "VERSTAPPEN",
+      "gap_s": 0.567,
+      "su_ritmo_s": null,
+      "quien_persigue": "piloto",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "atras": {
+      "piloto": "GASLY",
+      "gap_s": 0.255,
+      "su_ritmo_s": null,
+      "quien_persigue": "rival",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "nota": "Ritmo = mediana de las últimas vueltas limpias (mínimo 3). Descuento positivo: el que persigue es más rápido."
+    }
+   },
+   "neumaticos": {
+    "compuesto": "Intermediate",
+    "edad_vueltas": 3,
+    "desgaste_por_vuelta_max": {
+     "rueda": "tras_izq",
+     "pct": 1.0
+    },
+    "vueltas_hasta_60pct": 58.0,
+    "vueltas_hasta_70pct": 68.0
+   },
+   "plan_acordado": null,
+   "pregunta_vuelta_parada": 4,
+   "nota": "si_para_ahora es la posición al salir si para en esta vuelta; para otra vuelta, sumá lo que cambian los gaps con la tendencia de cada rival."
+  },
+  "5": {
+   "sesion": {
+    "tipo": "Race",
+    "vuelta_actual": 4,
+    "vueltas_restantes": 2,
+    "safety_car": "None"
+   },
+   "calculos": {
+    "perdida_box_s": 22.0,
+    "perdida_box_origen": "estimación genérica, sin paradas medidas todavía",
+    "si_para_ahora": {
+     "posicion_estimada_al_salir": 22,
+     "auto_delante_al_salir": "HULKENBERG",
+     "distancia_al_de_adelante_s": 17.5,
+     "auto_detras_al_salir": null,
+     "distancia_al_de_atras_s": null
+    },
+    "regla_dos_compuestos": {
+     "compuestos_secos_usados": [],
+     "cumplida": false,
+     "aplica": false
+    },
+    "juegos_de_neumaticos": [
+     {
+      "compuesto": "Medium",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 2,
+      "ids": [
+       0,
+       13
+      ],
+      "vida_util_vueltas": 34,
+      "delta_ritmo_vs_puesto_s": 8.82
+     },
+     {
+      "compuesto": "Hard",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 1,
+      "ids": [
+       1
+      ],
+      "vida_util_vueltas": 47,
+      "delta_ritmo_vs_puesto_s": 8.97
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       2,
+       16,
+       17
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": -0.02
+     },
+     {
+      "compuesto": "Wet",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       3,
+       18,
+       19
+      ],
+      "vida_util_vueltas": 42,
+      "delta_ritmo_vs_puesto_s": 1.5
+     },
+     {
+      "compuesto": "Soft",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       8,
+       9,
+       10
+      ],
+      "vida_util_vueltas": 23,
+      "delta_ritmo_vs_puesto_s": 8.74
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 2,
+      "puesto": true,
+      "cantidad": 1,
+      "ids": [
+       15
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": 0.0
+     }
+    ]
+   },
+   "rivales": {
+    "adelante": [
+     {
+      "pos": 6,
+      "piloto": "NORRIS",
+      "equipo": "McLaren",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.074,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.668,
+      "gap_al_lider_s": 12.064,
+      "tendencia_gap_con_piloto": "se agranda 0.84 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 7,
+      "piloto": "VERSTAPPEN",
+      "equipo": "Red Bull Racing",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.296,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.832,
+      "gap_al_lider_s": 12.909,
+      "tendencia_gap_con_piloto": "se achica 0.69 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "atras": [
+     {
+      "pos": 9,
+      "piloto": "GASLY",
+      "equipo": "Alpine",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.473,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.689,
+      "gap_al_lider_s": 13.813,
+      "tendencia_gap_con_piloto": "se achica 0.65 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 10,
+      "piloto": "LINDBLAD",
+      "equipo": "Racing Bulls",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.16,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.708,
+      "gap_al_lider_s": 14.2,
+      "tendencia_gap_con_piloto": "se achica 0.80 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "lider": {
+     "pos": 1,
+     "piloto": "PIASTRI",
+     "equipo": "McLaren",
+     "gomas": "Intermediate/3",
+     "paradas": 0,
+     "en_boxes": false,
+     "ultima_s": 113.503,
+     "promedio_ult3_s": null,
+     "vueltas_con_tiempo": 2,
+     "mejor_vuelta_s": 113.503,
+     "gap_al_lider_s": null,
+     "tendencia_gap_con_piloto": "se agranda 4.06 s/vuelta (vueltas 1-3)",
+     "adelantamiento_activo": null
+    },
+    "abandonos": [],
+    "paradas_del_resto": {
+     "sin_parar": 21,
+     "con_1_o_mas": 0
+    },
+    "alcance": {
+     "mi_ritmo_s": null,
+     "adelante": {
+      "piloto": "VERSTAPPEN",
+      "gap_s": 0.567,
+      "su_ritmo_s": null,
+      "quien_persigue": "piloto",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "atras": {
+      "piloto": "GASLY",
+      "gap_s": 0.255,
+      "su_ritmo_s": null,
+      "quien_persigue": "rival",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "nota": "Ritmo = mediana de las últimas vueltas limpias (mínimo 3). Descuento positivo: el que persigue es más rápido."
+    }
+   },
+   "neumaticos": {
+    "compuesto": "Intermediate",
+    "edad_vueltas": 3,
+    "desgaste_por_vuelta_max": {
+     "rueda": "tras_izq",
+     "pct": 1.0
+    },
+    "vueltas_hasta_60pct": 58.0,
+    "vueltas_hasta_70pct": 68.0
+   },
+   "plan_acordado": null,
+   "pregunta_vuelta_parada": 5,
+   "nota": "si_para_ahora es la posición al salir si para en esta vuelta; para otra vuelta, sumá lo que cambian los gaps con la tendencia de cada rival."
+  },
+  "6": {
+   "sesion": {
+    "tipo": "Race",
+    "vuelta_actual": 4,
+    "vueltas_restantes": 2,
+    "safety_car": "None"
+   },
+   "calculos": {
+    "perdida_box_s": 22.0,
+    "perdida_box_origen": "estimación genérica, sin paradas medidas todavía",
+    "si_para_ahora": {
+     "posicion_estimada_al_salir": 22,
+     "auto_delante_al_salir": "HULKENBERG",
+     "distancia_al_de_adelante_s": 17.5,
+     "auto_detras_al_salir": null,
+     "distancia_al_de_atras_s": null
+    },
+    "regla_dos_compuestos": {
+     "compuestos_secos_usados": [],
+     "cumplida": false,
+     "aplica": false
+    },
+    "juegos_de_neumaticos": [
+     {
+      "compuesto": "Medium",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 2,
+      "ids": [
+       0,
+       13
+      ],
+      "vida_util_vueltas": 34,
+      "delta_ritmo_vs_puesto_s": 8.82
+     },
+     {
+      "compuesto": "Hard",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 1,
+      "ids": [
+       1
+      ],
+      "vida_util_vueltas": 47,
+      "delta_ritmo_vs_puesto_s": 8.97
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       2,
+       16,
+       17
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": -0.02
+     },
+     {
+      "compuesto": "Wet",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       3,
+       18,
+       19
+      ],
+      "vida_util_vueltas": 42,
+      "delta_ritmo_vs_puesto_s": 1.5
+     },
+     {
+      "compuesto": "Soft",
+      "desgaste_pct": 0,
+      "puesto": false,
+      "cantidad": 3,
+      "ids": [
+       8,
+       9,
+       10
+      ],
+      "vida_util_vueltas": 23,
+      "delta_ritmo_vs_puesto_s": 8.74
+     },
+     {
+      "compuesto": "Intermediate",
+      "desgaste_pct": 2,
+      "puesto": true,
+      "cantidad": 1,
+      "ids": [
+       15
+      ],
+      "vida_util_vueltas": 57,
+      "delta_ritmo_vs_puesto_s": 0.0
+     }
+    ]
+   },
+   "rivales": {
+    "adelante": [
+     {
+      "pos": 6,
+      "piloto": "NORRIS",
+      "equipo": "McLaren",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.074,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.668,
+      "gap_al_lider_s": 12.064,
+      "tendencia_gap_con_piloto": "se agranda 0.84 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 7,
+      "piloto": "VERSTAPPEN",
+      "equipo": "Red Bull Racing",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.296,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.832,
+      "gap_al_lider_s": 12.909,
+      "tendencia_gap_con_piloto": "se achica 0.69 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "atras": [
+     {
+      "pos": 9,
+      "piloto": "GASLY",
+      "equipo": "Alpine",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.473,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.689,
+      "gap_al_lider_s": 13.813,
+      "tendencia_gap_con_piloto": "se achica 0.65 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     },
+     {
+      "pos": 10,
+      "piloto": "LINDBLAD",
+      "equipo": "Racing Bulls",
+      "gomas": "Intermediate/3",
+      "paradas": 0,
+      "en_boxes": false,
+      "ultima_s": 117.16,
+      "promedio_ult3_s": null,
+      "vueltas_con_tiempo": 2,
+      "mejor_vuelta_s": 116.708,
+      "gap_al_lider_s": 14.2,
+      "tendencia_gap_con_piloto": "se achica 0.80 s/vuelta (vueltas 1-3)",
+      "adelantamiento_activo": null
+     }
+    ],
+    "lider": {
+     "pos": 1,
+     "piloto": "PIASTRI",
+     "equipo": "McLaren",
+     "gomas": "Intermediate/3",
+     "paradas": 0,
+     "en_boxes": false,
+     "ultima_s": 113.503,
+     "promedio_ult3_s": null,
+     "vueltas_con_tiempo": 2,
+     "mejor_vuelta_s": 113.503,
+     "gap_al_lider_s": null,
+     "tendencia_gap_con_piloto": "se agranda 4.06 s/vuelta (vueltas 1-3)",
+     "adelantamiento_activo": null
+    },
+    "abandonos": [],
+    "paradas_del_resto": {
+     "sin_parar": 21,
+     "con_1_o_mas": 0
+    },
+    "alcance": {
+     "mi_ritmo_s": null,
+     "adelante": {
+      "piloto": "VERSTAPPEN",
+      "gap_s": 0.567,
+      "su_ritmo_s": null,
+      "quien_persigue": "piloto",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "atras": {
+      "piloto": "GASLY",
+      "gap_s": 0.255,
+      "su_ritmo_s": null,
+      "quien_persigue": "rival",
+      "estado": "faltan vueltas limpias",
+      "descuento_s_por_vuelta": null,
+      "vueltas_para_alcanzar": null
+     },
+     "nota": "Ritmo = mediana de las últimas vueltas limpias (mínimo 3). Descuento positivo: el que persigue es más rápido."
+    }
+   },
+   "neumaticos": {
+    "compuesto": "Intermediate",
+    "edad_vueltas": 3,
+    "desgaste_por_vuelta_max": {
+     "rueda": "tras_izq",
+     "pct": 1.0
+    },
+    "vueltas_hasta_60pct": 58.0,
+    "vueltas_hasta_70pct": 68.0
+   },
+   "plan_acordado": null,
+   "pregunta_vuelta_parada": 6,
+   "nota": "si_para_ahora es la posición al salir si para en esta vuelta; para otra vuelta, sumá lo que cambian los gaps con la tendencia de cada rival."
+  }
+ },
+ "reglaje": {
+  "reglaje_leido_del_juego": {
+   "aleron_delantero": 38,
+   "aleron_trasero": 38,
+   "diferencial_acelerando_pct": 60,
+   "diferencial_soltando_pct": 50,
+   "camber_del": -3.5,
+   "camber_tras": -2.0,
+   "convergencia_del": 0.04,
+   "convergencia_tras": 0.13,
+   "suspension_del": 37,
+   "suspension_tras": 17,
+   "barra_antivuelco_del": 15,
+   "barra_antivuelco_tras": 8,
+   "altura_del": 24,
+   "altura_tras": 53,
+   "presion_frenos_pct": 97,
+   "reparto_frenada_pct": 57,
+   "freno_motor_pct": 50,
+   "presiones_psi": {
+    "tras_izq": 20.9,
+    "tras_der": 20.9,
+    "del_izq": 24.2,
+    "del_der": 24.2
+   },
+   "lastre": 6
+  },
+  "acordado_pendiente": [],
+  "historial": [
+   {
+    "sesion": null,
+    "vuelta": 1,
+    "cambios": {
+     "aleron_delantero": [
+      40,
+      38
+     ],
+     "aleron_trasero": [
+      37,
+      38
+     ],
+     "diferencial_acelerando_pct": [
+      90,
+      60
+     ],
+     "diferencial_soltando_pct": [
+      35,
+      50
+     ],
+     "convergencia_del": [
+      0.02,
+      0.04
+     ],
+     "convergencia_tras": [
+      0.12,
+      0.13
+     ],
+     "suspension_del": [
+      39,
+      37
+     ],
+     "suspension_tras": [
+      3,
+      17
+     ],
+     "barra_antivuelco_del": [
+      10,
+      15
+     ],
+     "barra_antivuelco_tras": [
+      17,
+      8
+     ],
+     "altura_del": [
+      23,
+      24
+     ],
+     "altura_tras": [
+      49,
+      53
+     ],
+     "presion_frenos_pct": [
+      100,
+      97
+     ],
+     "reparto_frenada_pct": [
+      58,
+      57
+     ]
+    },
+    "acordado_aplicado": null,
+    "no_acordado": null,
+    "resultado": "pendiente"
+   }
+  ],
+  "ajustes_en_carrera": {
+   "desde_el_volante": [
+    {
+     "ajuste": "reparto de frenada",
+     "actual": 57,
+     "sugerido": 56,
+     "por": "bloqueás adelante en la 5 y la 8: un punto hacia atrás"
+    }
+   ],
+   "en_la_proxima_parada": [
+    {
+     "ajuste": "alerón delantero",
+     "actual": 38,
+     "sugerido": 40,
+     "por": "subviraje repetido en la 2, la 5 y la 6: más carga adelante"
+    }
+   ],
+   "problemas_repetidos": {
+    "subviraje": [
+     2,
+     5,
+     6
+    ],
+    "sobreviraje": [
+     3
+    ],
+    "patinaje_traccion": [
+     4
+    ],
+    "bloqueo_delantero": [
+     5,
+     8
+    ]
+   },
+   "nota": "Con el reglaje bloqueado, desde el volante (pantalla multifunción) se cambian el reparto de frenada y el diferencial al acelerar; en una parada, el ángulo del alerón delantero (y las gomas). Barras, alerón trasero, suspensión y alturas quedan para la próxima sesión: no los sugieras en carrera."
+  },
+  "nota": "Compará el acordado con el leído del juego: si no coincide, avisá primero. En clasificación y carrera el reglaje de garaje está bloqueado, pero desde el volante se cambian el reparto de frenada y el diferencial al acelerar, y en una parada el alerón delantero."
+ },
+ "incidentes": {
+  "mis_toques": [
+   {
+    "vuelta": 3,
+    "con": "NORRIS",
+    "hace_s": 55
+   },
+   {
+    "vuelta": 3,
+    "con": "VERSTAPPEN",
+    "hace_s": 23
+   }
+  ],
+  "mis_sanciones": [
+   {
+    "vuelta": 3,
+    "que": "advertencia por toque con NORRIS",
+    "tipo": "advertencia"
+   }
+  ],
+  "sanciones_pendientes": {
+   "stop_and_go": 0,
+   "drive_through": 0,
+   "se_cumple_en_esta_parada": false,
+   "segundos_de_penalizacion": 0
+  },
+  "adelantamientos": [
+   {
+    "vuelta": 3,
+    "te_paso": "NORRIS"
+   },
+   {
+    "vuelta": 3,
+    "pasaste_a": "VERSTAPPEN"
+   },
+   {
+    "vuelta": 3,
+    "te_paso": "NORRIS"
+   },
+   {
+    "vuelta": 4,
+    "te_paso": "VERSTAPPEN"
+   }
+  ],
+  "abandonos": [],
+  "paradas_rivales_cerca": [],
+  "toques_entre_otros": [
+   {
+    "vuelta": 2,
+    "entre": [
+     "BORTOLETO",
+     "PÉREZ"
+    ]
+   },
+   {
+    "vuelta": 3,
+    "entre": [
+     "OCON",
+     "COLAPINTO"
+    ]
+   }
+  ],
+  "nota": "mis_toques: contactos del juego con el auto del piloto (con quién y hace cuántos segundos). Un stop and go o drive through pendiente se cumple en la próxima parada (o entrando a boxes); los segundos de penalización se suman al tiempo final o se cumplen en la parada.",
+  "safety_car": "None"
+ },
+ "sectores": {
+  "1": {
+   "sector": 1,
+   "ultima_vuelta_s": 31.183,
+   "mejor_propio_s": 31.183,
+   "diferencia_s": 0.0,
+   "curvas_que_mas_pierden": [
+    {
+     "curva": 1,
+     "sector": 1,
+     "apex_m": 650,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 289,
+      "minima": 65,
+      "salida": 191
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 289,
+      "minima": 65,
+      "salida": 191
+     },
+     "problemas": [
+      "subviraje"
+     ],
+     "balance_deg": 1.58,
+     "balance_mejor_paso_deg": 1.58,
+     "perdida_media_s": 0.29,
+     "problemas_en_vueltas": {
+      "bloqueo_delantero": 1,
+      "bloqueo_trasero": 1,
+      "subviraje": 1
+     }
+    },
+    {
+     "curva": 2,
+     "sector": 1,
+     "apex_m": 1530,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 244,
+      "minima": 139,
+      "salida": 144
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 244,
+      "minima": 139,
+      "salida": 144
+     },
+     "problemas": [
+      "subviraje"
+     ],
+     "balance_deg": 2.1,
+     "balance_mejor_paso_deg": 2.1,
+     "perdida_media_s": 0.24,
+     "problemas_en_vueltas": {
+      "subviraje": 2
+     }
+    }
+   ],
+   "vuelta_en_curso": 4,
+   "nota": "El sector de la vuelta en curso todavía no cuenta hasta cruzarlo."
+  },
+  "2": {
+   "sector": 2,
+   "ultima_vuelta_s": 46.235,
+   "mejor_propio_s": 45.06,
+   "diferencia_s": 1.175,
+   "curvas_que_mas_pierden": [
+    {
+     "curva": 5,
+     "sector": 2,
+     "apex_m": 3810,
+     "perdida_s": 0.47,
+     "donde_pierde": "frenada y entrada",
+     "velocidad_kmh": {
+      "entrada": 289,
+      "minima": 63,
+      "salida": 115
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 308,
+      "minima": 69,
+      "salida": 114
+     },
+     "problemas": [
+      "bloqueo_delantero",
+      "subviraje"
+     ],
+     "balance_deg": 1.48,
+     "balance_mejor_paso_deg": 1.89,
+     "perdida_media_s": 0.23,
+     "problemas_en_vueltas": {
+      "subviraje": 2,
+      "bloqueo_delantero": 2
+     }
+    }
+   ],
+   "vuelta_en_curso": 4,
+   "nota": "El sector de la vuelta en curso todavía no cuenta hasta cruzarlo."
+  },
+  "3": {
+   "sector": 3,
+   "ultima_vuelta_s": 41.116,
+   "mejor_propio_s": 39.297,
+   "diferencia_s": 1.819,
+   "curvas_que_mas_pierden": [
+    {
+     "curva": 7,
+     "sector": 3,
+     "apex_m": 5070,
+     "perdida_s": 0.74,
+     "donde_pierde": "salida",
+     "velocidad_kmh": {
+      "entrada": 231,
+      "minima": 117,
+      "salida": 187
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 238,
+      "minima": 140,
+      "salida": 217
+     },
+     "problemas": [
+      "subviraje",
+      "bloqueo_delantero"
+     ],
+     "balance_deg": 2.79,
+     "balance_mejor_paso_deg": 2.11,
+     "perdida_media_s": 0.37,
+     "problemas_en_vueltas": {
+      "subviraje": 1,
+      "bloqueo_delantero": 1
+     }
+    }
+   ],
+   "vuelta_en_curso": 4,
+   "nota": "El sector de la vuelta en curso todavía no cuenta hasta cruzarlo."
+  }
+ },
+ "curvas": {
+  "1": {
+   "curva": 1,
+   "sector": 1,
+   "entrada_m": 380,
+   "apex_m": 650,
+   "salida_m": 950,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 1,
+     "sector": 1,
+     "apex_m": 650,
+     "perdida_s": 0.58,
+     "donde_pierde": "frenada y entrada",
+     "velocidad_kmh": {
+      "entrada": 279,
+      "minima": 71,
+      "salida": 196
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 289,
+      "minima": 65,
+      "salida": 191
+     },
+     "problemas": [
+      "bloqueo_delantero",
+      "bloqueo_trasero"
+     ],
+     "balance_deg": 1.54,
+     "balance_mejor_paso_deg": 1.58
+    },
+    {
+     "vuelta": 3,
+     "curva": 1,
+     "sector": 1,
+     "apex_m": 650,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 289,
+      "minima": 65,
+      "salida": 191
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 289,
+      "minima": 65,
+      "salida": 191
+     },
+     "problemas": [
+      "subviraje"
+     ],
+     "balance_deg": 1.58,
+     "balance_mejor_paso_deg": 1.58
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  },
+  "2": {
+   "curva": 2,
+   "sector": 1,
+   "entrada_m": 1130,
+   "apex_m": 1530,
+   "salida_m": 1830,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 2,
+     "sector": 1,
+     "apex_m": 1530,
+     "perdida_s": 0.48,
+     "donde_pierde": "frenada y entrada",
+     "velocidad_kmh": {
+      "entrada": 225,
+      "minima": 137,
+      "salida": 151
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 244,
+      "minima": 139,
+      "salida": 144
+     },
+     "problemas": [
+      "subviraje"
+     ],
+     "balance_deg": 2.3,
+     "balance_mejor_paso_deg": 2.1
+    },
+    {
+     "vuelta": 3,
+     "curva": 2,
+     "sector": 1,
+     "apex_m": 1530,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 244,
+      "minima": 139,
+      "salida": 144
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 244,
+      "minima": 139,
+      "salida": 144
+     },
+     "problemas": [
+      "subviraje"
+     ],
+     "balance_deg": 2.1,
+     "balance_mejor_paso_deg": 2.1
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  },
+  "3": {
+   "curva": 3,
+   "sector": 2,
+   "entrada_m": 1830,
+   "apex_m": 1900,
+   "salida_m": 2030,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 3,
+     "sector": 2,
+     "apex_m": 1900,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 151,
+      "minima": 101,
+      "salida": 141
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 151,
+      "minima": 101,
+      "salida": 141
+     },
+     "problemas": [
+      "sobreviraje",
+      "subviraje"
+     ],
+     "balance_deg": 0.86,
+     "balance_mejor_paso_deg": 0.86
+    },
+    {
+     "vuelta": 3,
+     "curva": 3,
+     "sector": 2,
+     "apex_m": 1900,
+     "perdida_s": 0.0,
+     "donde_pierde": "frenada y entrada",
+     "velocidad_kmh": {
+      "entrada": 144,
+      "minima": 98,
+      "salida": 140
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 151,
+      "minima": 101,
+      "salida": 141
+     },
+     "problemas": [
+      "sobreviraje"
+     ],
+     "balance_deg": 0.61,
+     "balance_mejor_paso_deg": 0.86
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  },
+  "4": {
+   "curva": 4,
+   "sector": 2,
+   "entrada_m": 2430,
+   "apex_m": 2610,
+   "salida_m": 2820,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 4,
+     "sector": 2,
+     "apex_m": 2610,
+     "perdida_s": 0.1,
+     "donde_pierde": "salida",
+     "velocidad_kmh": {
+      "entrada": 279,
+      "minima": 64,
+      "salida": 226
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 279,
+      "minima": 62,
+      "salida": 208
+     },
+     "problemas": [
+      "patinaje_traccion"
+     ],
+     "balance_deg": 1.25,
+     "balance_mejor_paso_deg": 1.65
+    },
+    {
+     "vuelta": 3,
+     "curva": 4,
+     "sector": 2,
+     "apex_m": 2610,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 279,
+      "minima": 62,
+      "salida": 208
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 279,
+      "minima": 62,
+      "salida": 208
+     },
+     "problemas": [
+      "fuera_de_pista",
+      "subviraje",
+      "patinaje_traccion"
+     ],
+     "balance_deg": 1.65,
+     "balance_mejor_paso_deg": 1.65
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  },
+  "5": {
+   "curva": 5,
+   "sector": 2,
+   "entrada_m": 3530,
+   "apex_m": 3810,
+   "salida_m": 4110,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 5,
+     "sector": 2,
+     "apex_m": 3810,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 308,
+      "minima": 69,
+      "salida": 114
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 308,
+      "minima": 69,
+      "salida": 114
+     },
+     "problemas": [
+      "subviraje",
+      "bloqueo_delantero"
+     ],
+     "balance_deg": 1.89,
+     "balance_mejor_paso_deg": 1.89
+    },
+    {
+     "vuelta": 3,
+     "curva": 5,
+     "sector": 2,
+     "apex_m": 3810,
+     "perdida_s": 0.47,
+     "donde_pierde": "frenada y entrada",
+     "velocidad_kmh": {
+      "entrada": 289,
+      "minima": 63,
+      "salida": 115
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 308,
+      "minima": 69,
+      "salida": 114
+     },
+     "problemas": [
+      "bloqueo_delantero",
+      "subviraje"
+     ],
+     "balance_deg": 1.48,
+     "balance_mejor_paso_deg": 1.89
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  },
+  "6": {
+   "curva": 6,
+   "sector": 3,
+   "entrada_m": 4190,
+   "apex_m": 4300,
+   "salida_m": 4400,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 6,
+     "sector": 3,
+     "apex_m": 4300,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 168,
+      "minima": 72,
+      "salida": 147
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 168,
+      "minima": 72,
+      "salida": 147
+     },
+     "problemas": [
+      "subviraje"
+     ],
+     "balance_deg": 1.43,
+     "balance_mejor_paso_deg": 1.43
+    },
+    {
+     "vuelta": 3,
+     "curva": 6,
+     "sector": 3,
+     "apex_m": 4300,
+     "perdida_s": 0.04,
+     "donde_pierde": "salida",
+     "velocidad_kmh": {
+      "entrada": 161,
+      "minima": 71,
+      "salida": 145
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 168,
+      "minima": 72,
+      "salida": 147
+     },
+     "problemas": [
+      "subviraje"
+     ],
+     "balance_deg": 2.21,
+     "balance_mejor_paso_deg": 1.43
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  },
+  "7": {
+   "curva": 7,
+   "sector": 3,
+   "entrada_m": 4920,
+   "apex_m": 5070,
+   "salida_m": 5220,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 7,
+     "sector": 3,
+     "apex_m": 5070,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 238,
+      "minima": 140,
+      "salida": 217
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 238,
+      "minima": 140,
+      "salida": 217
+     },
+     "problemas": [],
+     "balance_deg": 2.11,
+     "balance_mejor_paso_deg": 2.11
+    },
+    {
+     "vuelta": 3,
+     "curva": 7,
+     "sector": 3,
+     "apex_m": 5070,
+     "perdida_s": 0.74,
+     "donde_pierde": "salida",
+     "velocidad_kmh": {
+      "entrada": 231,
+      "minima": 117,
+      "salida": 187
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 238,
+      "minima": 140,
+      "salida": 217
+     },
+     "problemas": [
+      "subviraje",
+      "bloqueo_delantero"
+     ],
+     "balance_deg": 2.79,
+     "balance_mejor_paso_deg": 2.11
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  },
+  "8": {
+   "curva": 8,
+   "sector": 3,
+   "entrada_m": 5230,
+   "apex_m": 5370,
+   "salida_m": 5510,
+   "vueltas": [
+    {
+     "vuelta": 2,
+     "curva": 8,
+     "sector": 3,
+     "apex_m": 5370,
+     "perdida_s": 0.0,
+     "donde_pierde": null,
+     "velocidad_kmh": {
+      "entrada": 222,
+      "minima": 84,
+      "salida": 188
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 222,
+      "minima": 84,
+      "salida": 188
+     },
+     "problemas": [
+      "patinaje_traccion",
+      "bloqueo_delantero"
+     ],
+     "balance_deg": 1.22,
+     "balance_mejor_paso_deg": 1.22
+    },
+    {
+     "vuelta": 3,
+     "curva": 8,
+     "sector": 3,
+     "apex_m": 5370,
+     "perdida_s": 0.38,
+     "donde_pierde": "frenada y entrada",
+     "velocidad_kmh": {
+      "entrada": 193,
+      "minima": 81,
+      "salida": 178
+     },
+     "velocidad_mejor_paso_kmh": {
+      "entrada": 222,
+      "minima": 84,
+      "salida": 188
+     },
+     "problemas": [
+      "bloqueo_delantero"
+     ],
+     "balance_deg": 1.47,
+     "balance_mejor_paso_deg": 1.22
+    }
+   ],
+   "confianza": "media",
+   "nota": "perdida_s contra el mejor paso propio por esa curva en la sesión. balance_deg positivo = subviraje, negativo = sobreviraje. Sin vueltas = la curva no tuvo datos suficientes (poca recepción)."
+  }
+ },
+ "vueltas": {
+  "1-2": {
+   "vuelta_a": 1,
+   "vuelta_b": 2,
+   "diferencia_s": -2.971,
+   "curvas_con_mas_diferencia": [
+    {
+     "curva": 1,
+     "sector": 1,
+     "entrada_m": 380,
+     "apex_m": 650,
+     "salida_m": 950,
+     "a": {
+      "frena_en_m": 525,
+      "velocidad_minima_kmh": 67,
+      "acelera_a_fondo_en_m": 825,
+      "tiempo_s": 14.236,
+      "muestras": 115
+     },
+     "b": {
+      "frena_en_m": 495,
+      "velocidad_minima_kmh": 71,
+      "acelera_a_fondo_en_m": 765,
+      "tiempo_s": 13.575,
+      "muestras": 115
+     },
+     "diferencia_s": -0.661,
+     "b_frena_mas_tarde_m": -30,
+     "b_velocidad_minima_kmh": 4,
+     "b_acelera_mas_tarde_m": -60
+    },
+    {
+     "curva": 5,
+     "sector": 2,
+     "entrada_m": 3530,
+     "apex_m": 3810,
+     "salida_m": 4110,
+     "a": {
+      "frena_en_m": 3640,
+      "velocidad_minima_kmh": 67,
+      "acelera_a_fondo_en_m": null,
+      "tiempo_s": 15.923,
+      "muestras": 117
+     },
+     "b": {
+      "frena_en_m": 3615,
+      "velocidad_minima_kmh": 69,
+      "acelera_a_fondo_en_m": 3890,
+      "tiempo_s": 15.611,
+      "muestras": 116
+     },
+     "diferencia_s": -0.312,
+     "b_frena_mas_tarde_m": -25,
+     "b_velocidad_minima_kmh": 2,
+     "b_acelera_mas_tarde_m": null
+    },
+    {
+     "curva": 7,
+     "sector": 3,
+     "entrada_m": 4920,
+     "apex_m": 5070,
+     "salida_m": 5220,
+     "a": {
+      "frena_en_m": 4955,
+      "velocidad_minima_kmh": 134,
+      "acelera_a_fondo_en_m": 5135,
+      "tiempo_s": 6.279,
+      "muestras": 61
+     },
+     "b": {
+      "frena_en_m": 4945,
+      "velocidad_minima_kmh": 140,
+      "acelera_a_fondo_en_m": 5130,
+      "tiempo_s": 6.082,
+      "muestras": 61
+     },
+     "diferencia_s": -0.197,
+     "b_frena_mas_tarde_m": -10,
+     "b_velocidad_minima_kmh": 6,
+     "b_acelera_mas_tarde_m": -5
+    },
+    {
+     "curva": 8,
+     "sector": 3,
+     "entrada_m": 5230,
+     "apex_m": 5370,
+     "salida_m": 5510,
+     "a": {
+      "frena_en_m": 5255,
+      "velocidad_minima_kmh": 82,
+      "acelera_a_fondo_en_m": 5480,
+      "tiempo_s": 7.807,
+      "muestras": 57
+     },
+     "b": {
+      "frena_en_m": 5245,
+      "velocidad_minima_kmh": 84,
+      "acelera_a_fondo_en_m": 5450,
+      "tiempo_s": 7.643,
+      "muestras": 57
+     },
+     "diferencia_s": -0.164,
+     "b_frena_mas_tarde_m": -10,
+     "b_velocidad_minima_kmh": 2,
+     "b_acelera_mas_tarde_m": -30
+    },
+    {
+     "curva": 3,
+     "sector": 2,
+     "entrada_m": 1830,
+     "apex_m": 1900,
+     "salida_m": 2030,
+     "a": {
+      "frena_en_m": 1825,
+      "velocidad_minima_kmh": 100,
+      "acelera_a_fondo_en_m": 2105,
+      "tiempo_s": 5.705,
+      "muestras": 41
+     },
+     "b": {
+      "frena_en_m": 1825,
+      "velocidad_minima_kmh": 101,
+      "acelera_a_fondo_en_m": 2075,
+      "tiempo_s": 5.583,
+      "muestras": 41
+     },
+     "diferencia_s": -0.122,
+     "b_frena_mas_tarde_m": 0,
+     "b_velocidad_minima_kmh": 1,
+     "b_acelera_mas_tarde_m": -30
+    }
+   ],
+   "datos_insuficientes": null,
+   "nota": "diferencia_s positiva = la vuelta B pierde ese tiempo."
+  },
+  "1-3": {
+   "vuelta_a": 1,
+   "vuelta_b": 3,
+   "diferencia_s": -1.32,
+   "curvas_con_mas_diferencia": [
+    {
+     "curva": 1,
+     "sector": 1,
+     "entrada_m": 380,
+     "apex_m": 650,
+     "salida_m": 950,
+     "a": {
+      "frena_en_m": 525,
+      "velocidad_minima_kmh": 67,
+      "acelera_a_fondo_en_m": 825,
+      "tiempo_s": 14.236,
+      "muestras": 115
+     },
+     "b": {
+      "frena_en_m": 505,
+      "velocidad_minima_kmh": 65,
+      "acelera_a_fondo_en_m": 770,
+      "tiempo_s": 12.991,
+      "muestras": 115
+     },
+     "diferencia_s": -1.245,
+     "b_frena_mas_tarde_m": -20,
+     "b_velocidad_minima_kmh": -2,
+     "b_acelera_mas_tarde_m": -55
+    },
+    {
+     "curva": 7,
+     "sector": 3,
+     "entrada_m": 4920,
+     "apex_m": 5070,
+     "salida_m": 5220,
+     "a": {
+      "frena_en_m": 4955,
+      "velocidad_minima_kmh": 134,
+      "acelera_a_fondo_en_m": 5135,
+      "tiempo_s": 6.279,
+      "muestras": 61
+     },
+     "b": {
+      "frena_en_m": 4955,
+      "velocidad_minima_kmh": 117,
+      "acelera_a_fondo_en_m": 5190,
+      "tiempo_s": 6.819,
+      "muestras": 61
+     },
+     "diferencia_s": 0.54,
+     "b_frena_mas_tarde_m": 0,
+     "b_velocidad_minima_kmh": -17,
+     "b_acelera_mas_tarde_m": 55
+    },
+    {
+     "curva": 2,
+     "sector": 1,
+     "entrada_m": 1130,
+     "apex_m": 1530,
+     "salida_m": 1830,
+     "a": {
+      "frena_en_m": 1205,
+      "velocidad_minima_kmh": 140,
+      "acelera_a_fondo_en_m": null,
+      "tiempo_s": 14.302,
+      "muestras": 141
+     },
+     "b": {
+      "frena_en_m": 1215,
+      "velocidad_minima_kmh": 139,
+      "acelera_a_fondo_en_m": 1795,
+      "tiempo_s": 13.782,
+      "muestras": 141
+     },
+     "diferencia_s": -0.52,
+     "b_frena_mas_tarde_m": 10,
+     "b_velocidad_minima_kmh": -1,
+     "b_acelera_mas_tarde_m": null
+    },
+    {
+     "curva": 8,
+     "sector": 3,
+     "entrada_m": 5230,
+     "apex_m": 5370,
+     "salida_m": 5510,
+     "a": {
+      "frena_en_m": 5255,
+      "velocidad_minima_kmh": 82,
+      "acelera_a_fondo_en_m": 5480,
+      "tiempo_s": 7.807,
+      "muestras": 57
+     },
+     "b": {
+      "frena_en_m": 5260,
+      "velocidad_minima_kmh": 81,
+      "acelera_a_fondo_en_m": 5490,
+      "tiempo_s": 8.025,
+      "muestras": 57
+     },
+     "diferencia_s": 0.218,
+     "b_frena_mas_tarde_m": 5,
+     "b_velocidad_minima_kmh": -1,
+     "b_acelera_mas_tarde_m": 10
+    },
+    {
+     "curva": 5,
+     "sector": 2,
+     "entrada_m": 3530,
+     "apex_m": 3810,
+     "salida_m": 4110,
+     "a": {
+      "frena_en_m": 3640,
+      "velocidad_minima_kmh": 67,
+      "acelera_a_fondo_en_m": null,
+      "tiempo_s": 15.923,
+      "muestras": 117
+     },
+     "b": {
+      "frena_en_m": 3550,
+      "velocidad_minima_kmh": 63,
+      "acelera_a_fondo_en_m": 3880,
+      "tiempo_s": 16.079,
+      "muestras": 117
+     },
+     "diferencia_s": 0.156,
+     "b_frena_mas_tarde_m": -90,
+     "b_velocidad_minima_kmh": -4,
+     "b_acelera_mas_tarde_m": null
+    }
+   ],
+   "datos_insuficientes": null,
+   "nota": "diferencia_s positiva = la vuelta B pierde ese tiempo."
+  },
+  "1-4": {
+   "error": "No tengo la traza de la vuelta [4]. Vueltas: [1, 2, 3]."
+  },
+  "2-3": {
+   "vuelta_a": 2,
+   "vuelta_b": 3,
+   "diferencia_s": 1.651,
+   "curvas_con_mas_diferencia": [
+    {
+     "curva": 7,
+     "sector": 3,
+     "entrada_m": 4920,
+     "apex_m": 5070,
+     "salida_m": 5220,
+     "a": {
+      "frena_en_m": 4945,
+      "velocidad_minima_kmh": 140,
+      "acelera_a_fondo_en_m": 5130,
+      "tiempo_s": 6.082,
+      "muestras": 61
+     },
+     "b": {
+      "frena_en_m": 4955,
+      "velocidad_minima_kmh": 117,
+      "acelera_a_fondo_en_m": 5190,
+      "tiempo_s": 6.819,
+      "muestras": 61
+     },
+     "diferencia_s": 0.737,
+     "b_frena_mas_tarde_m": 10,
+     "b_velocidad_minima_kmh": -23,
+     "b_acelera_mas_tarde_m": 60
+    },
+    {
+     "curva": 1,
+     "sector": 1,
+     "entrada_m": 380,
+     "apex_m": 650,
+     "salida_m": 950,
+     "a": {
+      "frena_en_m": 495,
+      "velocidad_minima_kmh": 71,
+      "acelera_a_fondo_en_m": 765,
+      "tiempo_s": 13.575,
+      "muestras": 115
+     },
+     "b": {
+      "frena_en_m": 505,
+      "velocidad_minima_kmh": 65,
+      "acelera_a_fondo_en_m": 770,
+      "tiempo_s": 12.991,
+      "muestras": 115
+     },
+     "diferencia_s": -0.584,
+     "b_frena_mas_tarde_m": 10,
+     "b_velocidad_minima_kmh": -6,
+     "b_acelera_mas_tarde_m": 5
+    },
+    {
+     "curva": 2,
+     "sector": 1,
+     "entrada_m": 1130,
+     "apex_m": 1530,
+     "salida_m": 1830,
+     "a": {
+      "frena_en_m": 1120,
+      "velocidad_minima_kmh": 137,
+      "acelera_a_fondo_en_m": 1645,
+      "tiempo_s": 14.258,
+      "muestras": 141
+     },
+     "b": {
+      "frena_en_m": 1215,
+      "velocidad_minima_kmh": 139,
+      "acelera_a_fondo_en_m": 1795,
+      "tiempo_s": 13.782,
+      "muestras": 141
+     },
+     "diferencia_s": -0.476,
+     "b_frena_mas_tarde_m": 95,
+     "b_velocidad_minima_kmh": 2,
+     "b_acelera_mas_tarde_m": 150
+    },
+    {
+     "curva": 5,
+     "sector": 2,
+     "entrada_m": 3530,
+     "apex_m": 3810,
+     "salida_m": 4110,
+     "a": {
+      "frena_en_m": 3615,
+      "velocidad_minima_kmh": 69,
+      "acelera_a_fondo_en_m": 3890,
+      "tiempo_s": 15.611,
+      "muestras": 116
+     },
+     "b": {
+      "frena_en_m": 3550,
+      "velocidad_minima_kmh": 63,
+      "acelera_a_fondo_en_m": 3880,
+      "tiempo_s": 16.079,
+      "muestras": 117
+     },
+     "diferencia_s": 0.468,
+     "b_frena_mas_tarde_m": -65,
+     "b_velocidad_minima_kmh": -6,
+     "b_acelera_mas_tarde_m": -10
+    },
+    {
+     "curva": 8,
+     "sector": 3,
+     "entrada_m": 5230,
+     "apex_m": 5370,
+     "salida_m": 5510,
+     "a": {
+      "frena_en_m": 5245,
+      "velocidad_minima_kmh": 84,
+      "acelera_a_fondo_en_m": 5450,
+      "tiempo_s": 7.643,
+      "muestras": 57
+     },
+     "b": {
+      "frena_en_m": 5260,
+      "velocidad_minima_kmh": 81,
+      "acelera_a_fondo_en_m": 5490,
+      "tiempo_s": 8.025,
+      "muestras": 57
+     },
+     "diferencia_s": 0.382,
+     "b_frena_mas_tarde_m": 15,
+     "b_velocidad_minima_kmh": -3,
+     "b_acelera_mas_tarde_m": 40
+    }
+   ],
+   "datos_insuficientes": null,
+   "nota": "diferencia_s positiva = la vuelta B pierde ese tiempo."
+  },
+  "2-4": {
+   "error": "No tengo la traza de la vuelta [4]. Vueltas: [1, 2, 3]."
+  },
+  "3-4": {
+   "error": "No tengo la traza de la vuelta [4]. Vueltas: [1, 2, 3]."
+  }
+ }
+}

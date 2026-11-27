@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { PLAN_NAMES, planLine, proRaces, type Billing, type Product } from "@/lib/billing";
 import { shortDate, useApi } from "@/lib/sessions";
 import { LoadingScreen } from "@/components/brand/LogoLoader";
+import { AlertsDemo, DEMO_MOMENT, ProDemo } from "@/components/plans/EngineerDemo";
 
 export default function PlansPage() {
   return (
@@ -137,32 +138,13 @@ function Plans() {
         {!b.limites && <p className="text-[0.85rem] text-dim">Mientras dure la beta, todo está incluido para todos.</p>}
       </header>
 
-      {/* How each engineer sounds */}
+      {/* How each engineer sounds: the same real race, frozen; the Pro one answers live */}
       <section className="flex flex-col gap-4">
-        <h2 className="display text-[2rem] uppercase leading-none">Escuchá la diferencia</h2>
-        <p className="text-muted">Entra el safety car. Esto te dice cada uno:</p>
+        <h2 className="display text-[2rem] uppercase leading-none">Probá la diferencia</h2>
+        <p className="text-muted">{DEMO_MOMENT}</p>
         <div className="grid gap-4 md:grid-cols-2">
-          <Radio
-            name="Radio de avisos"
-            tag="Piloto rookie y Piloto profesional"
-            lines={[
-              { who: "ing", text: "Safety car. Box, box." },
-              { who: "ing", text: "Pinchazo atrás a la izquierda. Box esta vuelta." },
-              { who: "ing", text: "Llega lluvia en diez minutos." },
-            ]}
-            foot="Te avisa lo importante: safety car, pinchazos, daños, lluvia y sanciones."
-          />
-          <Radio
-            name="Ingeniero Pro"
-            tag="Con carreras Pro"
-            pro
-            lines={[
-              { who: "ing", text: "Safety car. Entrá ahora: salís sexto con duros nuevos y llegás al final sin volver a parar." },
-              { who: "vos", text: "¿Y el de atrás?" },
-              { who: "ing", text: "Se queda afuera. Lo tenés en la relanzada, cuidá la tracción en la 4." },
-            ]}
-            foot="Le hablás y te contesta. Arma la estrategia, la cambia sobre la marcha y se acuerda de todo el fin de semana."
-          />
+          <AlertsDemo />
+          <ProDemo />
         </div>
       </section>
 
@@ -290,31 +272,6 @@ function Item({ children, strong }: { children: React.ReactNode; strong?: boolea
       <span aria-hidden className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
       <span className={strong ? "font-semibold" : ""}>{children}</span>
     </li>
-  );
-}
-
-function Radio({ name, tag, lines, foot, pro }: {
-  name: string; tag: string; lines: { who: "ing" | "vos"; text: string }[]; foot: string; pro?: boolean;
-}) {
-  return (
-    <div className={`${pro ? "paper" : "card"} flex flex-col gap-3 p-5`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="title text-[1.3rem]">{name}</span>
-        <span className={`text-[0.75rem] ${pro ? "text-[#5b616b]" : "text-dim"}`}>{tag}</span>
-      </div>
-      <div className="flex flex-col gap-2">
-        {lines.map((l, i) => (
-          <div key={i} className={`max-w-[92%] rounded-2xl px-3.5 py-2 text-[0.95rem] ${
-            l.who === "vos" ? "self-end bg-accent text-white" : pro ? "bg-black/[0.06]" : "bg-panel-2"}`}>
-            <span className={`mr-1.5 text-[0.7rem] font-semibold uppercase tracking-wider ${l.who === "vos" ? "text-white/80" : "opacity-60"}`}>
-              {l.who === "vos" ? "Vos" : "Ingeniero"}
-            </span>
-            {l.text}
-          </div>
-        ))}
-      </div>
-      <p className={`mt-auto text-[0.88rem] ${pro ? "text-[#3d434c]" : "text-muted"}`}>{foot}</p>
-    </div>
   );
 }
 

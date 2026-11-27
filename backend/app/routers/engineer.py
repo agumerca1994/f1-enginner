@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.engineer import demo
 from app.engineer.runner import engineer_hub
 from app.engineer.voice import voice_cache
 from app.live.state import live_store
@@ -27,6 +28,16 @@ class ToggleIn(BaseModel):
 
 class AskIn(BaseModel):
     texto: str = Field(min_length=1, max_length=500)
+
+
+class DemoTurn(BaseModel):
+    pregunta: str = Field(max_length=300)
+    respuesta: str | None = Field(default=None, max_length=600)
+
+
+class DemoIn(BaseModel):
+    texto: str = Field(min_length=1, max_length=300)
+    historial: list[DemoTurn] = Field(default_factory=list, max_length=8)
 
 
 class SettingsIn(BaseModel):
@@ -54,6 +65,23 @@ async def ask_engineer(body: AskIn, user: User = Depends(get_current_user)):
     runner = engineer_hub.runner(user.tenant_id)
     message = await runner.ask(body.texto, live_store.get(user.tenant_id))
     return message
+
+
+@router.get("/demo")
+async def demo_state(user: User = Depends(get_current_user)):
+    """The engineer demo in Plans: the frozen race it talks about and the questions left today."""
+    s = demo.race()["estado_breve"]
+    return {"pista": s.get("pista"), "vuelta": s.get("vuelta"), "vueltas_restantes": s.get("vueltas_restantes"),
+            "posicion": s.get("posicion"), "restantes": demo.limits.left(user.id),
+            "por_dia": demo.PER_PLAYER_PER_DAY}
+
+
+@router.post("/demo")
+async def demo_ask(body: DemoIn, user: User = Depends(get_current_user)):
+    """Ask the Pro engineer about the demo race (a few a day; then scripted answers)."""
+    out = await demo.ask(user.id, user.radio_name, body.texto, [t.model_dump() for t in body.historial])
+    key = voice_cache.request(out["radio"])
+    return {**out, "pregunta": body.texto, "audio": f"/api/engineer/radio/{key}.mp3" if key else None}
 
 
 @router.get("/memory")
