@@ -36,8 +36,21 @@ def test_sector_note_only_on_pb_or_big_loss():
     live = _live()
     assert h._sector_note(1, 27_900, invalid=False, t=1.0, live=live)  # personal best
     assert not h._sector_note(1, 28_100, invalid=False, t=1.0, live=live)  # loss < 0.3s
-    assert h._sector_note(1, 28_000 + SECTOR_LOSS_MS, invalid=False, t=1.0, live=live)  # loss >= threshold
     assert not h._sector_note(1, 20_000, invalid=True, t=1.0, live=live)  # invalid: never
+    fresh = SessionHistory()
+    fresh.best_sectors = {1: 28_000}
+    assert fresh._sector_note(1, 28_000 + SECTOR_LOSS_MS, invalid=False, t=1.0, live=live)  # loss >= threshold
+
+
+def test_the_same_loss_every_lap_is_said_once():
+    """A damaged car loses the same against its best every lap: only a fresh drop is news."""
+    h = SessionHistory()
+    h.best_sectors = {1: 28_000}
+    live = _live()
+    assert h._sector_note(1, 29_100, invalid=False, t=1.0, live=live)
+    assert not h._sector_note(1, 29_150, invalid=False, t=2.0, live=live)
+    assert not h._sector_note(1, 29_050, invalid=False, t=3.0, live=live)
+    assert h._sector_note(1, 29_500, invalid=False, t=4.0, live=live)  # worse again: news
 
 
 def test_sectores_block_shape():

@@ -37,6 +37,16 @@ RAIN_ALERT_PERCENT = 40
 # A sector is worth a radio call only on a personal best or a loss of at least this.
 SECTOR_LOSS_MS = 300
 SECTOR_PB_MS = 100  # a new best sector has to beat the old one by this much to be worth a call
+# ...and only when it is also worse than the last few laps by this much: a damaged car loses the
+# same every lap against its best, which is not news after the first time.
+SECTOR_TREND_MS = 250
+SECTOR_RECENT = 3
+# The radio's summary at the end goes out only after a real end: the chequered flag, or a race at
+# least this far through. A restart closes the session after a lap or two and is not an end.
+END_RACE_SHARE = 0.5
+END_MIN_LAPS = 3
+# Moments one per lap: a flashback replays the lap and must not say them again.
+ONCE_PER_LAP = ("lap_completed", "tyre_overuse", "corner_coaching", "sector_completed")
 # Beyond this a sector or a corner was an incident (spin, pit lane, traffic), not something to coach.
 SECTOR_MAX_LOSS_MS = 3000
 CORNER_MAX_LOSS_S = 2.0
@@ -153,6 +163,9 @@ class SessionHistory:
         self._cur_s1: int | None = None  # this lap's S1/S2 as they are crossed
         self._cur_s2: int | None = None
         self.best_sectors: dict[int, int] = {}  # best S1/S2/S3 of the session, ms
+        self._recent_sectors: dict[int, list[int]] = {}  # the last S1/S2 times, for the trend
+        self._said: set[tuple] = set()  # (moment, lap, sector) already triggered, across flashbacks
+        self._ended = False
         self.last_lap_sectors: list[int | None] | None = None  # [S1, S2, S3] of the last completed lap
         # Previous values, to detect changes.
         self._sc_status = "None"
@@ -204,7 +217,8 @@ class SessionHistory:
             self._record_event(code, details, t, live)
             if code == "RTMT" and details.get("vehicle_idx") is not None:
                 self.retired.add(int(details["vehicle_idx"]))
-            if code in ("SEND", "CHQF"):
+            if code in ("SEND", "CHQF") and not self._ended and self._real_end(code, live):
+                self._ended = True
                 new.append(Trigger("session_end", t, self._player_lap(live), {"code": code}))
         elif packet.name == "session":
             self._race = is_race(packet)
@@ -257,8 +271,30 @@ class SessionHistory:
         note = self.corners.observe(packet, live)
         if note and (note.get("perdida_s") or 0) <= CORNER_MAX_LOSS_S:
             new.append(Trigger("corner_coaching", t, self._player_lap(live), note))
+        new = [x for x in new if self._first_time(x)]
         self.triggers += new
         return new
+
+    def _first_time(self, t: Trigger) -> bool:
+        """A flashback replays a lap: what was already said about it is not said again."""
+        if t.kind not in ONCE_PER_LAP:
+            return True
+        key = (t.kind, t.lap, t.detail.get("sector") if t.kind == "sector_completed" else None)
+        if key in self._said:
+            return False
+        self._said.add(key)
+        return True
+
+    def _real_end(self, code: str, live: LiveSession) -> bool:
+        """The chequered flag, or enough of the session done; not a restart after a lap or two."""
+        if code == "CHQF":
+            return True
+        done = len({pl.lap for pl in self.player_laps})
+        session = live.last.get("session")
+        total = int(session.body["total_laps"]) if session is not None and self._race else 0
+        if total:
+            return done >= max(END_MIN_LAPS, total * END_RACE_SHARE)
+        return done >= END_MIN_LAPS
 
     def _rewind(self, to: float) -> None:
         """The game went back in time (a flashback): forget what happened after that moment."""
@@ -520,7 +556,12 @@ class SessionHistory:
             return []  # an invalid, pit or safety-car sector is not a fair comparison; with no reference there is none
         is_pb = val <= best - SECTOR_PB_MS
         loss = val - best
-        if not (is_pb or SECTOR_LOSS_MS <= loss <= SECTOR_MAX_LOSS_MS):
+        recent = self._recent_sectors.setdefault(idx, [])
+        usual = sorted(recent)[len(recent) // 2] if recent else None
+        recent.append(val)
+        del recent[:-SECTOR_RECENT]
+        news = usual is None or val - usual >= SECTOR_TREND_MS
+        if not (is_pb or (SECTOR_LOSS_MS <= loss <= SECTOR_MAX_LOSS_MS and news)):
             return []
         return [Trigger("sector_completed", t, self._player_lap(live), {
             "sector": idx, "tiempo_s": round(val / 1000, 3),

@@ -150,7 +150,7 @@ def test_a_real_race_produces_corner_coaching():
     assert len(engineer.history.corners.corners) >= 6
     assert notes, "no corner coaching over a whole race"
     radio = asyncio.run(RulesProvider().advise(notes[-1])).response["radio"]
-    assert radio and "la " in radio
+    assert radio and "la " in radio.lower()
     facts = json.loads(notes[-1].facts_json)
     assert facts["curvas"]["peores"] and np.isfinite(facts["curvas"]["curvas_detectadas"])
 

@@ -18,6 +18,7 @@ import anthropic
 
 from app.core.config import settings
 from app.engineer.analysis import REACH_STATES
+from app.engineer.variety import Variety
 from app.engineer.engine import EngineerRequest
 from app.engineer.history import WHEEL_OF_PUNCTURE
 from app.telemetry import constants as c
@@ -335,6 +336,10 @@ def rules_response(request: EngineerRequest) -> dict:
                 + ". Lo cumplimos en la próxima parada."
         elif pl.get("penalizacion_s"):
             radio = f"Tenemos {pl['penalizacion_s']} segundos de penalización."
+        elif "toque" in (d.get("sancion") or "") or "choque" in (d.get("sancion") or ""):
+            other = d["sancion"].split(" con ", 1)[1].title() if " con " in d["sancion"] else None
+            radio = (f"Advertencia por el toque{' con ' + other if other else ''}: llevás "
+                     f"{_count(pl.get('advertencias'), 'advertencia', 'advertencias')}. Dejá espacio.")
         else:
             radio = f"Ojo con los límites de pista: llevás {_count(pl.get('advertencias'), 'advertencia', 'advertencias')}."
         priority = "importante"
@@ -351,15 +356,22 @@ def rules_response(request: EngineerRequest) -> dict:
     elif "blue_flag" in kinds:
         radio, priority = "Bandera azul: viene el líder a doblarte, dejalo pasar en la próxima recta.", "importante"
     elif "tyre_overuse" in kinds:  # rarer than a corner tip: it goes first when both come together
-        radio, priority = _overuse_call(next(t.detail for t in request.triggers if t.kind == "tyre_overuse")), "importante"
+        radio, priority = _overuse_call(next(t.detail for t in request.triggers if t.kind == "tyre_overuse"),
+                                        _recent(request)), "importante"
     elif "corner_coaching" in kinds:
-        radio, priority = _corner_call(next(t.detail for t in request.triggers if t.kind == "corner_coaching")), "importante"
+        radio, priority = _corner_call(next(t.detail for t in request.triggers if t.kind == "corner_coaching"),
+                                       _recent(request)), "importante"
     elif "sector_completed" in kinds:
         d = next((t.detail for t in request.triggers if t.kind == "sector_completed"), {})
+        n, lost = d.get("sector"), _tenths(abs(d.get("delta_s") or 0))
         if d.get("mejor_personal"):
-            radio = f"Mejor sector {d.get('sector')} de la tanda. Ahí estás."
+            radio = _VARIETY.pick([f"Mejor sector {n} de la tanda. Ahí estás.",
+                                   f"Sector {n}, el mejor tuyo hasta ahora. Así.",
+                                   f"Récord personal en el sector {n}, {lost} mejor."], _recent(request))
         else:
-            radio = f"Perdiste {_tenths(d.get('delta_s') or 0)} en el sector {d.get('sector')}, ahí tenés para buscar."
+            radio = _VARIETY.pick([f"Perdiste {lost} en el sector {n}, ahí tenés para buscar.",
+                                   f"Sector {n}: {lost} más lento que tu mejor.",
+                                   f"Se fueron {lost} en el sector {n}. Revisá las frenadas ahí."], _recent(request))
     elif "pitted" in kinds:
         radio = "Buena parada. Dos vueltas para darle temperatura a las gomas nuevas."
     elif "session_end" in kinds:
@@ -380,7 +392,7 @@ def rules_response(request: EngineerRequest) -> dict:
             radio, priority = "Todavía debemos la parada obligatoria: box esta vuelta.", "urgente"
         elif owes_stop and window and se.get("vuelta_actual") == window[0]:
             radio = f"Se abrió la ventana de boxes. Si paramos ahora salimos P{rejoin.get('posicion_estimada_al_salir')}."
-        elif (reach := _catch_call(f)) is not None:
+        elif (reach := _catch_call(f, _recent(request))) is not None:
             radio, priority = reach
 
     if radio and priority != "urgente" and _said_recently(request, radio):
@@ -428,6 +440,17 @@ def _topic(kinds: set[str], radio: str | None) -> str | None:
     return "vuelta"
 
 
+_VARIETY = Variety()
+
+
+def _recent(request: EngineerRequest) -> list[str]:
+    """The last radio lines, so a template does not open like them."""
+    try:
+        return [r.get("radio") or "" for r in json.loads(request.radio_json)]
+    except (ValueError, AttributeError):
+        return []
+
+
 def _said_recently(request: EngineerRequest, radio: str) -> bool:
     """Whether the last two radio calls already started the same way."""
     try:
@@ -466,7 +489,7 @@ def _secs(value: float) -> str:
 CATCH_CALL_LAPS = 3  # say it when the gap closes within this many laps
 
 
-def _catch_call(f: dict) -> tuple[str, str] | None:
+def _catch_call(f: dict, recent: list[str] | None = None) -> tuple[str, str] | None:
     """A routine-lap call when the car behind will catch the player soon, or the player the one ahead."""
     reach = (f.get("rivales") or {}).get("alcance") or {}
     behind, ahead = reach.get("atras"), reach.get("adelante")
@@ -478,9 +501,17 @@ def _catch_call(f: dict) -> tuple[str, str] | None:
             continue
         closing, name = side.get("descuento_s_por_vuelta") or 0, (side.get("piloto") or "").title()
         n = max(1, math.ceil(laps))
+        gain = f"{closing:.1f}".replace(".", ",")
+        laps_text = "una vuelta" if n == 1 else f"{n} vueltas"
         if chasing:
-            return f"Le descontás {closing:.1f} por vuelta a {name}: en {n} vueltas lo tenés.", "info"
-        return f"{name} te descuenta {closing:.1f} por vuelta: te alcanza en {n} vueltas. Cuidá las salidas.", "importante"
+            return _VARIETY.pick([f"Le descontás {gain} por vuelta a {name}: en {laps_text} lo tenés.",
+                                  f"{name} está a tiro: le sacás {gain} por vuelta, lo alcanzás en {laps_text}.",
+                                  f"Vas más rápido que {name}, {gain} por vuelta. Preparate para atacarlo."],
+                                 recent or []), "info"
+        return _VARIETY.pick([f"{name} te descuenta {gain} por vuelta: te alcanza en {laps_text}. Cuidá las salidas.",
+                              f"Atrás viene {name}, {gain} más rápido por vuelta. En {laps_text} lo tenés encima.",
+                              f"Ojo con {name}: se acerca {gain} por vuelta. Salidas limpias para defender."],
+                             recent or []), "importante"
     return None
 
 
@@ -491,6 +522,28 @@ CORNER_TIPS = {
     "sobreviraje": "se te va la cola: soltá el freno más gradual mientras doblás",
     "subviraje": "el auto no gira: entrá un poco más lento y acelerá antes",
     "fuera_de_pista": "te vas de pista: ojo con los límites, que cuesta tiempo y advertencias",
+}
+# The same tips said other ways, so a corner call does not always sound the same.
+CORNER_TIP_VARIANTS = {
+    "bloqueo_delantero": ["bloqueás adelante. Frená más progresivo o mové el balance de frenos un punto atrás",
+                          "se te bloquean las delanteras en la frenada. Un punto de balance hacia atrás",
+                          "frenás muy fuerte de entrada y bloqueás. Soltá un poco antes y dejá rodar"],
+    "bloqueo_trasero": ["bloqueás atrás. Balance de frenos un punto adelante",
+                        "se te bloquea la trasera al frenar. Soltá el freno antes de doblar",
+                        "la cola se bloquea en la frenada. Mové el balance un punto hacia adelante"],
+    "patinaje_traccion": ["patinás atrás en la salida. Acelerador más suave hasta enderezar",
+                          "pierde tracción al salir. Esperá a enderezar para pisar a fondo",
+                          "la trasera patina en la aceleración. Más progresivo con el pie derecho"],
+    "sobreviraje": ["se te va la cola. Soltá el freno más gradual mientras doblás",
+                    "sobrevira en la entrada. Bajá los cambios con más calma",
+                    "la trasera se suelta al doblar. Entrada más suave"],
+    "subviraje": ["el auto no gira. Entrá un poco más lento y acelerá antes",
+                  "se va de trompa. Frená un poco antes para que gire",
+                  "subvira. Menos velocidad de entrada y vas a salir mejor",
+                  "la delantera no muerde. Girá con menos volante y esperá el vértice"],
+    "fuera_de_pista": ["te vas de pista. Ojo con los límites, cuestan tiempo y advertencias",
+                       "pisás afuera. Dejá margen, que viene la advertencia",
+                       "cuatro ruedas afuera otra vez. Cerrá un poco la salida"],
 }
 
 
@@ -512,14 +565,19 @@ def _tenths(seconds: float) -> str:
     return f"{seconds:.1f} segundos".replace(".", ",")
 
 
-def _corner_call(d: dict) -> str:
+def _corner_call(d: dict, recent: list[str] | None = None) -> str:
     """'Perdés cuatro décimas en la salida de la 3: patinás atrás...' from a corner note."""
     n = d["curva"]
     issue = next(iter(d.get("problemas_repetidos") or d.get("problemas") or []), None)
     loss = d.get("perdida_s")
     if issue:  # the tip already names the phase
-        head = f"Perdés {_tenths(loss)} en la {n}" if loss and loss > 0 else f"En la {n}"
-        return f"{head}: {CORNER_TIPS[issue]}."
+        if loss and loss > 0:
+            heads = [f"Perdés {_tenths(loss)} en la {n}", f"La {n} te cuesta {_tenths(loss)}",
+                     f"Otra vez la {n}, {_tenths(loss)}"]
+        else:
+            heads = [f"En la {n}", f"Ojo la {n}", f"Curva {n}"]
+        tip = _VARIETY.pick(CORNER_TIP_VARIANTS[issue], [])
+        return f"{_VARIETY.pick(heads, recent or [])}: {tip}."
     head = f"Perdés {_tenths(loss)} en la {d['donde_pierde'] or 'curva'} de la {n}" if loss and loss > 0 else f"En la {n}"
     now, best = d.get("velocidad_kmh") or {}, d.get("velocidad_mejor_paso_kmh") or {}
     if d.get("donde_pierde") == "salida" and now.get("salida") and best.get("salida"):
@@ -529,10 +587,12 @@ def _corner_call(d: dict) -> str:
     return f"{head}: mirá esa curva, ahí está la diferencia con tu mejor vuelta."
 
 
-def _overuse_call(d: dict) -> str:
+def _overuse_call(d: dict, recent: list[str] | None = None) -> str:
     rueda = d["rueda"]
-    text = (f"La goma {rueda} se gasta más que las otras: {d['pct_por_vuelta']:.1f} por ciento por vuelta "
-            f"contra {d['resto_pct_por_vuelta']:.1f}.").replace(".", ",", 2)
+    rate, rest = (f"{d['pct_por_vuelta']:.1f}".replace(".", ","), f"{d['resto_pct_por_vuelta']:.1f}".replace(".", ","))
+    text = _VARIETY.pick([f"La goma {rueda} se gasta más que las otras: {rate} por ciento por vuelta contra {rest}.",
+                          f"La {rueda} es la que sufre, {rate} por ciento por vuelta y las otras {rest}.",
+                          f"Cuidá la {rueda}: se gasta {rate} por ciento por vuelta, más que el resto."], recent or [])
     corners = d.get("curvas") or []
     if corners:
         where = " y la ".join(str(k["curva"]) for k in corners)

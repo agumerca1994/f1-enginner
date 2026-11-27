@@ -26,7 +26,9 @@ A question from the driver is always answered, at once.
 """
 
 import asyncio
+import dataclasses
 import itertools
+import json
 import logging
 import time
 from collections import deque
@@ -39,6 +41,7 @@ from app.engineer.history import Trigger
 from app.engineer.memory import WeekendMemory
 from app.engineer.setup_sheet import setup_values
 from app.engineer.traces import TraceCollector
+from app.engineer.variety import Variety
 from app.engineer.providers import Advice, RulesProvider, get_provider, rules_response
 from app.engineer.voice import voice_cache
 from app.live.state import LiveSession
@@ -96,6 +99,7 @@ class EngineerRunner:
         self.memory: WeekendMemory = WeekendMemory()
         self.radio_name: str | None = None
         self.conversation: list[dict] = []  # the driver's questions and the answers, this session
+        self.variety = Variety()  # rotates what the routine radio talks about
         self.engineer.memory = self.memory
         # The plan: a live session uses one race per 45-minute block, Pro (AI) or alert radio
         # (rules), see billing/plans.py.
@@ -197,6 +201,7 @@ class EngineerRunner:
         self._unasked.clear()
         self._last_setup = None
         self.conversation = []
+        self.variety = Variety()
         self.engineer.memory = self.memory
         self.engineer.radio_name = self.radio_name
 
@@ -323,6 +328,7 @@ class EngineerRunner:
             reason = self._hold_back(message)
             if reason:
                 message["silenciado"] = reason
+                message["radio_silenciada"] = message["radio"]
                 message["radio"] = None  # the pit wall keeps the analysis; the driver hears nothing
         if message.get("radio"):
             key = voice_cache.request(message["radio"])
@@ -340,7 +346,7 @@ class EngineerRunner:
         decision = any(k in DECISION_TRIGGERS for k in message.get("triggers", []))
         if self.memory.silenced and not decision:
             return "el piloto pidió silencio"
-        if self.memory.said_recently(message.get("tema"), message.get("lap")):
+        if not decision and self.memory.said_recently(message.get("tema"), message.get("lap")):
             return "ya se dijo hace poco"
         if not decision and self._unasked.get(self._lap, 0) >= MAX_UNASKED_PER_LAP and not self._in_pits:
             return "ya hubo dos mensajes en esta vuelta"
@@ -371,8 +377,7 @@ class EngineerRunner:
         if not response.get("radio"):
             return
         advice = Advice(response, "aviso inmediato", 0)
-        self.engineer.remember(request, response)  # the AI sees it and confirms or corrects it
-        self._deliver(self._message(request, advice))
+        self._say(request, advice)  # the AI sees it and confirms or corrects it
 
     async def _ask_radio(self, request: EngineerRequest) -> None:
         try:
@@ -383,14 +388,16 @@ class EngineerRunner:
                 self.dispatch()
                 return
             if access == "ia":
+                brief = self.variety.brief([t.kind for t in request.triggers], json.loads(request.facts_json))
+                if brief:
+                    request = dataclasses.replace(request, brief=brief)
                 advice = await self.provider.radio(request)
             else:
                 advice = Advice(rules_response(request), "reglas", 0)
         except Exception as e:
             logger.warning("engineer radio call failed", extra={"tenant_id": self.tenant_id, "error": str(e)})
         else:
-            self.engineer.remember(request, advice.response)
-            self._deliver(self._message(request, advice))
+            self._say(request, advice)
             await self._store(request, advice)
         self._busy_radio = False
         self.dispatch()
@@ -420,11 +427,20 @@ class EngineerRunner:
         if plan and any(t.kind == "race_start" for t in request.triggers) or (
                 plan and plan.get("vuelta_box") is not None):
             self.memory.set_plan({**plan, "vuelta": request.lap})
-        self.engineer.remember(request, advice.response)
-        self._deliver(self._message(request, advice))
+        self._say(request, advice)
         await self._store(request, advice)
         self._busy = False
         self.dispatch()
+
+    def _say(self, request: EngineerRequest, advice: Advice) -> None:
+        """Deliver a call, then remember only what the driver will hear: a call the silence rules held
+        back is kept for the pit wall and stored as such, never as said."""
+        message = self._message(request, advice)
+        self._deliver(message)
+        if message.get("silenciado"):
+            advice.response = {**advice.response, "radio": None, "silenciado": message["silenciado"],
+                               "radio_silenciada": message.get("radio_silenciada")}
+        self.engineer.remember(request, advice.response)
 
     async def ask(self, question: str, live: LiveSession | None) -> dict:
         """The driver asks; the answer goes out on the radio at once, whatever the silence rules."""

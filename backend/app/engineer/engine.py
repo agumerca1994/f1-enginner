@@ -78,8 +78,28 @@ def moment_text(t: Trigger) -> str:
         text += (", y " + " y ".join(pending) + ": se cumple en la próxima parada, avisale." if pending else ".")
         return text
     if t.kind in STRUCTURED_TRIGGERS:
-        return TRIGGER_TEXT[t.kind].format(detalle=json.dumps(t.detail, ensure_ascii=False))
+        return TRIGGER_TEXT[t.kind].format(detalle=json.dumps(_spoken_detail(t.detail), ensure_ascii=False))
     return TRIGGER_TEXT[t.kind].format(lap=t.lap, **t.detail)
+
+
+BALANCE_MARGIN_DEG = 0.5
+
+
+def _spoken_detail(d: dict) -> dict:
+    """A corner note without the balance angles, which the radio read out as "tres grados contra dos":
+    the comparison goes in words instead."""
+    out = {k: v for k, v in d.items() if k not in ("balance_deg", "balance_mejor_paso_deg", "apex_m")}
+    now, best = d.get("balance_deg"), d.get("balance_mejor_paso_deg")
+    if now is not None and best is not None:
+        if now - best > BALANCE_MARGIN_DEG:
+            out["comparado_con_su_mejor_paso"] = "subvira más" if now > 0 else "sobrevira menos"
+        elif best - now > BALANCE_MARGIN_DEG:
+            out["comparado_con_su_mejor_paso"] = "sobrevira más" if now < 0 else "subvira menos"
+    for c_ in out.get("curvas") or []:  # tyre overuse carries corner notes inside
+        if isinstance(c_, dict):
+            c_.pop("balance_deg", None)
+            c_.pop("balance_mejor_paso_deg", None)
+    return out
 
 
 @cache
@@ -97,6 +117,7 @@ class EngineerRequest:
     facts_json: str
     system: str = field(default_factory=lambda: system_prompt())
     quiet: bool = False  # a pit-wall refresh that must not speak
+    brief: str = ""  # the angle and opening for a routine radio call (variety.py)
 
     @property
     def user(self) -> str:
@@ -107,6 +128,7 @@ class EngineerRequest:
             "## Tus mensajes de radio anteriores (del más viejo al más nuevo)",
             self.radio_json,
             "",
+            *([self.brief, ""] if self.brief else []),
             "## Datos de la sesión",
             self.facts_json,
         ])
