@@ -89,7 +89,7 @@ TIERS = {
     "pro": ("claude-sonnet-5-5", "claude-opus-5-5"),
     # Like pro, but Opus only where the call can change the race: the plan at the start, damage,
     # punctures, safety cars, rain, the stop itself and the debrief. Informative moments
-    # (penalties, blisters) go to Sonnet thinking harder: on the Losail replays Sonnet said the
+    # (penalties, blisters) go to Sonnet thinking harder: on the Lusail replays Sonnet said the
     # same there, but held a broken front wing for four laps where Opus boxed at once.
     "economico": ("claude-sonnet-5-5", "claude-opus-5-5"),
 }

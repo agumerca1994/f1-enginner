@@ -142,7 +142,7 @@ def test_session_tools_on_a_recorded_race(client):
     assert _tool(client, pat, "list_sessions", kind="clasificacion")["sesiones"] == []
 
     review = _tool(client, pat, "get_session_review", session_id=session_id)
-    assert review["sesion"]["pista"] == "Baku (Azerbaijan)"
+    assert review["sesion"]["pista"] == "Bakú"
     assert review["analisis_al_cierre"]["piloto"]["piloto"] == "GASLY"
     # Just ingested, so it is served from memory on the game clock (88 s) rather than the capture's wall clock (111 s).
     assert 80 < review["grabacion_s"] < 120

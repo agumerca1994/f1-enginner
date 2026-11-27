@@ -1,6 +1,7 @@
 """Names for the numeric codes of the F1 24 specification (appendices)."""
 
-TRACKS = {
+# Track names as the game spells them (English), kept to look tracks up by those names.
+TRACKS_GAME = {
     0: "Melbourne", 1: "Paul Ricard", 2: "Shanghai", 3: "Sakhir (Bahrain)", 4: "Catalunya",
     5: "Monaco", 6: "Montreal", 7: "Silverstone", 8: "Hockenheim", 9: "Hungaroring",
     10: "Spa", 11: "Monza", 12: "Singapore", 13: "Suzuka", 14: "Abu Dhabi", 15: "Texas",
@@ -11,6 +12,18 @@ TRACKS = {
     # Added by F1 25: reverse layouts, and Madrid with the 2026 season pack
     # (42 is inferred from a real capture: a 5,411 m track).
     39: "Silverstone (Reverse)", 40: "Austria (Reverse)", 41: "Zandvoort (Reverse)", 42: "Madrid",
+}
+
+# Track names as the app shows and the engineer says them, in Spanish.
+TRACKS = {
+    0: "Melbourne", 1: "Paul Ricard", 2: "Shanghái", 3: "Sakhir", 4: "Barcelona",
+    5: "Mónaco", 6: "Montreal", 7: "Silverstone", 8: "Hockenheim", 9: "Hungaroring",
+    10: "Spa", 11: "Monza", 12: "Singapur", 13: "Suzuka", 14: "Abu Dabi", 15: "Austin",
+    16: "Interlagos", 17: "Red Bull Ring", 18: "Sochi", 19: "Ciudad de México", 20: "Bakú",
+    21: "Sakhir corto", 22: "Silverstone corto", 23: "Austin corto", 24: "Suzuka corto",
+    25: "Hanói", 26: "Zandvoort", 27: "Imola", 28: "Portimão", 29: "Yeda", 30: "Miami",
+    31: "Las Vegas", 32: "Lusail",
+    39: "Silverstone invertido", 40: "Red Bull Ring invertido", 41: "Zandvoort invertido", 42: "Madrid",
 }
 
 SESSION_TYPES = {

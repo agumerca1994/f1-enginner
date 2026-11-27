@@ -113,7 +113,7 @@ def test_baku_race_through_the_uplink(client):
 
     headers = {"X-Dev-User": email}
     live = client.get("/api/live", headers=headers).json()
-    assert live["session"]["track"] == "Baku (Azerbaijan)"
+    assert live["session"]["track"] == "Bakú"
     assert live["session"]["type"] == "Race"
     assert live["driver"]["name"] == "GASLY" and live["driver"]["team"] == "Alpine"
     assert 1 <= live["lap"]["position"] <= 20
@@ -139,7 +139,7 @@ def test_baku_race_through_the_uplink(client):
     sessions = client.get("/api/sessions", headers=headers).json()
     assert len(sessions) == 1
     s = sessions[0]
-    assert (s["track"], s["session_type"], s["total_laps"], s["game_version"]) == ("Baku (Azerbaijan)", "Race", 18, "24 v1.21")
+    assert (s["track"], s["session_type"], s["total_laps"], s["game_version"]) == ("Bakú", "Race", 18, "24 v1.21")
     assert s["packets_received"] == 1715
 
     # The outline was saved for everyone: another player gets it from the database.

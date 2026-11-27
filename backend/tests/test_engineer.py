@@ -25,7 +25,7 @@ def test_engineer_requests_over_a_real_race():
     kinds = [tr.kind for r in requests for tr in r.triggers]
     assert kinds[0] == "race_start"  # Baku es carrera: el arranque exige plan de paradas
     facts = json.loads(requests[-1].user.split("## Datos de la sesión\n", 1)[1])
-    assert facts["sesion"]["pista"] == "Baku (Azerbaijan)"
+    assert facts["sesion"]["pista"] == "Bakú"
     assert facts["piloto"]["piloto"] == "GASLY"
     assert facts["estrategia_calculos"]["regla_dos_compuestos"] == {
         "compuestos_secos_usados": ["Medium"], "cumplida": False, "aplica": True,
@@ -221,7 +221,7 @@ def test_usage_summary(client):
     assert u["month"]["calls"] == 2 and u["month"]["cost_usd"] == 0.05
     assert u["month"]["output_tokens"] == 1500 and u["month"]["cache_read_tokens"] == 12800
     assert u["free_answers"] == 1
-    assert u["by_session"][0]["track"] == "Baku (Azerbaijan)" and u["by_session"][0]["modes"] == ["replay"]
+    assert u["by_session"][0]["track"] == "Bakú" and u["by_session"][0]["modes"] == ["replay"]
     assert u["by_model"][0]["model"] == "claude-sonnet-5" and u["by_model"][0]["avg_latency_ms"] == 10_000
     assert len(u["by_day"]) == 30 and u["by_day"][-1]["cost_usd"] == 0.05
     # Nobody else sees it.

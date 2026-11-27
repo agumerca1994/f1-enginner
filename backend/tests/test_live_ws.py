@@ -55,7 +55,7 @@ def test_live_ws_pushes_the_players_snapshot(client):
             msg = viewer.receive_json()
             if msg["type"] == "snapshot":
                 data = msg["data"]
-        assert data["session"]["track"] == "Baku (Azerbaijan)"
+        assert data["session"]["track"] == "Bakú"
         assert data["driver"]["name"] == "GASLY"
 
     # Another player's dashboard never sees this race.

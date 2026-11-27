@@ -72,7 +72,7 @@ def test_replay_over_websocket(client):
         ws.send_json({"type": "seek", "t": 60})
         frame = _frame(ws)
         assert frame["t"] == 60
-        assert frame["data"]["session"]["track"] == "Baku (Azerbaijan)"
+        assert frame["data"]["session"]["track"] == "Bakú"
         assert frame["data"]["driver"]["name"] == "GASLY"
 
         ws.send_json({"type": "speed", "value": 16})

@@ -120,6 +120,8 @@ function CircuitDetail({ id }: { id: number }) {
         </div>
       </header>
 
+      {c && c.sesiones.length > 0 && <CircuitSessions pista={c.pista} sesiones={c.sesiones} last={last} />}
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <figure className="card flex flex-col gap-2 px-4 py-4">
           <TrackOutline trackId={id} highlight={hot} thick className="aspect-[1000/640] w-full" label={`Trazado de ${c?.pista ?? "la pista"}`} />
@@ -177,23 +179,54 @@ function CircuitDetail({ id }: { id: number }) {
 
       <Leaderboard trackId={id} />
 
-      {c && c.sesiones.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h2 className="eyebrow">Tus sesiones en {c.pista}</h2>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {c.sesiones.map((g) => (
-              <Link key={g.id} href={`/resumen/${g.id}`} className="card flex items-center justify-between gap-3 px-4 py-3 hover:bg-panel-2">
-                <span>
-                  <span className="block font-semibold">{sessionEs(g.tipo)} · {shortDate(g.inicio)}</span>
-                  {g.vueltas ? <span className="text-[0.8rem] text-dim">{g.vueltas} vueltas</span> : null}
-                </span>
-                <span className="text-accent-ink">Resumen ›</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
       <RadioDock text={setup?.caracteristicas.nota ?? null} />
     </section>
   );
+}
+
+/** The sessions driven here, newest first, each opening its summary. The last one leads with its story;
+ * restarts (a few minutes long) fold away so they do not bury the real runs. */
+function CircuitSessions({ pista, sesiones, last }: { pista: string; sesiones: Circuit["sesiones"]; last: Summary | null | undefined }) {
+  const [all, setAll] = useState(false);
+  const real = sesiones.filter((g) => g.minutos == null || g.minutos >= SHORT_MINUTES);
+  const shown = all ? sesiones : real;
+  const hidden = sesiones.length - real.length;
+  const first = sesiones[0];
+  return (
+    <div className="flex flex-col gap-2">
+      <h2 className="eyebrow">Tus sesiones en {pista}</h2>
+      {first && last && (
+        <Link href={`/resumen/${first.id}`} className="card flex flex-col gap-1.5 px-4 py-4 hover:bg-panel-2">
+          <span className="text-[0.8rem] text-dim">Última: {sessionEs(first.tipo)} · {shortDate(first.inicio)}</span>
+          <span className="text-[0.98rem] leading-snug">{last.texto}</span>
+          <span className="text-[0.9rem] text-accent-ink">Ver el resumen completo ›</span>
+        </Link>
+      )}
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {shown.map((g) => (
+          <Link key={g.id} href={`/resumen/${g.id}`} className="card flex items-center justify-between gap-3 px-4 py-3 hover:bg-panel-2">
+            <span>
+              <span className="block font-semibold">{sessionEs(g.tipo)} · {shortDate(g.inicio)}</span>
+              <span className="text-[0.8rem] text-dim">{sessionLength(g)}</span>
+            </span>
+            <span className="shrink-0 text-accent-ink">Resumen ›</span>
+          </Link>
+        ))}
+      </div>
+      {hidden > 0 && (
+        <button type="button" onClick={() => setAll(!all)} className="self-start px-1 text-[0.88rem] text-accent-ink">
+          {all ? "Ocultar los reinicios" : `Mostrar también ${hidden === 1 ? "un reinicio" : `${hidden} reinicios`} de pocos minutos`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+const SHORT_MINUTES = 3; // shorter than this, a session was a restart
+
+function sessionLength(g: Circuit["sesiones"][number]): string {
+  const parts = [];
+  if (g.vueltas && g.vueltas > 1) parts.push(`a ${g.vueltas} vueltas`);
+  if (g.minutos != null) parts.push(g.minutos < 1 ? "menos de un minuto" : `${g.minutos} min`);
+  return parts.join(" · ");
 }

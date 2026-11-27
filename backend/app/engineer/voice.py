@@ -15,6 +15,7 @@ from collections import OrderedDict
 import httpx
 
 from app.core.config import settings
+from app.engineer.spoken import spoken
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class VoiceCache:
     async def _synthesize(self, text: str, future: asyncio.Future) -> None:
         try:
             self._client = self._client or httpx.AsyncClient(timeout=TIMEOUT_S)
-            r = await self._client.post(f"{settings.TTS_URL.rstrip('/')}/synthesize", json={"text": text})
+            r = await self._client.post(f"{settings.TTS_URL.rstrip('/')}/synthesize", json={"text": spoken(text)})
             r.raise_for_status()
             future.set_result(r.content)
         except Exception as e:  # the radio still shows as text and the browser can speak it

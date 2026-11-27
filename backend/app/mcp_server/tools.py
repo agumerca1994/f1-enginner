@@ -76,7 +76,7 @@ async def _review(tenant_id: int, session_id: int) -> tuple[GameSession, Session
 @mcp.tool(annotations=READ_ONLY)
 async def list_sessions(
     limit: Annotated[int, Field(ge=1, le=100, description="Cuántas sesiones traer, de la más nueva a la más vieja")] = 20,
-    track: Annotated[str | None, Field(description="Filtrar por pista, en inglés como la nombra el juego: 'Baku', 'Monza', 'Spa'…")] = None,
+    track: Annotated[str | None, Field(description="Filtrar por pista, en castellano o como la nombra el juego: 'Bakú', 'Lusail', 'Monza', 'Spa'…")] = None,
     kind: Annotated[Literal["practica", "clasificacion", "carrera", "contrarreloj"] | None,
                     Field(description="Filtrar por tipo de sesión")] = None,
 ) -> dict[str, Any]:
@@ -84,7 +84,8 @@ async def list_sessions(
     caller = await current_caller()
     q = select(GameSession).where(GameSession.tenant_id == caller.tenant_id, meaningful_session())
     if track:
-        ids = [tid for tid, name in c.TRACKS.items() if _fold(track) in _fold(name)]
+        ids = [tid for tid in c.TRACKS
+               if _fold(track) in _fold(c.TRACKS[tid]) or _fold(track) in _fold(c.TRACKS_GAME.get(tid, ""))]
         if not ids:
             raise ToolError(f"No conozco la pista '{track}'. Pistas: {', '.join(sorted(set(c.TRACKS.values())))}")
         q = q.where(GameSession.track_id.in_(ids))

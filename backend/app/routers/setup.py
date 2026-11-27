@@ -110,7 +110,9 @@ async def circuit(track_id: int, user: User = Depends(get_current_user), db: Asy
         "notas": knowledge_notes(k.summary if k else None),
         "sesiones": [
             {"id": g.id, "tipo": c.SESSION_TYPES.get(g.session_type) if g.session_type is not None else None,
-             "inicio": g.started_at.isoformat(), "vueltas": g.total_laps}
+             "inicio": g.started_at.isoformat(), "vueltas": g.total_laps,
+             "minutos": round((g.last_packet_at - g.started_at).total_seconds() / 60)
+             if g.last_packet_at and g.started_at else None}
             for g in sessions
         ],
     }

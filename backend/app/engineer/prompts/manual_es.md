@@ -126,7 +126,7 @@ Valores de referencia de la F1 real, útiles para anticipar. Los datos de la ses
 | México | alta (aire fino) | media | media | media | altura: menos carga y refrigeración |
 | Brasil (Interlagos) | media | fácil | alta | media | lluvia frecuente |
 | Las Vegas | baja | fácil | media | baja con frío | gomas cuestan temperatura |
-| Qatar (Losail) | alta | media | baja | muy alta | curvas rápidas, desgaste extremo |
+| Qatar (Lusail) | alta | media | baja | muy alta | curvas rápidas, desgaste extremo |
 | Abu Dhabi | media | media | baja | media | pista de final de temporada |
 
 # Estrategia de boxes

@@ -52,7 +52,7 @@ def test_base_endpoint_offers_the_best_own_setup(client):
     headers = {"X-Dev-User": email}
     client.get("/api/sessions", headers=headers)
     out = client.get("/api/setup/base?track_id=5", headers=headers).json()
-    assert out["pista"] == "Monaco" and out["tu_mejor"] is None and out["valores"]["aleron_delantero"] > 40
+    assert out["pista"] == "Mónaco" and out["tu_mejor"] is None and out["valores"]["aleron_delantero"] > 40
 
     async def seed():
         async with AsyncSessionLocal() as db:
@@ -69,4 +69,4 @@ def test_base_endpoint_offers_the_best_own_setup(client):
     out = client.get("/api/setup/base?track_id=5", headers=headers).json()
     assert out["tu_mejor"]["valores"]["aleron_delantero"] == 45 and out["tu_mejor"]["vuelta_s"] == 72.0
     assert client.get("/api/setup/base?track_id=5&lluvia=true", headers=headers).json()["tu_mejor"] is None
-    assert any(t["pista"] == "Monaco" for t in client.get("/api/setup/tracks", headers=headers).json())
+    assert any(t["pista"] == "Mónaco" for t in client.get("/api/setup/tracks", headers=headers).json())

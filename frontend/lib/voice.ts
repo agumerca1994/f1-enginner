@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { API_URL } from "@/lib/api";
+import { spoken } from "@/lib/spoken";
 import type { EngineerMessage } from "@/lib/types";
 
 const STORAGE_KEY = "engineer-voice";
@@ -64,7 +65,7 @@ function pickVoice(): SpeechSynthesisVoice | null {
 export function previewVoice(uri: string, text: string): void {
   if (!("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(spoken(text));
   const v = (uri && spanishVoices().find((x) => x.voiceURI === uri)) || spanishVoices()[0];
   if (v) u.voice = v;
   u.lang = v?.lang ?? "es-AR";
@@ -150,7 +151,7 @@ function playBuffer(ctx: AudioContext, buffer: AudioBuffer): Promise<void> {
 function speakWithBrowser(text: string): Promise<void> {
   return new Promise((resolve) => {
     if (!("speechSynthesis" in window)) return resolve();
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(spoken(text));
     const voice = pickVoice();
     if (voice) utterance.voice = voice;
     utterance.lang = voice?.lang ?? "es-AR";

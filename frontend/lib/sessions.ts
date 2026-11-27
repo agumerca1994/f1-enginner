@@ -59,7 +59,7 @@ export type Circuit = {
   curvas: number | null;
   mejor_vuelta_s: number | null;
   notas: string[];
-  sesiones: { id: number; tipo: string | null; inicio: string; vueltas: number | null }[];
+  sesiones: { id: number; tipo: string | null; inicio: string; vueltas: number | null; minutos?: number | null }[];
 };
 
 export const SESSION_ES: Record<string, string> = {
