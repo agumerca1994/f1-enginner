@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { circuitName } from "@/lib/gp";
 import { joinLink, type GroupDetail } from "@/lib/groups";
 import { lapS, shortDate, useApi } from "@/lib/sessions";
+import { LoadingScreen } from "@/components/brand/LogoLoader";
 
 export default function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,7 +38,7 @@ function Group({ id }: { id: number }) {
   const [name, setName] = useState("");
 
   if (error) return <main className="mx-auto max-w-[900px] px-4 pt-6 text-muted">Ese grupo no existe o ya no estás en él. <Link href="/grupos" className="text-accent-ink">Ver tus grupos</Link></main>;
-  if (!g) return <main className="mx-auto max-w-[900px] px-4 pt-6 text-muted">Cargando…</main>;
+  if (!g) return <main className="mx-auto max-w-[900px] px-4 pt-6"><LoadingScreen /></main>;
 
   const call = async (path: string, method: string, body?: object) => {
     await api(path, await credentials(), { method, body });

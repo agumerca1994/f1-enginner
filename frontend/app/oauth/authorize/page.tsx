@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { LoadingScreen } from "@/components/brand/LogoLoader";
 
 // The consent screen of the MCP connector. The player arrives here from the AI
 // app's browser window, often signed out: RequireAuth signs in with a popup, so
@@ -73,7 +74,7 @@ function Consent() {
           <p className="mt-2 text-sm text-danger">{loadError}</p>
         </>
       ) : !info ? (
-        <p className="text-center text-muted">Cargando…</p>
+        <LoadingScreen />
       ) : (
         <>
           <h1 className="text-2xl font-semibold">{info.client_name}</h1>

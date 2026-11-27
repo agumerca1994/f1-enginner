@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { LiveStatus } from "@/lib/live";
+import { LoadingScreen } from "@/components/brand/LogoLoader";
 
 const DOWNLOAD = "https://github.com/agumerca1994/f1-enginner/releases/latest/download";
 const GAME_SETTINGS: [string, string][] = [
@@ -39,7 +40,7 @@ export function ConnectGuide({ status }: { status: LiveStatus }) {
     load();
   }, [load]);
 
-  if (devices == null) return <p className="py-10 text-center text-muted">Cargando…</p>;
+  if (devices == null) return <LoadingScreen />;
   const linked = devices.some((d) => !d.revoked_at);
   const full = !linked || showAll;
 

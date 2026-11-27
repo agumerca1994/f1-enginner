@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { IntroSplash } from "@/components/brand/IntroSplash";
+import { LogoMark } from "@/components/brand/LogoMark";
 import { StatusBar } from "@/components/ui/StatusBar";
 import { useAuth } from "@/lib/auth";
 import { LiveProvider } from "@/lib/liveContext";
@@ -53,11 +55,13 @@ export function AppNav({ children }: { children: React.ReactNode }) {
 
   return (
     <LiveProvider>
+      <IntroSplash />
       <div className="sticky top-0 z-30 bg-bg/95 pt-[env(safe-area-inset-top)] backdrop-blur">
         <StatusBar />
         <nav className="hidden border-b border-line lg:block" aria-label="Secciones">
           <div className="mx-auto flex h-[60px] max-w-[1600px] items-center gap-7 px-6">
-            <Link href="/" className="display text-[1.4rem] tracking-wide">
+            <Link href="/" className="display flex items-center gap-2.5 text-[1.4rem] tracking-wide">
+              <LogoMark size={30} target />
               PIT EN LÍNEA
             </Link>
             <div className="flex gap-1">
@@ -78,7 +82,8 @@ export function AppNav({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
         <header className="flex h-[52px] items-center justify-between border-b border-line px-[max(1.1rem,env(safe-area-inset-left))] lg:hidden">
-          <Link href="/" className="display text-[1.3rem]">
+          <Link href="/" className="display flex items-center gap-2 text-[1.3rem]">
+            <LogoMark size={28} target />
             PIT EN LÍNEA
           </Link>
           <span className="eyebrow">{TABS.find((t) => t.match(path))?.label ?? ""}</span>

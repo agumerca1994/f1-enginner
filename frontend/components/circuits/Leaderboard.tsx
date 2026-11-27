@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import type { GroupRow } from "@/lib/groups";
 import { lapS, useApi } from "@/lib/sessions";
+import { LoadingScreen } from "@/components/brand/LogoLoader";
 
 type Row = { pos: number; nombre: string; tiempo_ms: number; sectores_ms: number[]; dif_ms: number | null; equipo: string | null; fecha: string | null; soy_yo: boolean };
 type Board = {
@@ -105,7 +106,7 @@ export function Leaderboard({ trackId, grupo }: { trackId: number; grupo?: numbe
         </div>
       </div>
       {rows.length === 0 && (loading || (!touched && (b?.opciones.length ?? 0) > 0)) ? (
-        <p className="py-4 text-[0.92rem] text-dim">Cargando…</p>
+        <LoadingScreen compact size={48} />
       ) : rows.length === 0 ? (
         <p className="py-4 text-[0.92rem] text-muted">
           Todavía nadie marcó una vuelta válida acá {categoria === "sin_ayudas" ? "sin ayudas" : "con ayudas"} y {clima === "seco" ? "en seco" : "con lluvia"}. La tuya entra sola cuando corras.

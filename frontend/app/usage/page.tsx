@@ -8,6 +8,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { providerLabel } from "@/lib/format";
+import { LoadingScreen } from "@/components/brand/LogoLoader";
 
 type Bucket = { calls: number; cost_usd: number; input_tokens: number; output_tokens: number; cache_read_tokens: number };
 type Usage = {
@@ -65,7 +66,7 @@ function UsageView() {
         {usage && <> Hoy responde: <span className="text-fg">{providerLabel(usage.provider_now)}</span>.</>}
       </p>
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
-      {!usage && !error && <p className="mt-8 text-muted">Cargando…</p>}
+      {!usage && !error && <LoadingScreen />}
 
       {usage && (
         <>

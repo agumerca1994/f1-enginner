@@ -1,41 +1,11 @@
-/** The app icon: a gauge with a cyan arc, drawn with plain boxes so ImageResponse can render it. */
-export function AppIcon({ size }: { size: number }) {
-  const ring = Math.round(size * 0.56);
-  const stroke = Math.max(4, Math.round(size * 0.07));
+import { LOGO_ROUNDED, LOGO_SQUARE } from "@/components/brand/logoData";
+
+/** The app icon: the logo. Rounded for the browser tab; square where the system rounds it (home screen, PWA). */
+export function AppIcon({ size, rounded = false }: { size: number; rounded?: boolean }) {
   return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#07090c",
-      }}
-    >
-      <div
-        style={{
-          width: ring,
-          height: ring,
-          borderRadius: "50%",
-          border: `${stroke}px solid #22d3ee`,
-          borderBottomColor: "transparent",
-          transform: "rotate(45deg)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            width: stroke,
-            height: ring * 0.42,
-            background: "#e9eef3",
-            borderRadius: stroke,
-            transform: "rotate(-15deg) translateY(-20%)",
-          }}
-        />
-      </div>
+    <div style={{ width: size, height: size, display: "flex", background: rounded ? "transparent" : "#14161a" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- rendered by ImageResponse, not the browser */}
+      <img src={rounded ? LOGO_ROUNDED : LOGO_SQUARE} width={size} height={size} alt="" />
     </div>
   );
 }

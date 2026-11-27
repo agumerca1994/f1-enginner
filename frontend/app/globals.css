@@ -177,3 +177,11 @@ body {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+/* The start-up intro (components/brand/IntroSplash.tsx): the start lights inside the logo's square,
+   sized to the square (container units), and the header's logo hidden until the square lands on it. */
+.intro-gantry { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 3.4cqw; }
+.intro-gantry i { display: grid; justify-items: center; gap: 1.9cqw; width: 13.5cqw; padding: 2.2cqw 0; background: #0c0d10; border: .36cqw solid #22252b; border-radius: 2.9cqw; }
+.intro-gantry i::before, .intro-gantry i::after { content: ""; display: block; width: 8.4cqw; height: 8.4cqw; border-radius: 50%; background: #17191d; box-shadow: inset 0 0 0 .6cqw #24272d; }
+.intro-gantry i.on::before, .intro-gantry i.on::after { background: radial-gradient(circle at 40% 35%, #ff7a63, #ff2a17 55%, #c4160a); box-shadow: 0 0 5.8cqw 1.2cqw rgba(255, 42, 23, .55); }
+html.intro-playing [data-brand-mark] { opacity: 0; }

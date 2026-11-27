@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AccessGate, type AccessStatus } from "@/components/AccessGate";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { LoadingScreen } from "@/components/brand/LogoLoader";
 
 // Asked once per page load: whether this account is past early access.
 let checked: { email: string; status: AccessStatus } | null = null;
@@ -32,9 +33,9 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     };
   }, [email, credentials]);
 
-  if (!ready) return <p className="p-8 text-center text-muted">Cargando…</p>;
+  if (!ready) return <LoadingScreen />;
   if (email) {
-    if (!access) return <p className="p-8 text-center text-muted">Cargando…</p>;
+    if (!access) return <LoadingScreen />;
     if (!access.habilitado)
       return (
         <AccessGate

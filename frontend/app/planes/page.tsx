@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PLAN_NAMES, planLine, proRaces, type Billing, type Product } from "@/lib/billing";
 import { shortDate, useApi } from "@/lib/sessions";
+import { LoadingScreen } from "@/components/brand/LogoLoader";
 
 export default function PlansPage() {
   return (
@@ -95,7 +96,7 @@ function Plans() {
     setRev((x) => x + 1);
   };
 
-  if (!b) return <main className="mx-auto max-w-[1000px] px-4 pt-6 text-muted">Cargando…</main>;
+  if (!b) return <main className="mx-auto max-w-[1000px] px-4 pt-6"><LoadingScreen /></main>;
   const season = b.productos.find((p) => p.id === "suscripcion")!;
   const packs = b.productos.filter((p) => p.id !== "suscripcion");
   const pro = proRaces(b);
