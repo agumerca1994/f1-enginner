@@ -57,7 +57,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
         Ingresar con Google
       </button>
       {error && <p className="mt-3 text-sm text-danger">{error}</p>}
-      <p className="mt-10 text-xs text-muted">Compatible con la telemetría de EA SPORTS F1® 24. No afiliado a EA ni a Formula 1.</p>
+      <p className="mt-10 text-xs text-muted">Compatible con la telemetría de los juegos EA SPORTS F1® en todas las plataformas. No afiliado a EA ni a Formula 1.</p>
     </main>
   );
 }

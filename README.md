@@ -1,6 +1,6 @@
-# Ingeniero de carreras IA (telemetría de EA SPORTS F1® 24)
+# Ingeniero de carreras IA (telemetría de los juegos EA SPORTS F1®)
 
-Un asistente de IA que actúa como ingeniero de carreras. Usa la telemetría UDP que emite el juego EA SPORTS F1® 24 en PS4.
+Un asistente de IA que actúa como ingeniero de carreras. Usa la telemetría UDP que emiten EA SPORTS F1® 24, F1® 25 y la temporada 2026, en PlayStation, Xbox y PC.
 
 El plan completo, con el estado de cada fase y las decisiones tomadas, está en [docs/plan.md](docs/plan.md).
 
