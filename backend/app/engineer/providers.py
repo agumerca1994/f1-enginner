@@ -395,6 +395,13 @@ def rules_response(request: EngineerRequest) -> dict:
         elif (reach := _catch_call(f, _recent(request))) is not None:
             radio, priority = reach
 
+    # A stop call carries what changes at the stop: the compound and, if it helps, the front wing.
+    wing = next(iter(((f.get("ajustes_en_carrera") or {}).get("en_la_proxima_parada") or [])), None)
+    if radio and "box" in radio.lower() and race:
+        if next_compound and c.COMPOUNDS_ES.get(next_compound, "") not in radio:
+            radio += f" Ponemos {c.COMPOUNDS_ES.get(next_compound, next_compound)}."
+        if wing:
+            radio += f" Alerón delantero de {wing['actual']} a {wing['sugerido']}."
     if radio and priority != "urgente" and _said_recently(request, radio):
         radio = None  # the same advice twice in a row gets ignored; keep it for the panel
     if ers is not None and ers < 15:
