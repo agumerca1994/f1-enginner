@@ -34,7 +34,7 @@ PRO_SOURCES = ("suscripcion", "paquete", "prueba", "cortesia")
 DEFAULT_USD_ARS = 1500.0
 
 PRODUCTS = {
-    "suscripcion": {"usd": 3.5, "titulo": "Suscripción mensual", "carreras": 0},
+    "suscripcion": {"usd": 3.5, "titulo": "Piloto profesional (mensual)", "carreras": 0},
     "paquete5": {"usd": 5.0, "titulo": "5 carreras con el ingeniero Pro", "carreras": 5},
     "paquete12": {"usd": 10.0, "titulo": "12 carreras con el ingeniero Pro", "carreras": 12},
 }

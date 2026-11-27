@@ -59,7 +59,7 @@ function Plans() {
     try {
       const q = preapproval ? `?preapproval_id=${encodeURIComponent(preapproval)}` : "";
       const r = await api<{ estado: string }>(`/api/billing/subscription/confirm${q}`, await credentials(), { method: "POST" });
-      setNote(r.estado === "aprobado" ? "Listo, arrancó tu Temporada." : "Mercado Pago todavía no nos avisó. Si ya pagaste, probá de nuevo en un minuto.");
+      setNote(r.estado === "aprobado" ? "Listo, ya sos Piloto profesional." : "Mercado Pago todavía no nos avisó. Si ya pagaste, probá de nuevo en un minuto.");
       setRev((x) => x + 1);
     } catch {
       setNote("No pudimos revisarlo ahora. Probá de nuevo en un minuto.");
@@ -143,7 +143,7 @@ function Plans() {
         <div className="grid gap-4 md:grid-cols-2">
           <Radio
             name="Radio de avisos"
-            tag="Debut y Temporada"
+            tag="Piloto rookie y Piloto profesional"
             lines={[
               { who: "ing", text: "Safety car. Box, box." },
               { who: "ing", text: "Pinchazo atrás a la izquierda. Box esta vuelta." },
@@ -170,7 +170,7 @@ function Plans() {
         <h2 className="display text-[2rem] uppercase leading-none">Elegí cómo correr</h2>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className={`card flex flex-col gap-4 p-5 ${b.plan === "gratis" ? "ring-1 ring-line" : ""}`}>
-            <PlanHead name="Debut" price="$ 0" current={b.plan === "gratis"} />
+            <PlanHead name="Piloto rookie" price="$ 0" current={b.plan === "gratis"} />
             <ul className="flex flex-col gap-2 text-[0.95rem]">
               <Item strong>{b.prueba_inicial} carreras con el ingeniero Pro, de regalo</Item>
               <Item>Radio de avisos en {b.avisos_por_mes} carreras por mes</Item>
@@ -182,7 +182,7 @@ function Plans() {
             <span className="absolute -top-3 left-5 rounded-full bg-accent px-3 py-0.5 text-[0.72rem] font-semibold uppercase tracking-wider text-white">
               La más elegida
             </span>
-            <PlanHead name="Temporada" price={pesos(season.ars)} per="/mes" current={inSeason} light />
+            <PlanHead name="Piloto profesional" price={pesos(season.ars)} per="/mes" current={inSeason} light />
             <ul className="flex flex-col gap-2 text-[0.95rem]">
               <Item strong>{b.carreras_por_mes} carreras Pro todos los meses</Item>
               <Item>Radio de avisos en todas tus carreras</Item>
@@ -208,7 +208,7 @@ function Plans() {
               ) : b.plan === "gratis" ? (
                 <>
                   <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="btn-ink px-5 py-3 disabled:opacity-50">
-                    {busy === "suscripcion" ? "Abriendo Mercado Pago…" : "Empezar la Temporada"}
+                    {busy === "suscripcion" ? "Abriendo Mercado Pago…" : "Pasarme a Piloto profesional"}
                   </button>
                   <span className="text-center text-[0.8rem] text-[#5b616b]">Cancelás cuando quieras</span>
                 </>

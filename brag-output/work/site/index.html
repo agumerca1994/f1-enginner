@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<title>Ingeniero lanzamiento</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Saira+Condensed:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+:root{--bg:#0b0c0e;--panel:#14161a;--line:#2a2e35;--fg:#f2f3f5;--muted:#a3a9b3;--dim:#8a909a;--accent:#ff4b2b;--accent-ink:#ff6a4d;--ok:#3ddc97;--paper:#f2f3f5;
+--display:"Saira Condensed",sans-serif;--body:"Barlow",sans-serif;--mono:"JetBrains Mono",monospace}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--body);-webkit-font-smoothing:antialiased}
+.scene{position:absolute;inset:0;opacity:0;overflow:hidden}
+.display{font-family:var(--display);font-style:italic;font-weight:800;text-transform:uppercase;line-height:.92;letter-spacing:-.005em}
+.display em{color:var(--accent-ink);font-style:italic}
+.eyebrow{font:500 20px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.title{position:absolute;left:96px;top:64px;font-size:92px;z-index:5}
+.title span{display:block}
+.band{position:absolute;left:0;right:0;top:0;height:380px;z-index:4;background:linear-gradient(var(--bg) 0,var(--bg) 52%,rgba(11,12,14,0))}
+.shot{position:absolute;left:0;top:0;width:1800px;transform-origin:0 0;border-radius:22px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,.6),0 0 0 1px var(--line)}
+.shot>img{display:block;width:1800px}
+.crop{position:absolute;background-repeat:no-repeat;background-size:1800px auto;border-radius:14px}
+
+/* 1 hook */
+#s1{background:radial-gradient(900px 520px at 50% 52%,rgba(255,75,43,.13),transparent 70%),var(--bg)}
+.radio{position:absolute;left:50%;top:50%;width:1240px;transform:translate(-50%,-50%);background:var(--paper);color:#0b0c0e;border-radius:26px;padding:48px 60px 54px;box-shadow:0 50px 140px rgba(0,0,0,.65)}
+.radio .top{display:flex;align-items:center;gap:16px;font:500 22px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#4a505a}
+.radio .dot{width:16px;height:16px;border-radius:50%;background:var(--accent)}
+.radio .msg{margin-top:26px;font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:96px;line-height:.95;min-height:182px}
+.radio .msg .ghost{color:transparent}
+.wave{position:absolute;left:50%;top:812px;transform:translateX(-50%);display:flex;gap:9px;align-items:center;height:90px}
+.wave i{display:block;width:9px;border-radius:5px;background:var(--accent)}
+
+/* 2 reveal */
+#s2 img.v{position:absolute;inset:0;width:1920px;height:1080px;object-fit:cover}
+#s2 .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,12,14,.86) 0,rgba(11,12,14,.55) 45%,rgba(11,12,14,.05) 75%),linear-gradient(0deg,rgba(11,12,14,.5),transparent 40%)}
+#s2 .brand{position:absolute;left:96px;top:70px;font-size:44px}
+#s2 .big{position:absolute;left:96px;top:330px;font-size:190px}
+#s2 .big span{display:block}
+#s2 .compat{position:absolute;left:100px;top:800px;display:flex;gap:14px;align-items:center;color:var(--fg)}
+.live{width:12px;height:12px;border-radius:50%;background:var(--accent)}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:9;pointer-events:none}
+
+/* 3 cockpit overlays (image coordinates) */
+.rpanel{position:absolute;left:1060px;top:756px;width:696px;height:232px;background:var(--paper);color:#0b0c0e;padding:4px 14px}
+.rpanel .q{font:500 17px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#4a505a}
+.rpanel .a{margin-top:16px;font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:44px;line-height:1}
+.dockt{position:absolute;left:176px;top:1050px;width:1060px;height:42px;background:var(--paper);color:#0b0c0e;font:500 21px/42px var(--body)}
+.talk{position:absolute;left:1451px;top:1045px;width:304px;height:50px;border-radius:10px;background:var(--accent);color:#0b0c0e;font:800 21px/50px var(--display);letter-spacing:.06em;text-transform:uppercase;text-align:center}
+.caret{display:inline-block;width:3px;height:1em;background:currentColor;vertical-align:-.12em;margin-left:2px}
+
+/* 5 screens */
+.dev{position:absolute;background:#050607;border-radius:18px;padding:14px;box-shadow:0 40px 110px rgba(0,0,0,.65),0 0 0 1px #2a2e35}
+.dev img{display:block;width:100%;border-radius:6px}
+.dev.phone{border-radius:44px;padding:18px 26px}
+.dev.phone img{border-radius:22px}
+.tag{position:absolute;font:500 18px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.stand{position:absolute;width:260px;height:14px;background:#1c1f24;border-radius:4px}
+
+/* 6 outro */
+#s6 .bg{position:absolute;left:600px;top:-700px;width:1400px;transform-origin:70% 60%;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 40%);mask-image:linear-gradient(90deg,transparent 0,#000 40%)}
+#s6 .shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,12,14,1) 0,rgba(11,12,14,.92) 34%,rgba(11,12,14,.25) 62%,rgba(11,12,14,0) 80%),linear-gradient(0deg,rgba(11,12,14,.7),transparent 30%)}
+#s6 .brand{position:absolute;left:96px;top:70px;font-size:44px}
+#s6 .big{position:absolute;left:96px;top:250px;font-size:150px}
+#s6 .big span{display:block}
+#s6 .facts{position:absolute;left:100px;top:600px;font:500 34px/1.3 var(--body);color:var(--fg)}
+#s6 .facts b{font-weight:600}
+#s6 .facts span{color:var(--muted)}
+#s6 .cta{position:absolute;left:100px;top:740px;display:flex;align-items:center;gap:34px}
+#s6 .btn{height:84px;padding:0 42px;border-radius:14px;background:var(--accent);color:#0b0c0e;font:800 34px/84px var(--display);letter-spacing:.05em;text-transform:uppercase}
+#s6 .url{font:500 30px/1 var(--mono);color:var(--fg)}
+#s6 .fine{position:absolute;left:100px;bottom:60px;font:500 18px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="flash" id="flash"></div>
+
+<section class="scene" id="s1">
+  <div class="radio" id="radio">
+    <div class="top"><span class="dot"></span><span>Radio · V4</span><span style="margin-left:auto">Ingeniero</span></div>
+    <div class="msg" id="msg"></div>
+  </div>
+  <div class="wave" id="wave"></div>
+</section>
+
+<section class="scene" id="s2">
+  <img class="v" id="vid" alt="">
+  <div class="shade"></div>
+  <div class="brand display">Ingeniero</div>
+  <div class="big display"><span id="b1">Tu box,</span><span id="b2"><em>fuera del juego.</em></span></div>
+  <div class="compat eyebrow" id="compat" style="color:var(--fg)"><span class="live"></span>Compatible con la telemetría de EA SPORTS F1® 24</div>
+</section>
+
+<section class="scene" id="s3">
+  <div class="band"></div>
+  <div class="title display" id="t3"><span>Te habla cuando importa.</span><span><em>Te escucha cuando preguntás.</em></span></div>
+  <div class="shot" id="shot3"><img src="img/pista-monitor.jpg" alt="">
+    <div class="rpanel" id="rp"><div class="q" id="rq">Radio</div><div class="a" id="ra"></div></div>
+    <div class="dockt" id="dock"></div>
+    <div class="talk" id="talk">Escuchando…</div>
+  </div>
+</section>
+
+<section class="scene" id="s4">
+  <div class="band"></div>
+  <div class="title display" id="t4"><span>Sabe dónde se te fue</span><span><em>el tiempo.</em></span></div>
+  <div class="shot" id="shot4"><img src="img/boxes.jpg" alt="" id="base4">
+    <div class="crop" id="c1"></div><div class="crop" id="c2"></div><div class="crop" id="c3"></div><div class="crop" id="c4"></div>
+  </div>
+</section>
+
+<section class="scene" id="s5">
+  <div class="title display" id="t5"><span>Convertí tu rincón</span><span><em>en un box.</em></span></div>
+  <div id="tv" style="position:absolute;left:700px;top:250px">
+    <div class="dev" style="position:relative;width:1110px"><img src="img/tv-tabla.jpg" alt=""></div>
+    <div class="stand" style="left:425px;top:640px"></div>
+    <div class="tag" style="left:0;top:680px">Tele · Tabla de posiciones</div>
+  </div>
+  <div id="ph" style="position:absolute;left:110px;top:560px">
+    <div class="dev phone" style="position:relative;width:700px"><img src="img/cockpit-phone.jpg" alt=""></div>
+    <div class="tag" style="left:6px;top:400px">Celu · Cockpit</div>
+  </div>
+  <div id="qr" style="position:absolute;left:1360px;top:690px">
+    <div class="dev" style="position:relative;width:470px;border-radius:24px;padding:16px"><img src="img/tv-qr.jpg" alt=""></div>
+  </div>
+</section>
+
+<section class="scene" id="s6">
+  <img class="bg" id="bg6" src="img/paneo.jpg" alt="">
+  <div class="shade"></div>
+  <div class="brand display">Ingeniero</div>
+  <div class="big display"><span id="o1">Tu próximo stint</span><span id="o2"><em>empieza acá.</em></span></div>
+  <div class="facts" id="o3"><b>PlayStation, Xbox y PC</b> <span>· con el Bridge en tu compu</span></div>
+  <div class="cta" id="o4"><div class="btn">Pedí acceso a la beta</div><div class="url">web-f1.imanzanastore.com.ar</div></div>
+  <div class="fine">Compatible con la telemetría de EA SPORTS F1® 24 · Sin afiliación con Electronic Arts</div>
+</section>
+
+<script>
+const B = 0.5; // one beat at 120 BPM
+const $ = id => document.getElementById(id);
+const clamp = v => Math.max(0, Math.min(1, v));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const eo = x => 1 - Math.pow(1 - x, 3);
+const eio = x => x < .5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3) / 2;
+const lerp = (a, b, x) => a + (b - a) * x;
+
+// scene windows in seconds: [start, end, fade-in]
+const S = { s1:[0,4,0], s2:[4,7,0], s3:[7,11,.25], s4:[11,15,.25], s5:[15,18,.25], s6:[18,22,.3] };
+function vis(t, [a, b, fi], last) {
+  if (t < a || t >= b + (last ? 1 : 0)) return 0;
+  const i = fi ? eo(seg(t, a, a + fi)) : 1;
+  const o = last ? 1 : 1 - seg(t, b - .18, b);
+  return Math.min(i, o);
+}
+// in: fade + rise, keyed on start time
+function rise(el, t, a, d = .35, dy = 40) {
+  const x = eo(seg(t, a, a + d));
+  el.style.opacity = x; el.style.transform = `translateY(${(1 - x) * dy}px)`;
+}
+
+// --- static setup -------------------------------------------------------------
+const MSG = "Gasly a tres décimas. Defendé por dentro en la 12.";
+const wave = $('wave'); const NB = 56;
+for (let i = 0; i < NB; i++) wave.appendChild(document.createElement('i'));
+const vidFrames = []; for (let i = 1; i <= 165; i++) { const im = new Image(); im.src = `vid/v${String(i).padStart(3,'0')}.jpg`; vidFrames.push(im); }
+function crop(id, x, y, w, h) {
+  const c = $(id); Object.assign(c.style, { left: x+'px', top: y+'px', width: w+'px', height: h+'px',
+    backgroundImage: 'url(img/boxes.jpg)', backgroundPosition: `${-x}px ${-y}px` });
+}
+crop('c1', 35, 550, 734, 114); crop('c2', 35, 679, 734, 115); crop('c3', 35, 809, 734, 115); crop('c4', 789, 237, 544, 372);
+
+function typed(text, x) { const n = Math.round(text.length * x); return text.slice(0, n) + `<span class="ghost">${text.slice(n)}</span>`; }
+
+// --- frame -------------------------------------------------------------------
+window.renderAt = async function (t) {
+  for (const k in S) $(k).style.opacity = vis(t, S[k], k === 's6');
+
+  // 1 hook: radio call types in, then holds
+  { const x = eo(seg(t, 0, .45));
+    $('radio').style.transform = `translate(-50%,-50%) translateY(${(1-x)*50}px) scale(${.96 + .04*x})`;
+    $('radio').style.opacity = x;
+    $('msg').innerHTML = typed(MSG.toUpperCase(), seg(t, .35, 1.05));
+    const talking = t > .3 && t < 3.6 ? 1 : .12;
+    [...wave.children].forEach((b, i) => {
+      const n = Math.abs(Math.sin(i * 1.7 + t * 13) * Math.sin(i * .43 + t * 7.3) + .3 * Math.sin(i * 2.9 - t * 21));
+      const env = Math.sin(Math.PI * (i + .5) / NB);
+      b.style.height = (8 + 80 * n * env * talking * x) + 'px'; b.style.opacity = .35 + .65 * env;
+    }); }
+
+  // 2 reveal: the cars through the corner, the promise
+  { const f = Math.min(164, Math.max(0, Math.round((t - 4 + 1.5) * 30)));
+    const im = vidFrames[f]; if ($('vid').getAttribute('src') !== im.src) { $('vid').src = im.src; await $('vid').decode().catch(()=>{}); }
+    $('vid').style.transform = `scale(${1.04 + .03 * seg(t, 4, 7)})`;
+    rise($('b1'), t, 4.15, .35, 60); rise($('b2'), t, 4.35, .35, 60); rise($('compat'), t, 4.8, .35, 20);
+    $('flash').style.opacity = t >= 4 && t < 4.3 ? .55 * (1 - seg(t, 4, 4.3)) : 0; }
+
+  // 3 cockpit: ask, get the answer
+  { const p = eio(seg(t, 7, 11));
+    const s = lerp(.8333, .98, p), tx = lerp(210, 136, p), ty = lerp(230, -23, p) + (1 - eo(seg(t, 7, 7.5))) * 60;
+    $('shot3').style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+    rise($('t3'), t, 7.05, .35, 30);
+    const listening = t >= 7.55 && t < 8.35;
+    $('talk').style.opacity = listening ? 1 : 0;
+    const q = "¿Cuándo paro?";
+    const qx = seg(t, 7.6, 8.0);
+    $('dock').innerHTML = t < 7.55 ? '' : q.slice(0, Math.round(q.length * qx)) + (listening ? '<span class="caret"></span>' : '');
+    $('dock').style.opacity = t < 7.55 ? 0 : 1;
+    const a = eo(seg(t, 8.35, 8.65));
+    $('rp').style.opacity = t < 8.35 ? 0 : 1;
+    $('rq').textContent = 'Radio · Vos: ¿Cuándo paro?';
+    $('ra').innerHTML = 'Una parada. Intermedios hasta que seque, después medios.';
+    $('ra').style.opacity = a; $('ra').style.transform = `translateY(${(1-a)*18}px)`; }
+
+  // 4 boxes: the corners where time went, then the one change
+  { const p = eio(seg(t, 11, 15));
+    const s = lerp(.9, .97, p), tx = lerp(150, 110, p), ty = lerp(250, 205, p) + (1 - eo(seg(t, 11, 11.5))) * 60;
+    $('shot4').style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+    rise($('t4'), t, 11.05, .35, 30);
+    $('base4').style.filter = `brightness(${lerp(1, .32, eo(seg(t, 11.3, 11.7)))})`;
+    [['c1', 11.5], ['c2', 12.0], ['c3', 12.5], ['c4', 13.0]].forEach(([id, at]) => {
+      const x = eo(seg(t, at, at + .3)), pop = Math.sin(Math.PI * seg(t, at, at + .45));
+      const el = $(id);
+      el.style.filter = `brightness(${lerp(.32, 1, x)})`;
+      el.style.transform = `scale(${1 + .035 * pop})`;
+      el.style.boxShadow = x > 0 ? `0 0 0 ${2 * x}px rgba(255,75,43,${.9 * x}), 0 24px 60px rgba(0,0,0,${.6 * x})` : 'none';
+      el.style.zIndex = x > 0 ? 2 : 1;
+    }); }
+
+  // 5 screens: one per beat
+  { rise($('t5'), t, 15.05, .35, 30);
+    [['tv', 15.1, 0], ['ph', 15.6, 1], ['qr', 16.1, 2]].forEach(([id, at, k]) => {
+      const x = eo(seg(t, at, at + .4)), el = $(id);
+      el.style.opacity = x;
+      el.style.transform = `translateY(${(1 - x) * 70}px) scale(${.94 + .06 * x + .012 * seg(t, 15, 18)})`;
+    }); }
+
+  // 6 outro
+  { $('bg6').style.transform = `scale(${1.08 + .05 * seg(t, 18, 22)}) translateX(${-30 * seg(t, 18, 22)}px)`;
+    rise($('o1'), t, 18.15, .4, 50); rise($('o2'), t, 18.35, .4, 50);
+    rise($('o3'), t, 19.0, .35, 24); rise($('o4'), t, 19.5, .35, 24); }
+};
+window.__ready = (async () => {
+  await document.fonts.ready;
+  await Promise.all(['800 italic 90px "Saira Condensed"', '800 90px "Saira Condensed"', '500 20px "Barlow"', '600 20px "Barlow"', '500 20px "JetBrains Mono"'].map(f => document.fonts.load(f, 'ÁÉÍÓÚáéíóúñ¿?·→')));
+  await Promise.all([...document.images, ...vidFrames].map(i => i.decode().catch(() => {})));
+  await new Promise(r => { const im = new Image(); im.onload = im.onerror = r; im.src = 'img/boxes.jpg'; });
+  return true;
+})();
+</script>
+</body>
+</html>

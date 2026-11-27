@@ -29,7 +29,7 @@ export function proRaces(b: Billing): number | null {
 }
 
 /** The plans' names as players see them. */
-export const PLAN_NAMES: Record<Billing["plan"], string> = { gratis: "Debut", suscripcion: "Temporada", cortesia: "Pase libre" };
+export const PLAN_NAMES: Record<Billing["plan"], string> = { gratis: "Piloto rookie", suscripcion: "Piloto profesional", cortesia: "Pase libre" };
 
 const left = (n: number) => `${n} ${n === 1 ? "carrera" : "carreras"}`;
 

@@ -48,7 +48,7 @@ function LinkScreen() {
       setState("done");
     } catch (err) {
       setState("idle");
-      setError(err instanceof ApiError && err.status === 404 ? "Ese código no está en ninguna pantalla ahora. Puede haber vencido: mirá el que muestra la pantalla." : err instanceof ApiError && err.status === 402 ? "Con Debut tenés 1 pantalla vinculada. Desvinculá la otra en Ajustes, o pasate a Temporada (Ajustes → Tu plan) para tener todas las que quieras." : "No se pudo vincular. Probá de nuevo.");
+      setError(err instanceof ApiError && err.status === 404 ? "Ese código no está en ninguna pantalla ahora. Puede haber vencido: mirá el que muestra la pantalla." : err instanceof ApiError && err.status === 402 ? "Como Piloto rookie tenés 1 pantalla vinculada. Desvinculá la otra en Ajustes, o pasate a Piloto profesional (Ajustes → Tu plan) para tener todas las que quieras." : "No se pudo vincular. Probá de nuevo.");
     }
   };
 

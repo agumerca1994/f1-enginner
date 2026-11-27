@@ -104,8 +104,8 @@ function TalkDock({ compact, place }: { compact: boolean; place: string }) {
         </Link>
       )}
       {live && engineer.provider?.startsWith("sin radio") && (
-        <Link href="/planes" className="shrink-0 rounded-full bg-panel-2 px-2.5 py-1 text-[0.72rem] text-muted hover:text-fg" title="Ya usaste las 5 carreras con radio de avisos del mes de Debut">
-          Sin radio · pasate a Temporada
+        <Link href="/planes" className="shrink-0 rounded-full bg-panel-2 px-2.5 py-1 text-[0.72rem] text-muted hover:text-fg" title="Ya usaste las 5 carreras con radio de avisos del mes de Piloto rookie">
+          Sin radio · pasate a Piloto profesional
         </Link>
       )}
       {typing ? (

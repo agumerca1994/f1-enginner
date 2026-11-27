@@ -157,7 +157,7 @@ function PlanSection() {
         {b && <p className={`mt-2 text-[0.92rem] ${free ? "text-muted" : "text-[#3d434c]"}`}>{planLine(b)}</p>}
       </div>
       <span className={`${free ? "btn-primary" : "btn-ink"} shrink-0 self-start px-4 py-2 text-[0.92rem] sm:self-center`}>
-        {free ? "Pasate a Temporada" : "Ver mi plan"}
+        {free ? "Pasate a Piloto profesional" : "Ver mi plan"}
       </span>
     </Link>
   );
