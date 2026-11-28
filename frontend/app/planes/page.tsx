@@ -10,6 +10,7 @@ import { PLAN_NAMES, type Billing, type Product } from "@/lib/billing";
 import { shortDate, useApi } from "@/lib/sessions";
 import { LoadingScreen } from "@/components/brand/LogoLoader";
 import { EngineerDemo } from "@/components/plans/EngineerDemo";
+import { AI_GUIDE_URL } from "@/components/McpConnectorSection";
 
 export default function PlansPage() {
   return (
@@ -18,9 +19,6 @@ export default function PlansPage() {
     </RequireAuth>
   );
 }
-
-// The how-to for connecting the player's AI (Claude, ChatGPT) to their sessions.
-const AI_GUIDE_URL = "https://web-f1.imanzanastore.com.ar/instructivos#claude";
 
 const PRO_POINTS: [string, string][] = [
   ["Estrategia y paradas", "Arma el plan antes de largar y lo cambia sobre la marcha si llueve, si sale el safety car o si las gomas no dan más."],

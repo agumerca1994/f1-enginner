@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import { Panel } from "@/components/dashboard/Panel";
@@ -42,7 +41,6 @@ export function EngineerPanel({
   const wall = [...engineer.messages].reverse().find((m) => m.estrategia);
   const lastRadio = [...engineer.messages].reverse().find((m) => m.radio);
   const history = engineer.messages.filter((m) => m.radio && m.id !== lastRadio?.id).slice(-5).reverse();
-  const cost = engineer.messages.reduce((sum, m) => sum + (m.cost_usd || 0), 0);
   const ai = engineer.provider && !isRulesProvider(engineer.provider);
 
   return (
@@ -153,14 +151,6 @@ export function EngineerPanel({
             </div>
           )}
 
-          {cost > 0 && (
-            <p className="num text-right text-[0.65rem] text-muted">
-              Costo de IA en esta sesión: US$ {cost.toFixed(3)} ·{" "}
-              <Link href="/usage" className="text-accent underline">
-                ver consumo
-              </Link>
-            </p>
-          )}
         </div>
       )}
     </Panel>

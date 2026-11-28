@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { Sub } from "@/components/settings/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+
+export const AI_GUIDE_URL = "https://web-f1.imanzanastore.com.ar/instructivos#claude";
 
 type Connection = { grant_id: string; client_name: string; connected_at: string | null; last_used_at: string | null };
 type Token = { id: number; name: string; token_prefix: string; expires_at: string | null; last_used_at: string | null };
@@ -76,14 +79,17 @@ export function McpConnectorSection() {
   };
 
   return (
-    <section className="mt-4 card p-4">
-      <h2 className="label">Tus carreras en Claude y ChatGPT</h2>
-      <p className="mt-1 text-sm text-muted">
-        Preguntale dónde perdiste tiempo o cómo mejorar el reglaje. Agregá esta dirección como conector en la app.
-      </p>
+    <section className="flex flex-col gap-3">
+      <Sub
+        title="Conexión con tu IA"
+        hint="Tus datos reales en Claude o ChatGPT, para analizar tus carreras fuera de la pista."
+        action={<a href={AI_GUIDE_URL} target="_blank" rel="noopener" className="text-[0.9rem] text-accent-ink">Cómo conectarla ›</a>}
+      />
+      <div className="card p-4">
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+      {url && <p className="mb-2 text-[0.88rem] text-muted">Copiá esta dirección y agregala como conector en Claude o ChatGPT:</p>}
       {url && (
-        <div className="mt-3 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <code className="num min-w-0 flex-1 truncate rounded-lg border border-line bg-panel-2 px-3 py-2 text-sm">{url}</code>
           <button onClick={() => copy(url)} className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm hover:border-accent">
             {copied === url ? "Copiada" : "Copiar"}
@@ -143,6 +149,7 @@ export function McpConnectorSection() {
           </li>
         ))}
       </ul>
+      </div>
     </section>
   );
 }

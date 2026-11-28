@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { Sub } from "@/components/settings/ui";
 import { STATUS_FIELDS, useStatusBarPrefs } from "@/components/ui/StatusBar";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -50,8 +51,12 @@ export function ScreensSection() {
   };
 
   return (
-    <section id="pantallas" className="flex scroll-mt-24 flex-col gap-2">
-      <h2 className="eyebrow">Tus pantallas</h2>
+    <section id="pantallas" className="flex scroll-mt-24 flex-col gap-3">
+      <Sub
+        title="Pantallas"
+        hint="La tele, una tablet u otra compu mostrando tu carrera."
+        action={<Link href="/vincular" className="text-[0.9rem] text-accent-ink">+ Sumar pantalla</Link>}
+      />
       <div className="card flex flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-panel-2 px-4 py-3">
           <span>
@@ -99,7 +104,7 @@ export function ScreensSection() {
           </div>
         ))}
       </div>
-      <h3 className="eyebrow mt-3">Tus cockpits</h3>
+      <h4 className="eyebrow mt-2">Tus cockpits</h4>
       <div className="card flex flex-col">
         {cockpits?.map((c) => (
           <div key={c.id} className="flex items-center justify-between gap-3 border-b border-panel-2 px-4 py-3 last:border-0">
@@ -114,12 +119,8 @@ export function ScreensSection() {
       <Link href="/cockpit/editar?nuevo=1" className="rounded-[var(--radius-card)] border border-dashed border-dim px-4 py-3 text-center text-[0.95rem] hover:border-muted">
         + Nuevo cockpit
       </Link>
-      <h3 className="eyebrow mt-3">Sumar una pantalla</h3>
-      <Link href="/vincular" className="rounded-[var(--radius-card)] border border-dashed border-dim px-4 py-3 text-center text-[0.95rem] hover:border-muted">
-        + Sumar pantalla
-      </Link>
       <p className="text-[0.82rem] text-dim">
-        En la tele, la tablet o la otra compu abrí <b className="text-muted">la app en /pantalla</b>: te muestra un código. Escanealo con este celular o escribilo en Sumar pantalla.
+        Para sumar una: en la tele, la tablet o la otra compu abrí <b className="text-muted">la app en /pantalla</b>. Te muestra un código: escanealo con este celular o escribilo en Sumar pantalla.
       </p>
     </section>
   );
@@ -129,14 +130,13 @@ export function ScreensSection() {
 export function StatusBarSection() {
   const { prefs, save } = useStatusBarPrefs();
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="eyebrow">Barra de estado</h2>
+    <section className="flex flex-col gap-3">
+      <Sub title="Barra de estado" hint="Una línea arriba para ver si la telemetría llega bien. No sirve para correr." />
       <div className="card flex flex-col gap-3 px-4 py-4">
         <label className="flex items-center justify-between gap-3 text-[0.95rem]">
           Mostrarla arriba
           <input type="checkbox" role="switch" checked={prefs.on} onChange={(e) => save({ ...prefs, on: e.target.checked })} className="h-6 w-11 accent-[var(--color-accent)]" />
         </label>
-        <p className="text-[0.85rem] text-muted">No sirve para correr: sirve para ver de un vistazo si la telemetría llega bien.</p>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Qué muestra">
           {STATUS_FIELDS.map((f) => {
             const on = prefs.fields.includes(f.id);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { OVERLAY_PANELS } from "@/components/overlay/Overlay";
+import { Sub } from "@/components/settings/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -71,19 +72,15 @@ export function OverlaySection() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <section className="mt-4 card p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="label">Paneles para transmitir</h2>
-        <button onClick={create} className="text-sm text-accent underline">
-          Crear link
-        </button>
-      </div>
-      <p className="mt-1 text-sm text-muted">
-        Delta, posiciones, pedales y la radio sobre tu stream. En OBS, agregá el link como «Navegador».
-      </p>
-      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
-
-      {links?.length === 0 && <p className="mt-3 text-sm text-muted">No creaste ninguno todavía.</p>}
+    <section className="flex flex-col gap-3">
+      <Sub
+        title="Paneles para transmitir"
+        hint="Delta, posiciones, pedales y la radio sobre tu stream. En OBS, agregá el link como «Navegador»."
+        action={<button onClick={create} className="text-[0.9rem] text-accent-ink">+ Crear link</button>}
+      />
+      <div className="card px-4">
+      {error && <p className="py-3 text-sm text-danger">{error}</p>}
+      {links?.length === 0 && <p className="py-3 text-sm text-muted">No creaste ninguno todavía.</p>}
       <ul className="divide-y divide-line">
         {links?.map((l) => (
           <li key={l.id} className="py-3">
@@ -112,6 +109,7 @@ export function OverlaySection() {
           </li>
         ))}
       </ul>
+      </div>
     </section>
   );
 }
