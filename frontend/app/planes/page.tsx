@@ -289,13 +289,13 @@ function Plans() {
       <section className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h2 className="title text-[1.3rem]">Conectá tu IA y hacela tu analista de carreras</h2>
+            <h2 className="title text-[1.3rem]">¿Por qué conectar Pit en línea con tu IA?</h2>
             <span className="rounded-full border border-line px-2.5 py-0.5 text-[0.75rem] text-soft-fg">Con Piloto profesional</span>
           </div>
           <p className="text-[0.95rem] text-muted">
-            Sola, tu IA no sabe nada de cómo manejás. Conectada a Pit en línea, lee tu telemetría y la analiza con vos cuando no estás
-            corriendo: repasa una carrera, te muestra cómo venís mejorando, compara tus vueltas y te ayuda a preparar el reglaje del
-            próximo gran premio. Funciona con Claude y ChatGPT.
+            Si le preguntás a ChatGPT o a Claude cómo configurar el reglaje de tu monoplaza, o cualquier duda sobre tu sesión, la
+            respuesta es genérica, basada en información general. Al conectar Pit en línea con tu IA le das acceso a los datos reales de
+            tu juego: preguntale lo que quieras y aprovechá toda su inteligencia.
           </p>
         </div>
         <a href={AI_GUIDE_URL} target="_blank" rel="noopener" className="btn shrink-0 self-start whitespace-nowrap px-4 py-2.5 text-[0.95rem] sm:self-center">
