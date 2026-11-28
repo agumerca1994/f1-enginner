@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+import { LogoMark } from "@/components/brand/LogoMark";
 
 import { PieceFrame } from "@/components/cockpit/CockpitGrid";
 import { fit, freeSpot, overlaps, pieceId, PIECES, SCREENS, sizeLevel, TEMPLATES, useCockpits, type Cockpit, type Piece, type PieceKind } from "@/lib/cockpit";
@@ -29,7 +31,12 @@ export function Editor() {
   const [query, setQuery] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [baseline, setBaseline] = useState<string>("");
+  const [area, setArea] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const grid = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!cockpits || draft) return;
@@ -37,10 +44,40 @@ export function Editor() {
     if (q.get("nuevo")) {
       const t = TEMPLATES.find((x) => x.id === "monitor")!;
       setDraft({ ...structuredClone(t), id: `k${Date.now().toString(36)}`, name: "Cockpit nuevo", pieces: [] });
+      setBaseline("nuevo");
+      // a new cockpit asks for its name first
+      setTimeout(() => nameInput.current?.select(), 50);
       return;
     }
-    setDraft(structuredClone(cockpits.find((c) => c.id === q.get("id")) ?? cockpits[0]));
+    const found = structuredClone(cockpits.find((c) => c.id === q.get("id")) ?? cockpits[0]);
+    setDraft(found);
+    setBaseline(JSON.stringify(found));
   }, [cockpits, draft]);
+
+  const ready = draft !== null;
+  // The cockpit fills the space it has, whole, at its screen's shape: no page scroll.
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setArea({ w: e.contentRect.width, h: e.contentRect.height }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ready]);
+
+  // Delete or Backspace removes the chosen piece (not while typing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (!selected || t.closest("input, select, textarea")) return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        remove(selected);
+      }
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const change = (next: Cockpit) => {
     if (draft) setHistory((h) => [...h.slice(-30), draft]);
@@ -123,7 +160,11 @@ export function Editor() {
     setSaving(true);
     try {
       const exists = cockpits.some((c) => c.id === draft.id);
-      await save(exists ? cockpits.map((c) => (c.id === draft.id ? draft : c)) : [...cockpits, draft]);
+      const name = draft.name.trim() || "Mi cockpit";
+      const next = { ...draft, name };
+      await save(exists ? cockpits.map((c) => (c.id === draft.id ? next : c)) : [...cockpits, next]);
+      setDraft(next);
+      setBaseline(JSON.stringify(next));
       setHistory([]);
       setNote("Guardado. Ya lo ven todas tus pantallas.");
     } catch {
@@ -136,7 +177,15 @@ export function Editor() {
   const duplicate = () => {
     if (!draft) return;
     setDraft({ ...structuredClone(draft), id: `k${Date.now().toString(36)}`, name: `${draft.name} (copia)` });
+    setBaseline("nuevo");
     setHistory([]);
+    setTimeout(() => nameInput.current?.select(), 50);
+  };
+
+  const dirty = !!draft && JSON.stringify(draft) !== baseline;
+  const leave = () => {
+    if (dirty && !confirm("Tenés cambios sin guardar. ¿Salir igual y perderlos?")) return;
+    router.push("/settings#pantallas");
   };
 
   const catalog = useMemo(() => {
@@ -152,84 +201,122 @@ export function Editor() {
   const shown = draft.pieces.map((p) => (preview && p.id === preview.id ? preview : p));
   const blocked = !!preview && draft.pieces.some((o) => overlaps(preview, o));
 
+  const frameW = area.w && area.h ? Math.min(area.w, area.h * aspect) : 0;
+  const SELECT = "h-9 rounded-[8px] border border-line bg-panel px-2 text-[0.88rem] text-fg";
+
   return (
-    <main className="flex min-h-dvh flex-col bg-bg pt-[env(safe-area-inset-top)]">
-      <header className="flex flex-wrap items-center gap-3 border-b border-line px-[max(1rem,env(safe-area-inset-left))] py-3 lg:px-6">
-        <Link href="/settings#pantallas" className="text-[0.9rem] text-muted">
-          ‹ Tus pantallas
-        </Link>
-        <div className="min-w-0">
-          <label className="sr-only" htmlFor="nombre-cockpit">Nombre del cockpit</label>
-          <input
-            id="nombre-cockpit"
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            className="title w-[min(60vw,22rem)] bg-transparent text-[1.4rem] outline-none focus:border-b focus:border-line"
-          />
-          <div className="text-[0.78rem] text-dim">Cockpit · cuadrícula de {draft.cols} × {draft.rows} · se guarda en tu cuenta</div>
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-[0.82rem] text-muted">
-            Pantalla
-            <select
-              value={SCREENS.find((x) => x.aspect === aspect)?.name ?? SCREENS[3].name}
-              onChange={(e) => setDraft({ ...draft, aspect: SCREENS.find((x) => x.name === e.target.value)!.aspect })}
-              className="h-9 rounded-[8px] border border-line bg-panel px-2 text-[0.88rem] text-fg"
-            >
-              {SCREENS.map((x) => (
-                <option key={x.name}>{x.name}</option>
-              ))}
-            </select>
+    <main className="flex min-h-dvh flex-col bg-bg pt-[env(safe-area-inset-top)] lg:h-dvh lg:overflow-hidden">
+      <header className="flex items-center gap-3 border-b border-line px-[max(1rem,env(safe-area-inset-left))] py-2.5 lg:px-5">
+        <LogoMark size={30} target />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="eyebrow">Editor de cockpit</span>
+          <label className="group flex min-w-0 items-center gap-2">
+            <span className="sr-only">Nombre del cockpit</span>
+            <input
+              ref={nameInput}
+              id="nombre-cockpit"
+              value={draft.name}
+              maxLength={40}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              placeholder="Ponele un nombre"
+              size={Math.max(10, draft.name.length + 1)}
+              className="title min-w-0 max-w-full rounded-[6px] border border-transparent bg-transparent px-1.5 py-0.5 text-[1.3rem] outline-none hover:border-line focus:border-accent"
+            />
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-dim group-hover:text-muted" aria-hidden="true">
+              <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
+            </svg>
           </label>
-          <label className="flex items-center gap-2 text-[0.82rem] text-muted">
-            Plantilla
-            <select
-              value=""
-              onChange={(e) => {
-                const t = TEMPLATES.find((x) => x.id === e.target.value);
-                if (t) change({ ...structuredClone(t), id: draft.id, name: draft.name });
-              }}
-              className="h-9 rounded-[8px] border border-line bg-panel px-2 text-[0.88rem] text-fg"
-            >
-              <option value="">Empezar de…</option>
-              {TEMPLATES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={duplicate} className="btn h-9 px-3 text-[0.88rem]">Duplicar</button>
-          <button type="button" onClick={undo} disabled={!history.length} className="btn h-9 px-3 text-[0.88rem] disabled:opacity-40">Deshacer</button>
-          <button type="button" onClick={persist} disabled={saving} className="btn-primary h-9 px-4 text-[0.95rem]">{saving ? "Guardando…" : "Guardar"}</button>
         </div>
+        <button type="button" onClick={undo} disabled={!history.length} className="btn hidden h-10 px-3 text-[0.9rem] disabled:opacity-40 sm:block">
+          Deshacer
+        </button>
+        <button type="button" onClick={leave} className="btn h-10 px-4 text-[0.9rem]">
+          Salir
+        </button>
+        <button type="button" onClick={persist} disabled={saving || !dirty} className={`${dirty ? "btn-primary" : "btn text-ok"} h-10 px-5 text-[0.95rem]`}>
+          {saving ? "Guardando…" : dirty ? "Guardar" : "✓ Guardado"}
+        </button>
       </header>
 
-      <div className="grid flex-1 lg:grid-cols-[270px_minmax(0,1fr)_300px]">
-        <aside className="order-2 flex flex-col gap-3 border-line p-4 lg:order-1 lg:border-r" aria-label="Agregar pieza">
-          <h2 className="eyebrow">Agregar pieza</h2>
-          <label className="sr-only" htmlFor="buscar-pieza">Buscar pieza</label>
-          <input id="buscar-pieza" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar: gomas, delta, mapa…" className="h-10 rounded-[8px] border border-line bg-panel px-3 text-[0.9rem]" />
-          {catalog.map(({ g, items }) => (
-            <div key={g} className="flex flex-col gap-1.5">
-              <span className="mt-1 text-[0.78rem] text-dim">{g}</span>
-              {items.map((k) => {
-                const sp = PIECES[k];
-                return (
-                  <button key={k} type="button" onClick={() => add(k)} className="flex items-center gap-2 rounded-[8px] border border-line bg-panel px-3 py-2 text-left hover:border-muted">
-                    <span className="flex-1 text-[0.9rem] font-semibold">{sp.name}</span>
-                    <span className="font-mono text-[0.7rem] text-muted">{sp.initial[0]}×{sp.initial[1]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[260px_minmax(0,1fr)_290px]">
+        {/* the only list that scrolls */}
+        <aside className="order-2 flex max-h-[45vh] min-h-0 flex-col border-line lg:order-1 lg:max-h-none lg:border-r" aria-label="Agregar pieza">
+          <div className="flex flex-col gap-2 border-b border-line p-3">
+            <h2 className="eyebrow">Agregar pieza</h2>
+            <label className="sr-only" htmlFor="buscar-pieza">Buscar pieza</label>
+            <input id="buscar-pieza" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar: gomas, delta, mapa…" className="h-10 rounded-[8px] border border-line bg-panel px-3 text-[0.9rem]" />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-3">
+            {catalog.map(({ g, items }) => (
+              <div key={g} className="flex flex-col gap-1.5">
+                <span className="text-[0.78rem] text-dim">{g}</span>
+                {items.map((k) => {
+                  const sp = PIECES[k];
+                  return (
+                    <button key={k} type="button" onClick={() => add(k)} className="flex items-center gap-2 rounded-[8px] border border-line bg-panel px-3 py-2 text-left hover:border-muted">
+                      <span className="text-accent-ink" aria-hidden="true">+</span>
+                      <span className="flex-1 text-[0.9rem] font-semibold">{sp.name}</span>
+                      <span className="font-mono text-[0.7rem] text-muted">{sp.initial[0]}×{sp.initial[1]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </aside>
 
-        <section className="order-1 flex flex-col items-center gap-3 bg-[#101114] p-4 lg:order-2 lg:p-8" aria-label="Tu cockpit">
-          <p className="text-center text-[0.85rem] text-muted">Tocá una pieza para elegirla, arrastrala para moverla y estirala desde los bordes. Ocupa cuadros enteros.</p>
-          <div className="w-full max-w-[920px]" style={{ maxWidth: aspect < 1 ? 380 : undefined }}>
-            <div className="w-full rounded-[22px] border-[8px] border-panel-2 bg-bg p-2" style={{ aspectRatio: String(aspect) }}>
+        <section className="order-1 flex min-h-0 flex-col gap-3 bg-[#101114] p-3 lg:order-2 lg:p-5" aria-label="Tu cockpit">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[0.82rem] text-muted">
+            <label className="flex items-center gap-2">
+              Pantalla
+              <select
+                value={SCREENS.find((x) => x.aspect === aspect)?.name ?? SCREENS[3].name}
+                onChange={(e) => setDraft({ ...draft, aspect: SCREENS.find((x) => x.name === e.target.value)!.aspect })}
+                className={SELECT}
+              >
+                {SCREENS.map((x) => (
+                  <option key={x.name}>{x.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              Cuadrícula
+              <select
+                value={`${draft.cols}x${draft.rows}`}
+                onChange={(e) => {
+                  const [cols, rows] = e.target.value.split("x").map(Number);
+                  change({ ...draft, cols, rows, pieces: draft.pieces.map((p) => fit(p, cols, rows)) });
+                }}
+                className={SELECT}
+              >
+                {["4x7", "6x4", "8x4", "8x6", "10x5", "12x6", "16x8"].map((g) => (
+                  <option key={g} value={g}>{g.replace("x", " × ")}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              Plantilla
+              <select
+                value=""
+                onChange={(e) => {
+                  const t = TEMPLATES.find((x) => x.id === e.target.value);
+                  if (t) change({ ...structuredClone(t), id: draft.id, name: draft.name });
+                }}
+                className={SELECT}
+              >
+                <option value="">Empezar de…</option>
+                {TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={duplicate} className="btn h-9 px-3 text-[0.85rem]">Duplicar</button>
+          </div>
+
+          <div ref={stage} className="grid min-h-[260px] flex-1 place-items-center lg:min-h-0">
+            <div className="rounded-[22px] border-[8px] border-panel-2 bg-bg p-2" style={frameW ? { width: frameW, height: frameW / aspect } : { width: "100%", aspectRatio: String(aspect) }}>
               <div ref={grid} className="relative h-full w-full touch-none" onPointerMove={move} onPointerUp={end} onPointerCancel={end} onClick={() => setSelected(null)}>
                 <div className="absolute inset-0 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${draft.cols}, minmax(0,1fr))`, gridTemplateRows: `repeat(${draft.rows}, minmax(0,1fr))` }} aria-hidden="true">
                   {Array.from({ length: draft.cols * draft.rows }, (_, i) => (
@@ -254,6 +341,19 @@ export function Editor() {
                         <span className="pointer-events-none absolute top-1 right-1.5 rounded bg-bg/80 px-1 font-mono text-[0.62rem] text-muted">{p.w}×{p.h}</span>
                         {sel && (
                           <>
+                            <button
+                              type="button"
+                              aria-label={`Quitar ${PIECES[p.kind].name}`}
+                              title="Quitar (Supr)"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                remove(p.id);
+                              }}
+                              className="absolute top-1 left-1 z-10 grid h-7 w-7 place-items-center rounded-full bg-danger text-[0.95rem] font-bold leading-none text-white shadow"
+                            >
+                              ×
+                            </button>
                             <span onPointerDown={(e) => begin(e, p, "w")} className="absolute top-1/2 right-0 h-10 w-3 -translate-y-1/2 cursor-ew-resize rounded-full bg-accent" />
                             <span onPointerDown={(e) => begin(e, p, "h")} className="absolute bottom-0 left-1/2 h-3 w-10 -translate-x-1/2 cursor-ns-resize rounded-full bg-accent" />
                             <span onPointerDown={(e) => begin(e, p, "wh")} className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize rounded-[4px] bg-accent" />
@@ -266,26 +366,21 @@ export function Editor() {
               </div>
             </div>
           </div>
-          {note && <p className="text-[0.88rem] text-warn" role="status">{note}</p>}
-          <label className="flex items-center gap-2 text-[0.82rem] text-muted">
-            Cuadrícula
-            <select
-              value={`${draft.cols}x${draft.rows}`}
-              onChange={(e) => {
-                const [cols, rows] = e.target.value.split("x").map(Number);
-                change({ ...draft, cols, rows, pieces: draft.pieces.map((p) => fit(p, cols, rows)) });
-              }}
-              className="h-9 rounded-[8px] border border-line bg-panel px-2 text-[0.88rem] text-fg"
-            >
-              {["4x7", "6x4", "8x4", "8x6", "10x5", "12x6", "16x8"].map((g) => (
-                <option key={g} value={g}>{g.replace("x", " × ")}</option>
-              ))}
-            </select>
-          </label>
+          <p className={`min-h-[1.2rem] text-center text-[0.85rem] ${note ? "text-warn" : "text-dim"}`} role="status">
+            {note ?? "Tocá una pieza para elegirla, arrastrala para moverla y estirala desde los bordes."}
+          </p>
         </section>
 
-        <aside className="order-3 flex flex-col gap-4 border-line p-4 lg:border-l" aria-label="Pieza elegida">
-          {piece ? <PieceInspector piece={piece} onStep={step} onRemove={() => remove(piece.id)} /> : <p className="text-[0.9rem] text-muted">Elegí una pieza para cambiarle el tamaño, o agregá una desde la lista.</p>}
+        <aside className="order-3 flex min-h-0 flex-col gap-4 overflow-y-auto border-line p-4 lg:border-l" aria-label="Pieza elegida">
+          {piece ? (
+            <PieceInspector piece={piece} onStep={step} onRemove={() => remove(piece.id)} />
+          ) : (
+            <div className="flex flex-col gap-2 text-[0.9rem] text-muted">
+              <span className="eyebrow">Pieza elegida</span>
+              <p>Ninguna. Elegí una en el cockpit para cambiarle el tamaño o quitarla, o sumá una desde la lista.</p>
+              {draft.pieces.length === 0 && <p className="text-dim">Tu cockpit está vacío: empezá por una plantilla o agregá piezas.</p>}
+            </div>
+          )}
         </aside>
       </div>
     </main>
@@ -319,6 +414,9 @@ function PieceInspector({ piece, onStep, onRemove }: { piece: Piece; onStep: (dw
         <Stepper label="Ancho" value={piece.w} onLess={() => onStep(-1, 0)} onMore={() => onStep(1, 0)} />
         <Stepper label="Alto" value={piece.h} onLess={() => onStep(0, -1)} onMore={() => onStep(0, 1)} />
       </div>
+      <button type="button" onClick={onRemove} className="h-10 rounded-[8px] border border-danger/50 text-[0.9rem] text-accent-ink hover:bg-danger/10">
+        Quitar pieza <span className="text-dim">(Supr)</span>
+      </button>
       <dl className="flex flex-col gap-1.5 text-[0.9rem]">
         <div className="flex justify-between"><dt className="text-muted">Tamaño mínimo</dt><dd>{spec.min[0]}×{spec.min[1]}</dd></div>
         <div className="flex justify-between"><dt className="text-muted">Forma</dt><dd>{SHAPE_ES[spec.shape]}</dd></div>
@@ -336,9 +434,6 @@ function PieceInspector({ piece, onStep, onRemove }: { piece: Piece; onStep: (dw
           ))}
         </ul>
       </div>
-      <button type="button" onClick={onRemove} className="mt-auto h-10 rounded-[8px] border border-danger/40 text-[0.9rem] text-accent-ink">
-        Quitar pieza
-      </button>
     </>
   );
 }
