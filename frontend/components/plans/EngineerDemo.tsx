@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -15,7 +15,15 @@ const ALERTS = [
   { lap: 5, text: "Última vuelta." },
 ];
 
-const SUGGESTED = ["¿Cuándo paro?", "¿Cómo viene Gasly?", "¿Dónde pierdo tiempo?", "¿Cómo están las gomas?"];
+const SUGGESTED = [
+  "¿Cuándo paro?",
+  "¿Cómo viene Gasly?",
+  "¿Dónde pierdo tiempo?",
+  "¿Cómo están las gomas?",
+  "¿Puedo pasar a Verstappen?",
+  "¿Sigue la lluvia?",
+  "¿Me sancionaron?",
+];
 
 type Rival = { piloto: string | null; gap_s: number | null } | null;
 type DemoState = {
@@ -164,21 +172,25 @@ function ProRadio({ left: initialLeft }: { left: number | null }) {
     }
   };
   const mic = useDictation((heard) => void ask(heard, true));
-  const shown = turns.slice(-2);
   const asked = new Set(turns.map((t) => t.pregunta));
-  const chips = SUGGESTED.filter((s) => !asked.has(s)).slice(0, 3);
+  const chips = [...SUGGESTED.filter((q) => !asked.has(q)), ...SUGGESTED.filter((q) => asked.has(q))];
+
+  // the chat keeps its size and scrolls: the newest message always in view
+  const chat = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = chat.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [turns, busy, mic.listening, mic.interim]);
 
   return (
     <Radio pro title="Ingeniero Pro" line="Le preguntás lo que quieras y te contesta con tu carrera.">
-      <div className="flex flex-1 flex-col gap-3" aria-live="polite">
-        {shown.length === 0 && !mic.listening && (
-          <Bubble who="ing" tag="Ingeniero">Acá estoy. ¿Qué necesitás?</Bubble>
-        )}
-        {shown.map((t, n) => (
-          <div key={turns.length - shown.length + n} className="flex flex-col gap-2">
-            <Bubble who="vos" dim={n < shown.length - 1}>{t.pregunta}</Bubble>
+      <div ref={chat} className="-mr-2 flex h-64 flex-col gap-3 overflow-y-auto overscroll-contain pr-2" aria-live="polite">
+        <Bubble who="ing" tag="Ingeniero">Acá estoy. ¿Qué necesitás?</Bubble>
+        {turns.map((t, n) => (
+          <div key={n} className="flex flex-col gap-2">
+            <Bubble who="vos">{t.pregunta}</Bubble>
             {t.respuesta ? (
-              <Bubble who="ing" dim={n < shown.length - 1}>{t.respuesta}</Bubble>
+              <Bubble who="ing">{t.respuesta}</Bubble>
             ) : (
               <Bubble who="ing"><span className="animate-pulse">Consultando…</span></Bubble>
             )}
@@ -187,21 +199,19 @@ function ProRadio({ left: initialLeft }: { left: number | null }) {
         {mic.listening && <Bubble who="vos"><span className="animate-pulse">{mic.interim || "Te escucho…"}</span></Bubble>}
       </div>
 
-      {chips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {chips.map((s) => (
-            <button
-              key={s}
-              type="button"
-              disabled={busy}
-              onClick={() => void ask(s)}
-              className="rounded-full border border-line px-3 py-1.5 text-[0.88rem] text-soft-fg hover:border-accent disabled:opacity-50"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden">
+        {chips.map((q) => (
+          <button
+            key={q}
+            type="button"
+            disabled={busy}
+            onClick={() => void ask(q)}
+            className={`shrink-0 whitespace-nowrap rounded-full border border-line px-3 py-1.5 text-[0.88rem] hover:border-accent disabled:opacity-50 ${asked.has(q) ? "text-dim" : "text-soft-fg"}`}
+          >
+            {q}
+          </button>
+        ))}
+      </div>
 
       <form
         className="flex gap-2"
