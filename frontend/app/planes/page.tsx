@@ -230,7 +230,7 @@ function Plans() {
       {/* How each engineer sounds: the same real race, frozen; the Pro one answers live */}
       <section className="flex flex-col gap-4">
         <h2 className="display text-[2rem] uppercase leading-none">Ingeniero Pro, ¿vale la pena?</h2>
-        <p className="text-muted">Una carrera real, en la vuelta 4 de 6 con lluvia. Escuchá la radio de avisos y preguntale al ingeniero Pro lo que quieras.</p>
+        <p className="text-muted">Una carrera real, en la vuelta 4 de 6 con lluvia. Escuchá la radio de avisos y preguntale al ingeniero Pro lo que quieras para ver la diferencia.</p>
         <EngineerDemo />
       </section>
     </main>
