@@ -71,9 +71,15 @@ async def ask_engineer(body: AskIn, user: User = Depends(get_current_user)):
 async def demo_state(user: User = Depends(get_current_user)):
     """The engineer demo in Plans: the frozen race it talks about and the questions left today."""
     s = demo.race()["estado_breve"]
+    ahead, behind = s.get("adelante") or {}, s.get("atras") or {}
+    tyres = s.get("gomas") or {}
     return {"pista": s.get("pista"), "vuelta": s.get("vuelta"), "vueltas_restantes": s.get("vueltas_restantes"),
-            "posicion": s.get("posicion"), "restantes": demo.limits.left(user.id),
-            "por_dia": demo.PER_PLAYER_PER_DAY}
+            "posicion": s.get("posicion"), "clima": s.get("clima"),
+            "compuesto": tyres.get("compuesto"), "desgaste_pct": tyres.get("desgaste_max_pct"),
+            "adelante": {"piloto": ahead.get("piloto"), "gap_s": ahead.get("gap_s")} if ahead else None,
+            "atras": {"piloto": behind.get("piloto"),
+                      "gap_s": behind.get("gap_s") or (behind.get("alcance") or {}).get("gap_s")} if behind else None,
+            "restantes": demo.limits.left(user.id), "por_dia": demo.PER_PLAYER_PER_DAY}
 
 
 @router.post("/demo")

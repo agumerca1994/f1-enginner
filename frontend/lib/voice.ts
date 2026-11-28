@@ -298,7 +298,7 @@ export function unlockVoice(): void {
  * speech that starts later, unless the page already spoke in a tap). The lines queue in the
  * browser's own speech queue. Resolves when the last one ends.
  */
-export function speakNow(lines: string[]): Promise<void> {
+export function speakNow(lines: string[], onLine?: (i: number) => void): Promise<void> {
   generation++;
   current?.stop();
   queue = Promise.resolve();
@@ -311,6 +311,7 @@ export function speakNow(lines: string[]): Promise<void> {
       if (voice) u.voice = voice;
       u.lang = voice?.lang ?? "es-AR";
       u.rate = 1.05;
+      if (onLine) u.onstart = () => onLine(i);
       if (i === lines.length - 1) u.onend = u.onerror = () => resolve();
       window.speechSynthesis.speak(u);
     });

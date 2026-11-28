@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useDictation } from "@/lib/listen";
 import { playRadio, speakNow, stopRadio, unlockVoice } from "@/lib/voice";
 
-// Both engineers talk about the same moment: a real race frozen at Austin, lap 4 of 6, in the rain.
-export const DEMO_MOMENT = "Austin, vuelta 4 de 6. Llueve, vas octavo con intermedios, Verstappen medio segundo adelante y Gasly encima.";
-
-// What the alert radio says in that race: only the important things, the same words every time.
+// Both engineers talk about the same moment: a real race (Texas capture) frozen at lap 4 of 6, in the rain.
+// What the alert radio says there: only the important things, the same words every time.
 const ALERTS = [
   { lap: 3, text: "Advertencia por toque con Norris." },
   { lap: 4, text: "Sigue la lluvia los próximos diez minutos." },
@@ -19,81 +17,53 @@ const ALERTS = [
 
 const SUGGESTED = ["¿Cuándo paro?", "¿Cómo viene Gasly?", "¿Dónde pierdo tiempo?", "¿Cómo están las gomas?"];
 
+type Rival = { piloto: string | null; gap_s: number | null } | null;
+type DemoState = {
+  pista: string | null;
+  vuelta: number | null;
+  vueltas_restantes: number | null;
+  posicion: number | null;
+  clima: string | null;
+  compuesto: string | null;
+  desgaste_pct: number | null;
+  adelante: Rival;
+  atras: Rival;
+  restantes: number;
+  por_dia: number;
+};
 type Turn = { pregunta: string; respuesta: string | null; fuente?: "ia" | "guion" };
-type DemoState = { restantes: number; por_dia: number };
 type DemoAnswer = { radio: string; audio: string | null; fuente: "ia" | "guion"; restantes: number };
 
-function Bubble({ who, children, light }: { who: "ing" | "vos"; children: React.ReactNode; light?: boolean }) {
-  return (
-    <div
-      className={`max-w-[92%] rounded-2xl px-3.5 py-2 text-[0.95rem] ${
-        who === "vos" ? "self-end bg-accent text-white" : light ? "bg-black/[0.06]" : "bg-panel-2"
-      }`}
-    >
-      <span className={`mr-1.5 text-[0.7rem] font-semibold uppercase tracking-wider ${who === "vos" ? "text-white/80" : "opacity-60"}`}>
-        {who === "vos" ? "Vos" : "Ingeniero"}
-      </span>
-      {children}
-    </div>
-  );
+const WEATHER: Record<string, string> = {
+  Clear: "Despejado",
+  "Light cloud": "Algo nublado",
+  Overcast: "Nublado",
+  "Light rain": "Llovizna",
+  "Heavy rain": "Lluvia fuerte",
+  Storm: "Tormenta",
+};
+const COMPOUND: Record<string, string> = { Soft: "Blandas", Medium: "Medias", Hard: "Duras", Intermediate: "Inter", Wet: "Lluvia" };
+const name = (s: string | null | undefined) => (s ? s.charAt(0) + s.slice(1).toLowerCase() : "—");
+const secs = (n: number | null | undefined) => (n == null ? "—" : `${n.toFixed(1).replace(".", ",")} s`);
+
+/** The red dot of the engineer's radio, as in the app's dock. */
+function Dot({ on = true }: { on?: boolean }) {
+  return <span className={`h-2.5 w-2.5 shrink-0 rounded-full bg-accent ${on ? "animate-pulse" : ""}`} aria-hidden="true" />;
 }
 
-/** The alert radio of the demo race, read aloud with the engineer's voice. */
-export function AlertsDemo() {
-  const [playing, setPlaying] = useState(false);
-  const listen = async () => {
-    if (playing) {
-      stopRadio();
-      setPlaying(false);
-      return;
-    }
-    unlockVoice();
-    setPlaying(true);
-    await speakNow(ALERTS.map((a) => a.text)); // started inside the tap: what phones require
-    setPlaying(false);
-  };
-  useEffect(() => () => stopRadio(), []);
+const SQUARE = "grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[#c4c8ce] disabled:opacity-40";
 
-  return (
-    <div className="card flex min-w-0 flex-col gap-3 p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="title text-[1.3rem]">Radio de avisos</span>
-        <span className="text-[0.75rem] text-dim">Piloto rookie y Piloto profesional</span>
-      </div>
-      <div className="flex flex-col gap-2">
-        {ALERTS.map((a) => (
-          <Bubble key={a.lap} who="ing">
-            <span className="mr-1.5 font-mono text-[0.75rem] opacity-60">V{a.lap}</span>
-            {a.text}
-          </Bubble>
-        ))}
-      </div>
-      <button type="button" onClick={() => void listen()} className="btn self-start px-4 py-2 text-[0.9rem]">
-        {playing ? "Parar" : "Escuchar"}
-      </button>
-      <p className="mt-auto text-[0.88rem] text-muted">Te avisa lo importante: safety car, pinchazos, daños, lluvia y sanciones. No responde preguntas.</p>
-    </div>
-  );
-}
-
-/** The Pro engineer, live: the player asks (typed, a suggestion, or by voice) about the demo race. */
-export function ProDemo() {
+/** The engineer demo in Plans: the race at a glance, the alert radio and the Pro engineer, as in the app. */
+export function EngineerDemo() {
   const { credentials } = useAuth();
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [left, setLeft] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const turnsRef = useRef<Turn[]>([]);
-  turnsRef.current = turns;
+  const [state, setState] = useState<DemoState | null>(null);
 
   useEffect(() => {
     let alive = true;
     void (async () => {
       try {
         const s = await api<DemoState>("/api/engineer/demo", await credentials());
-        if (alive) setLeft(s.restantes);
+        if (alive) setState(s);
       } catch {}
     })();
     return () => {
@@ -102,27 +72,117 @@ export function ProDemo() {
     };
   }, [credentials]);
 
-  useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [turns, busy]);
+  return (
+    <div className="flex flex-col gap-4">
+      <RaceStrip s={state} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <AlertsRadio />
+        <ProRadio left={state?.restantes ?? null} lap={state?.vuelta ?? 4} />
+      </div>
+    </div>
+  );
+}
+
+/** The race at a glance, like the cockpit's pieces. */
+function RaceStrip({ s }: { s: DemoState | null }) {
+  const total = s?.vuelta != null && s.vueltas_restantes != null ? s.vuelta + s.vueltas_restantes : null;
+  const tiles: [string, string, string?][] = [
+    ["Posición", s?.posicion ? `P${s.posicion}` : "—"],
+    ["Vuelta", s?.vuelta ? `${s.vuelta}${total ? `/${total}` : ""}` : "—"],
+    ["Gomas", s?.compuesto ? COMPOUND[s.compuesto] ?? s.compuesto : "—", s?.desgaste_pct != null ? `${Math.round(s.desgaste_pct)}% de desgaste` : undefined],
+    ["Clima", s?.clima ? WEATHER[s.clima] ?? s.clima : "—"],
+    ["Adelante", name(s?.adelante?.piloto), secs(s?.adelante?.gap_s)],
+    ["Atrás", name(s?.atras?.piloto), secs(s?.atras?.gap_s)],
+  ];
+  return (
+    <div className="card p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-[#3ddc97]" aria-hidden="true" />
+        <span className="eyebrow">En pista · {s?.pista ?? "Austin"} · carrera de ejemplo</span>
+      </div>
+      <div className="grid grid-cols-3 gap-x-4 gap-y-3 sm:grid-cols-6">
+        {tiles.map(([label, value, sub]) => (
+          <div key={label} className="min-w-0">
+            <span className="eyebrow block truncate">{label}</span>
+            <span className="display block truncate text-[1.3rem] leading-none sm:text-[1.6rem]">{value}</span>
+            {sub && <span className="block truncate text-[0.78rem] text-muted">{sub}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The alert radio of the demo race: the cockpit's radio piece, read aloud. */
+function AlertsRadio() {
+  const [i, setI] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const cur = ALERTS[i];
+  const prev = i > 0 ? ALERTS[i - 1] : null;
+  const listen = async () => {
+    if (playing) {
+      stopRadio();
+      setPlaying(false);
+      return;
+    }
+    unlockVoice();
+    setPlaying(true);
+    setI(0);
+    // started inside the tap: what phones require; the card follows the line being said
+    await speakNow(ALERTS.map((a) => a.text), setI);
+    setPlaying(false);
+  };
+
+  return (
+    <div className="card flex min-w-0 flex-col gap-3 p-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Dot on={playing} />
+        <span className="title text-[1.15rem]">Radio de avisos</span>
+        <span className="ml-auto text-[0.75rem] text-dim">Piloto rookie y profesional</span>
+      </div>
+      <span className="eyebrow">Radio · vuelta {cur.lap}</span>
+      <p className="title min-h-[3.2rem] text-[1.5rem] leading-tight" style={{ textTransform: "none" }} aria-live="polite">{cur.text}</p>
+      {prev && <p className="truncate text-[0.88rem] text-muted">Antes: {prev.text}</p>}
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={() => void listen()} className="btn-ink h-10 shrink-0 px-4 text-[0.95rem]">
+          {playing ? "■ Detener" : "▶ Escuchar"}
+        </button>
+        <span className="text-[0.85rem] text-muted">No le podés preguntar.</span>
+      </div>
+      <p className="mt-auto border-t border-line pt-3 text-[0.88rem] text-muted">Te avisa lo importante: safety car, pinchazos, daños, lluvia y sanciones.</p>
+    </div>
+  );
+}
+
+/** The Pro engineer, live, in the app's radio: hold to talk, or type, or pick a question. */
+function ProRadio({ left: initialLeft, lap }: { left: number | null; lap: number }) {
+  const { credentials } = useAuth();
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [left, setLeft] = useState<number | null>(initialLeft);
+  const [typing, setTyping] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => setLeft(initialLeft), [initialLeft]);
 
   const ask = async (question: string, acknowledged = false) => {
     const q = question.trim().slice(0, 300);
     if (!q || busy) return;
     if (!acknowledged) {
-      unlockVoice();
       // like a real radio, and the tap that lets the answer be heard on a phone
       // (a spoken question already said it when the talk button was released)
+      unlockVoice();
       void speakNow(["Copiado."]);
     }
-    setText("");
+    setDraft("");
+    setTyping(false);
     setError(null);
     setBusy(true);
-    const history = turnsRef.current.filter((t) => t.respuesta).slice(-4).map(({ pregunta, respuesta }) => ({ pregunta, respuesta }));
+    const history = turns.filter((t) => t.respuesta).slice(-4).map(({ pregunta, respuesta }) => ({ pregunta, respuesta }));
     setTurns((t) => [...t, { pregunta: q, respuesta: null }]);
     try {
       const r = await api<DemoAnswer>("/api/engineer/demo", await credentials(), { method: "POST", body: { texto: q, historial: history } });
-      setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, respuesta: r.radio, fuente: r.fuente } : x)));
+      setTurns((t) => t.map((x, n) => (n === t.length - 1 ? { ...x, respuesta: r.radio, fuente: r.fuente } : x)));
       setLeft(r.restantes);
       void playRadio(r.radio, r.audio, true);
     } catch (e) {
@@ -132,42 +192,39 @@ export function ProDemo() {
       setBusy(false);
     }
   };
+  const mic = useDictation((heard) => void ask(heard, true));
 
-  // the spoken question ends on the release of the button: that release is the tap the voice needs
-  const dictation = useDictation((heard) => void ask(heard, true));
-  const scripted = left === 0;
+  const last = turns[turns.length - 1];
+  const prev = turns.length > 1 ? turns[turns.length - 2] : null;
+  let line = last?.respuesta ?? "Preguntale qué tocar, cuándo parar o cómo viene el de atrás.";
+  if (busy) line = "Consultando…";
+  if (mic.listening) line = mic.interim || "Te escucho…";
 
   return (
     <div className="paper flex min-w-0 flex-col gap-3 p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="title text-[1.3rem]">Ingeniero Pro</span>
-        <span className="text-[0.75rem] text-[#5b616b]">Con carreras Pro</span>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Dot on={busy || mic.listening} />
+        <span className="title text-[1.15rem]">Ingeniero Pro</span>
+        <span className="ml-auto text-[0.75rem] text-paper-muted">Con carreras Pro</span>
       </div>
-
-      <div ref={listRef} className="flex max-h-[22rem] min-h-[7rem] flex-col gap-2 overflow-y-auto">
-        {turns.length === 0 && <p className="text-[0.95rem] text-[#3d434c]">Preguntale lo que quieras de esta carrera, escribiendo o con la voz.</p>}
-        {turns.map((t, i) => (
-          <div key={i} className="flex flex-col gap-2">
-            <Bubble who="vos">{t.pregunta}</Bubble>
-            {t.respuesta ? (
-              <Bubble who="ing" light>
-                {t.respuesta}
-                <span className="mt-1 flex items-center gap-3 text-[0.72rem] text-[#5b616b]">
-                  <button type="button" onClick={() => void speakNow([t.respuesta as string])} className="font-semibold underline">
-                    Escuchar
-                  </button>
-                  {t.fuente === "guion" && <span>Respuesta de ejemplo</span>}
-                </span>
-              </Bubble>
-            ) : (
-              <Bubble who="ing" light>
-                <span className="animate-pulse">…</span>
-              </Bubble>
-            )}
+      <span className="eyebrow !text-paper-muted">
+        Radio · vuelta {lap}
+        {last && !busy && !mic.listening ? ` · Vos: ${last.pregunta}` : ""}
+      </span>
+      <p className={`title min-h-[3.2rem] text-[1.5rem] leading-tight ${busy ? "animate-pulse" : ""}`} style={{ textTransform: "none" }} aria-live="polite">
+        {line}
+      </p>
+      {last?.respuesta && !busy && (
+        <div className="flex flex-col gap-1 text-[0.85rem] text-paper-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <button type="button" onClick={() => void speakNow([last.respuesta as string])} className="whitespace-nowrap font-semibold underline">
+              Repetir
+            </button>
+            {last.fuente === "guion" && <span className="whitespace-nowrap">Respuesta de ejemplo</span>}
           </div>
-        ))}
-        {dictation.listening && <Bubble who="vos">{dictation.interim || "Escuchando…"}</Bubble>}
-      </div>
+          {prev?.respuesta && <span className="truncate">Antes: {prev.respuesta}</span>}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {SUGGESTED.map((s) => (
@@ -176,65 +233,83 @@ export function ProDemo() {
             type="button"
             disabled={busy}
             onClick={() => void ask(s)}
-            className="rounded-full border border-black/15 px-3 py-1.5 text-[0.85rem] text-[#24282e] hover:bg-black/[0.05] disabled:opacity-50"
+            className="rounded-full bg-black/[0.06] px-3 py-1.5 text-[0.85rem] text-paper-fg hover:bg-black/[0.1] disabled:opacity-50"
           >
             {s}
           </button>
         ))}
       </div>
 
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void ask(text);
-        }}
-      >
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          maxLength={300}
-          placeholder="Preguntale algo…"
-          aria-label="Tu pregunta para el ingeniero"
-          className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-black/15 bg-white px-3 py-2 text-[0.95rem] text-[#15171b] placeholder:text-[#7a808a]"
-        />
-        {dictation.supported && (
+      {/* the app's radio bar */}
+      <div className="flex items-center gap-2 border-t border-[#d5d8dc] pt-3">
+        {typing ? (
+          <form
+            className="flex min-w-0 flex-1 gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void ask(draft);
+            }}
+          >
+            <label className="sr-only" htmlFor="demo-pregunta">
+              Preguntale al ingeniero
+            </label>
+            <input
+              id="demo-pregunta"
+              autoFocus
+              value={draft}
+              maxLength={300}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="¿Qué le toco para que gire en la 3?"
+              className="h-10 min-w-0 flex-1 rounded-[var(--radius-control)] border border-[#c4c8ce] bg-white px-3 text-[0.95rem] text-paper-fg"
+            />
+            <button type="submit" disabled={busy || !draft.trim()} className="btn-ink h-10 px-4 text-[0.95rem] disabled:opacity-50">
+              Enviar
+            </button>
+          </form>
+        ) : (
+          <span className="min-w-0 flex-1 text-[0.85rem] text-paper-muted">
+            {left == null
+              ? " "
+              : left === 0
+                ? "Por hoy, respuestas de ejemplo. Mañana tenés más en vivo."
+                : `Te ${left === 1 ? "queda 1 pregunta" : `quedan ${left} preguntas`} en vivo hoy`}
+          </span>
+        )}
+        <button
+          type="button"
+          aria-label={typing ? "Cerrar el teclado" : "Escribirle al ingeniero"}
+          onClick={() => setTyping((t) => !t)}
+          className={SQUARE}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            {typing ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 20h4L19 9l-4-4L4 16v4Z" />}
+          </svg>
+        </button>
+        {!typing && mic.supported && (
           <button
             type="button"
             disabled={busy}
             onPointerDown={(e) => {
               e.preventDefault();
               unlockVoice();
-              dictation.start();
+              mic.start();
             }}
             onPointerUp={() => {
               unlockVoice();
               void speakNow(["Copiado."]);
-              dictation.stop();
+              mic.stop();
             }}
-            onPointerLeave={() => dictation.listening && dictation.stop()}
+            onPointerLeave={() => mic.listening && mic.stop()}
             onContextMenu={(e) => e.preventDefault()}
-            aria-label="Mantené apretado para hablar"
-            title="Mantené apretado para hablar"
-            className={`select-none rounded-[var(--radius-control)] px-3 py-2 text-[0.9rem] ${dictation.listening ? "bg-accent text-white" : "btn-ink"} disabled:opacity-50`}
+            className={`btn-ink h-10 shrink-0 touch-none select-none px-4 text-[0.95rem] disabled:opacity-50 ${mic.listening ? "animate-pulse" : ""}`}
           >
-            {dictation.listening ? "Soltá" : "Hablar"}
+            <span className="lg:hidden">Hablar</span>
+            <span className="hidden lg:inline">Mantené para hablar</span>
           </button>
         )}
-        <button type="submit" disabled={busy || !text.trim()} className="btn-ink px-4 py-2 text-[0.9rem] disabled:opacity-50">
-          Enviar
-        </button>
-      </form>
-
-      {(error || dictation.error) && <p className="text-[0.85rem] text-[#b3261e]">{error || dictation.error}</p>}
-      <p className="text-[0.8rem] text-[#5b616b]">
-        {left == null
-          ? " "
-          : scripted
-            ? "Por hoy ya usaste las preguntas en vivo: ahora contesta con respuestas de ejemplo. Mañana tenés más."
-            : `Responde la IA del ingeniero Pro sobre telemetría real. Te quedan ${left} ${left === 1 ? "pregunta" : "preguntas"} hoy.`}
-      </p>
-      <p className="mt-auto text-[0.88rem] text-[#3d434c]">Le hablás y te contesta. Arma la estrategia, la cambia sobre la marcha y se acuerda de todo el fin de semana.</p>
+      </div>
+      {(error || mic.error) && <p className="text-[0.85rem] text-[#b3261e]">{error || mic.error}</p>}
+      <p className="text-[0.88rem] text-paper-muted">Le hablás y te contesta con la telemetría de tu carrera. Arma la estrategia, la cambia sobre la marcha y se acuerda de todo el fin de semana.</p>
     </div>
   );
 }
