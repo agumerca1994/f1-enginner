@@ -159,7 +159,7 @@ function Plans() {
             <ul className="flex flex-col gap-2 text-[0.95rem]">
               <Item strong>{b.carreras_por_mes} carreras con el ingeniero Pro todos los meses</Item>
               <Item>Radio de avisos en todas tus carreras</Item>
-              <Item>Tus sesiones en Claude y ChatGPT</Item>
+              <Item>Conexión con tu IA</Item>
               <Item>Todas las pantallas que quieras</Item>
             </ul>
             <div className="mt-auto flex flex-col gap-2">
@@ -282,7 +282,7 @@ function Included({ b, radioLeft }: { b: Billing; radioLeft: number | null }) {
   const screens = b.puede.pantallas;
   const extras: [string, boolean][] = [
     ["Telemetría, reglaje y clasificaciones", true],
-    [b.puede.mcp ? "Tus sesiones en Claude y ChatGPT" : "Claude y ChatGPT, con Piloto profesional", b.puede.mcp],
+    [b.puede.mcp ? "Conexión con tu IA" : "Conexión con tu IA, con Piloto profesional", b.puede.mcp],
     [screens == null ? "Todas las pantallas que quieras" : `${screens} ${screens === 1 ? "pantalla vinculada" : "pantallas vinculadas"}`, screens == null || screens > 0],
   ];
   return (
