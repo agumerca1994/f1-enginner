@@ -64,7 +64,7 @@ export function OverlaySection() {
   };
 
   const revoke = async (l: OverlayLink) => {
-    if (!confirm(`¿Revocar "${l.name}"? Los paneles que lo usan se apagan en menos de un minuto.`)) return;
+    if (!confirm(`¿Eliminar "${l.name}"? Los paneles que lo usan se apagan en menos de un minuto.`)) return;
     await api(`/api/overlay/tokens/${l.id}`, await credentials(), { method: "DELETE" });
     load();
   };
@@ -98,12 +98,12 @@ export function OverlaySection() {
                   </button>
                 )}
                 <button onClick={() => revoke(l)} className="text-sm text-danger">
-                  Revocar
+                  Eliminar
                 </button>
               </div>
             </div>
             {!l.token && (
-              <p className="mt-1 text-xs text-muted">Creado antes de que se pudieran volver a ver: revocalo y creá uno nuevo.</p>
+              <p className="mt-1 text-xs text-muted">Creado antes de que se pudieran volver a ver: eliminalo y creá uno nuevo.</p>
             )}
             {l.token && open === l.id && <PanelLinks origin={origin} token={l.token} dark={dark} setDark={setDark} copied={copied} copy={copy} />}
           </li>

@@ -2,14 +2,14 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_device, get_current_user, utcnow
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import format_user_code
-from app.models import Device, User
+from app.models import Device, GameSession, PairingRequest, User
 from app.services import pairing
 
 router = APIRouter(prefix="/api/devices", tags=["devices"])
@@ -104,11 +104,19 @@ async def list_devices(user: User = Depends(get_current_user), db: AsyncSession 
 
 
 @router.delete("/{device_id:int}", status_code=204)
-async def revoke_device(device_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def revoke_device(device_id: int, eliminar: bool = False, user: User = Depends(get_current_user),
+                        db: AsyncSession = Depends(get_db)):
+    """Unlink a bridge (its token stops working; it stays listed), or with eliminar=true remove it
+    from the list for good. Its recorded sessions stay: they just forget which computer sent them."""
     device = await db.get(Device, device_id)
     if device is None or device.tenant_id != user.tenant_id:
         raise HTTPException(404, "Device not found")
-    if device.revoked_at is None:
+    if eliminar:
+        await db.execute(update(GameSession).where(GameSession.device_id == device.id).values(device_id=None))
+        await db.execute(update(PairingRequest).where(PairingRequest.device_id == device.id).values(device_id=None))
+        await db.delete(device)
+        await db.commit()
+    elif device.revoked_at is None:
         device.revoked_at = utcnow()
         await db.commit()
 

@@ -7,7 +7,7 @@ export type Theme = "clasico" | "carbono" | "volante";
 export const THEMES: { id: Theme; name: string; description: string; swatch: string[] }[] = [
   { id: "carbono", name: "Carbono", description: "Grafito, rojo de señal y números en cursiva.", swatch: ["#0b0c0e", "#14161a", "#ff4b2b", "#f2f3f5"] },
   { id: "clasico", name: "Clásico", description: "Muro de boxes oscuro con acento celeste.", swatch: ["#07090c", "#0e1217", "#22d3ee", "#e9eef3"] },
-  { id: "volante", name: "Volante", description: "La pantalla de un volante: vidrio negro y números que brillan.", swatch: ["#030405", "#0b0d10", "#7dff6a", "#ffb547"] },
+  { id: "volante", name: "Neón", description: "Vidrio negro y números que brillan, como el display de un volante.", swatch: ["#030405", "#0b0d10", "#7dff6a", "#ffb547"] },
 ];
 
 const KEY = "tema";

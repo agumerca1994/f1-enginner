@@ -359,6 +359,12 @@ function BridgeSection() {
     await api(`/api/devices/${d.id}`, await credentials(), { method: "DELETE" });
     load();
   };
+  const remove = async (d: Device) => {
+    const live = !d.revoked_at ? " Deja de poder enviar datos." : "";
+    if (!confirm(`¿Eliminar "${d.name}" de la lista?${live} Tus sesiones grabadas no se borran.`)) return;
+    await api(`/api/devices/${d.id}?eliminar=true`, await credentials(), { method: "DELETE" });
+    load();
+  };
 
   return (
     <section className="flex flex-col gap-3">
@@ -384,11 +390,16 @@ function BridgeSection() {
                 {d.last_reception != null && !d.revoked_at && ` · señal ${Math.round(d.last_reception * 100)}%`}
               </div>
             </div>
-            {!d.revoked_at && (
-              <button onClick={() => revoke(d)} className="shrink-0 text-[0.88rem] text-danger">
-                Desvincular
+            <div className="flex shrink-0 items-center gap-4 text-[0.88rem]">
+              {!d.revoked_at && (
+                <button onClick={() => revoke(d)} className="text-muted hover:text-fg">
+                  Desvincular
+                </button>
+              )}
+              <button onClick={() => remove(d)} className="text-danger">
+                Eliminar
               </button>
-            )}
+            </div>
           </div>
         ))}
       </div>

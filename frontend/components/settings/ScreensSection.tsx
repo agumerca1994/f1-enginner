@@ -25,7 +25,7 @@ export const roleName = (id: string) => ROLES.find((r) => r.id === id)?.name ?? 
 /** The screens linked to the account (a TV, a tablet, another computer) and what each shows. */
 export function ScreensSection() {
   const { credentials } = useAuth();
-  const { cockpits } = useCockpits();
+  const { cockpits, save: saveCockpits } = useCockpits();
   const [screens, setScreens] = useState<Screen[] | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
 
@@ -44,8 +44,13 @@ export function ScreensSection() {
     await api(`/api/screens/${s.id}`, await credentials(), { method: "PATCH", body });
     load();
   };
+  const removeCockpit = async (id: string, name: string) => {
+    if (!cockpits || cockpits.length < 2) return;
+    if (!confirm(`¿Eliminar el cockpit "${name}"? Las pantallas que lo usan pasan a mostrar otro.`)) return;
+    await saveCockpits(cockpits.filter((c) => c.id !== id));
+  };
   const remove = async (s: Screen) => {
-    if (!confirm(`¿Quitar "${s.name}"? Esa pantalla deja de mostrar tus datos.`)) return;
+    if (!confirm(`¿Eliminar "${s.name}"? Esa pantalla deja de mostrar tus datos.`)) return;
     await api(`/api/overlay/tokens/${s.id}`, await credentials(), { method: "DELETE" });
     load();
   };
@@ -74,9 +79,14 @@ export function ScreensSection() {
                   {s.role === "cockpit" && s.config.cockpit ? ` · ${cockpits?.find((c) => c.id === s.config.cockpit)?.name ?? ""}` : ""}
                 </span>
               </span>
-              <button type="button" onClick={() => setEditing(editing === s.id ? null : s.id)} className="text-[0.88rem] text-accent-ink">
-                {editing === s.id ? "Listo" : "Cambiar"}
-              </button>
+              <div className="flex shrink-0 items-center gap-4 text-[0.88rem]">
+                <button type="button" onClick={() => setEditing(editing === s.id ? null : s.id)} className="text-accent-ink">
+                  {editing === s.id ? "Listo" : "Cambiar"}
+                </button>
+                <button type="button" onClick={() => remove(s)} className="text-danger">
+                  Eliminar
+                </button>
+              </div>
             </div>
             {editing === s.id && (
               <div className="flex flex-col gap-2">
@@ -98,7 +108,6 @@ export function ScreensSection() {
                     </select>
                   </label>
                 )}
-                <button type="button" onClick={() => remove(s)} className="self-start text-[0.85rem] text-accent-ink">Quitar esta pantalla</button>
               </div>
             )}
           </div>
@@ -112,7 +121,14 @@ export function ScreensSection() {
               <span className="block truncate font-semibold">{c.name}</span>
               <span className="text-[0.82rem] text-dim">{c.pieces.length} piezas · cuadrícula de {c.cols} × {c.rows}</span>
             </span>
-            <Link href={`/cockpit/editar?id=${c.id}`} className="btn shrink-0 px-3 py-1.5 text-[0.88rem]">Armar</Link>
+            <div className="flex shrink-0 items-center gap-3">
+              {cockpits.length > 1 && (
+                <button type="button" onClick={() => removeCockpit(c.id, c.name)} className="text-[0.88rem] text-danger">
+                  Eliminar
+                </button>
+              )}
+              <Link href={`/cockpit/editar?id=${c.id}`} className="btn px-3 py-1.5 text-[0.88rem]">Armar</Link>
+            </div>
           </div>
         ))}
       </div>

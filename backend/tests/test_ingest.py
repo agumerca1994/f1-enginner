@@ -43,6 +43,14 @@ def test_pairing_flow_and_device_list(client):
     assert devices[0]["token_prefix"].startswith("rbd_")
     # Another player cannot see it.
     assert client.get("/api/devices", headers={"X-Dev-User": next(_emails)}).json() == []
+    # Unlinked, it stays listed; removed, it is gone (and another player cannot remove it).
+    h = {"X-Dev-User": email}
+    d = devices[0]["id"]
+    assert client.delete(f"/api/devices/{d}", params={"eliminar": True}, headers={"X-Dev-User": next(_emails)}).status_code == 404
+    assert client.delete(f"/api/devices/{d}", headers=h).status_code == 204
+    assert client.get("/api/devices", headers=h).json()[0]["revoked_at"] is not None
+    assert client.delete(f"/api/devices/{d}", params={"eliminar": True}, headers=h).status_code == 204
+    assert client.get("/api/devices", headers=h).json() == []
 
 
 def test_confirm_rejects_unknown_code(client):
