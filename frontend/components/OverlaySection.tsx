@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { OVERLAY_PANELS } from "@/components/overlay/Overlay";
-import { Sub } from "@/components/settings/ui";
+import { ADD_BUTTON, Sub } from "@/components/settings/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -76,7 +76,6 @@ export function OverlaySection() {
       <Sub
         title="Paneles para transmitir"
         hint="Delta, posiciones, pedales y la radio sobre tu stream. En OBS, agregá el link como «Navegador»."
-        action={<button onClick={create} className="text-[0.9rem] text-accent-ink">+ Crear link</button>}
       />
       <div className="card px-4">
       {error && <p className="py-3 text-sm text-danger">{error}</p>}
@@ -110,6 +109,9 @@ export function OverlaySection() {
         ))}
       </ul>
       </div>
+      <button type="button" onClick={create} className={ADD_BUTTON}>
+        + Crear link
+      </button>
     </section>
   );
 }

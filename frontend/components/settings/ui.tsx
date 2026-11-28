@@ -7,6 +7,10 @@ export const CONTROL =
 /** The button beside a control (Guardar, Probar): a fixed width, so the controls end at the same place. */
 export const SIDE_BUTTON = "btn h-11 w-28 shrink-0 text-[0.92rem] disabled:opacity-40";
 
+/** "+ Add" at the foot of every list: the same dashed button everywhere. */
+export const ADD_BUTTON =
+  "block w-full rounded-[var(--radius-card)] border border-dashed border-dim px-4 py-3 text-center text-[0.95rem] hover:border-muted";
+
 /** A section's header: what it is, one line on what for, and an action on the right. */
 export function Sub({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
   return (

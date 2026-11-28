@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { Sub } from "@/components/settings/ui";
+import { ADD_BUTTON, Sub } from "@/components/settings/ui";
 import { STATUS_FIELDS, useStatusBarPrefs } from "@/components/ui/StatusBar";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -60,7 +60,6 @@ export function ScreensSection() {
       <Sub
         title="Pantallas"
         hint="La tele, una tablet u otra compu mostrando tu carrera."
-        action={<Link href="/vincular" className="text-[0.9rem] text-accent-ink">+ Sumar pantalla</Link>}
       />
       <div className="card flex flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-panel-2 px-4 py-3">
@@ -113,6 +112,12 @@ export function ScreensSection() {
           </div>
         ))}
       </div>
+      <Link href="/vincular" className={ADD_BUTTON}>
+        + Sumar pantalla
+      </Link>
+      <p className="text-[0.82rem] text-dim">
+        En la tele, la tablet o la otra compu abrí <b className="text-muted">la app en /pantalla</b>. Te muestra un código: escanealo con este celular o escribilo en Sumar pantalla.
+      </p>
       <h4 className="eyebrow mt-2">Tus cockpits</h4>
       <div className="card flex flex-col">
         {cockpits?.map((c) => (
@@ -132,12 +137,9 @@ export function ScreensSection() {
           </div>
         ))}
       </div>
-      <Link href="/cockpit/editar?nuevo=1" className="rounded-[var(--radius-card)] border border-dashed border-dim px-4 py-3 text-center text-[0.95rem] hover:border-muted">
+      <Link href="/cockpit/editar?nuevo=1" className={ADD_BUTTON}>
         + Nuevo cockpit
       </Link>
-      <p className="text-[0.82rem] text-dim">
-        Para sumar una: en la tele, la tablet o la otra compu abrí <b className="text-muted">la app en /pantalla</b>. Te muestra un código: escanealo con este celular o escribilo en Sumar pantalla.
-      </p>
     </section>
   );
 }

@@ -7,7 +7,7 @@ import { McpConnectorSection } from "@/components/McpConnectorSection";
 import { OverlaySection } from "@/components/OverlaySection";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ScreensSection, StatusBarSection } from "@/components/settings/ScreensSection";
-import { CONTROL, SIDE_BUTTON, Sub } from "@/components/settings/ui";
+import { ADD_BUTTON, CONTROL, SIDE_BUTTON, Sub } from "@/components/settings/ui";
 import { api } from "@/lib/api";
 import { PLAN_NAMES, planLine, type Billing } from "@/lib/billing";
 import { useAuth } from "@/lib/auth";
@@ -368,7 +368,7 @@ function BridgeSection() {
 
   return (
     <section className="flex flex-col gap-3">
-      <Sub title="Ingeniero Bridge" hint="Las computadoras que mandan la telemetría de tu juego." action={<Link href="/pair" className="text-[0.9rem] text-accent-ink">+ Vincular otra</Link>} />
+      <Sub title="Ingeniero Bridge" hint="Las computadoras que mandan la telemetría de tu juego." />
       <div className="card flex flex-col">
         {error && <p className="px-4 py-3 text-[0.88rem] text-danger">{error}</p>}
         {devices?.length === 0 && <p className="px-4 py-3 text-[0.9rem] text-muted">Todavía no vinculaste ninguna.</p>}
@@ -403,6 +403,9 @@ function BridgeSection() {
           </div>
         ))}
       </div>
+      <Link href="/pair" className={ADD_BUTTON}>
+        + Vincular otra computadora
+      </Link>
     </section>
   );
 }
