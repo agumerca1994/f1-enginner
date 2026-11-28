@@ -46,7 +46,7 @@ function Plans() {
     (async () => {
       try {
         const r = await api<{ estado: string }>(`/api/billing/sync?ref=${encodeURIComponent(ref)}`, await credentials(), { method: "POST" });
-        setNote(r.estado === "aprobado" ? "Listo, ya tenés tus carreras Pro." : "Mercado Pago todavía no confirmó el pago. Puede tardar unos minutos; esta pantalla se actualiza sola.");
+        setNote(r.estado === "aprobado" ? "Listo, ya tenés tus carreras con el ingeniero Pro." : "Mercado Pago todavía no confirmó el pago. Puede tardar unos minutos; esta pantalla se actualiza sola.");
         setRev((x) => x + 1);
       } catch {
         setNote("No pudimos revisar el pago ahora. Si pagaste, se acredita solo en unos minutos.");
@@ -126,13 +126,8 @@ function Plans() {
               </p>
             )}
           </div>
-          {b.plan !== "cortesia" && b.limites && (
-            <div className="flex gap-3">
-              <Counter label="Ingeniero Pro" value={pro ?? 0} />
-              <Counter label="Radio de avisos" value={radioLeft} sub={radioLeft == null ? "sin límite" : "este mes"} />
-            </div>
-          )}
         </div>
+        <Included b={b} pro={pro} radioLeft={radioLeft} />
         {note && <p className="paper px-4 py-3 text-[0.95rem]">{note}</p>}
         {!b.limites && <p className="text-[0.85rem] text-dim">Mientras dure la beta, todo está incluido para todos.</p>}
       </header>
@@ -156,7 +151,7 @@ function Plans() {
             </span>
             <PlanHead name="Piloto profesional" price={pesos(season.ars)} per="/mes" current={inSeason} light />
             <ul className="flex flex-col gap-2 text-[0.95rem]">
-              <Item strong>{b.carreras_por_mes} carreras Pro todos los meses</Item>
+              <Item strong>{b.carreras_por_mes} carreras con el ingeniero Pro todos los meses</Item>
               <Item>Radio de avisos en todas tus carreras</Item>
               <Item>Tus sesiones en Claude y ChatGPT</Item>
               <Item>Todas las pantallas que quieras</Item>
@@ -227,7 +222,7 @@ function Plans() {
         <Faq q="¿Qué cuenta como una carrera?">
           Cada vez que salís a pista y el ingeniero te habla: una práctica, una clasificación o una carrera de hasta {b.minutos_por_carrera} minutos. Menús y boxes no cuentan.
         </Faq>
-        <Faq q="¿Y si me quedo sin carreras Pro?">
+        <Faq q="¿Y si me quedo sin carreras con el ingeniero Pro?">
           Te sigue hablando la radio de avisos. Cuando cargás más, vuelve el ingeniero Pro, incluso en medio de la carrera.
         </Faq>
         <Faq q="¿Cómo pago?">
@@ -244,12 +239,68 @@ function Plans() {
   );
 }
 
-function Counter({ label, value, sub }: { label: string; value: number | null; sub?: string }) {
+/** What the current plan includes: the two engineers with what is left, then the rest. */
+function Included({ b, pro, radioLeft }: { b: Billing; pro: number | null; radioLeft: number | null }) {
+  const unlimited = b.plan === "cortesia" || !b.limites;
+  const proFrom = [
+    b.prueba > 0 && `${b.prueba} de regalo`,
+    b.carreras_mes.incluidas > 0 && `${Math.max(0, b.carreras_mes.incluidas - b.carreras_mes.usadas)} de este mes`,
+    b.creditos > 0 && `${b.creditos} compradas`,
+  ].filter(Boolean) as string[];
+  const radioTotal = b.avisos_mes.incluidas;
+  const screens = b.puede.pantallas;
+  const extras: [string, boolean][] = [
+    ["Telemetría, reglaje y clasificaciones", true],
+    [b.puede.mcp ? "Tus sesiones en Claude y ChatGPT" : "Claude y ChatGPT, con Piloto profesional", b.puede.mcp],
+    [screens == null ? "Todas las pantallas que quieras" : `${screens} ${screens === 1 ? "pantalla vinculada" : "pantallas vinculadas"}`, screens == null || screens > 0],
+  ];
   return (
-    <div className="card min-w-[8.5rem] px-4 py-3">
-      <span className="eyebrow">{label}</span>
-      <div className="display text-[2.6rem] leading-none">{value == null ? "∞" : value}</div>
-      <span className="text-[0.78rem] text-dim">{sub ?? (value === 1 ? "carrera" : "carreras")}</span>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Meter
+        title="Ingeniero Pro"
+        value={unlimited ? "∞" : String(pro ?? 0)}
+        unit={unlimited ? "sin límite" : pro === 1 ? "carrera disponible" : "carreras disponibles"}
+        detail={unlimited ? "Te habla y le preguntás en todas tus carreras." : proFrom.length ? proFrom.join(" · ") : "Sumá carreras con un pack o con Piloto profesional."}
+        empty={!unlimited && !pro}
+        pro
+      />
+      <Meter
+        title="Radio de avisos"
+        value={unlimited || radioLeft == null ? "∞" : String(radioLeft)}
+        unit={unlimited || radioLeft == null ? "en todas tus carreras" : `de ${radioTotal} este mes`}
+        fill={!unlimited && radioLeft != null && radioTotal ? radioLeft / radioTotal : null}
+        detail="Cuando no tenés ingeniero Pro, te avisa lo importante."
+        empty={!unlimited && radioLeft === 0}
+      />
+      <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-[0.88rem] sm:col-span-2">
+        {extras.map(([text, on]) => (
+          <li key={text} className={`flex items-center gap-1.5 ${on ? "text-soft-fg" : "text-dim"}`}>
+            <span aria-hidden className={on ? "text-ok" : ""}>{on ? "✓" : "+"}</span>
+            {text}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Meter({ title, value, unit, detail, fill = null, empty, pro }: { title: string; value: string; unit: string; detail: string; fill?: number | null; empty?: boolean; pro?: boolean }) {
+  return (
+    <div className={`card flex flex-col gap-2 p-4 ${pro ? "ring-1 ring-accent" : ""}`}>
+      <div className="flex items-center gap-2">
+        <span className="title text-[1.05rem]">{title}</span>
+        {pro && <span className="rounded-full bg-accent px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-accent-fg">Pro</span>}
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className={`display text-[2.6rem] leading-none ${empty ? "text-dim" : ""}`}>{value}</span>
+        <span className="text-[0.9rem] text-muted">{unit}</span>
+      </div>
+      {fill != null && (
+        <div className="h-1.5 overflow-hidden rounded-full bg-panel-2" aria-hidden>
+          <div className="h-full rounded-full bg-accent" style={{ width: `${Math.round(fill * 100)}%` }} />
+        </div>
+      )}
+      <p className="text-[0.82rem] text-dim">{detail}</p>
     </div>
   );
 }
