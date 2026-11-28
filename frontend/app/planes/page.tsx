@@ -138,13 +138,6 @@ function Plans() {
         {!b.limites && <p className="text-[0.85rem] text-dim">Mientras dure la beta, todo está incluido para todos.</p>}
       </header>
 
-      {/* How each engineer sounds: the same real race, frozen; the Pro one answers live */}
-      <section className="flex flex-col gap-4">
-        <h2 className="display text-[2rem] uppercase leading-none">Probá la diferencia</h2>
-        <p className="text-muted">Una carrera real, en la vuelta 4 de 6 con lluvia. Escuchá la radio de avisos y preguntale al ingeniero Pro lo que quieras.</p>
-        <EngineerDemo />
-      </section>
-
       {/* The plans */}
       <section className="flex flex-col gap-4">
         <h2 className="display text-[2rem] uppercase leading-none">Elegí cómo correr</h2>
@@ -233,6 +226,12 @@ function Plans() {
         <Faq q="¿Cómo pago?">
           Con Mercado Pago, en pesos: tarjeta, débito o dinero en cuenta. La Temporada se cancela desde esta pantalla.
         </Faq>
+      </section>
+      {/* How each engineer sounds: the same real race, frozen; the Pro one answers live */}
+      <section className="flex flex-col gap-4">
+        <h2 className="display text-[2rem] uppercase leading-none">Ingeniero Pro, ¿vale la pena?</h2>
+        <p className="text-muted">Una carrera real, en la vuelta 4 de 6 con lluvia. Escuchá la radio de avisos y preguntale al ingeniero Pro lo que quieras.</p>
+        <EngineerDemo />
       </section>
     </main>
   );
