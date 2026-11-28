@@ -7,6 +7,8 @@ export type Billing = {
   /** Pro races left from the new-account trial. */
   prueba: number;
   carreras_mes: { incluidas: number; usadas: number };
+  /** The Pro races as "quedan of de", by where they come from; null with a courtesy plan. */
+  pro: { quedan: number; de: number; origen: { tipo: "regalo" | "plan" | "compradas"; quedan: number; de: number }[] } | null;
   /** The alert radio's races this month; incluidas null = no limit. */
   avisos_mes: { incluidas: number | null; usadas: number };
   limites: boolean;

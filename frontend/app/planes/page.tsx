@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { PLAN_NAMES, proRaces, type Billing, type Product } from "@/lib/billing";
+import { PLAN_NAMES, type Billing, type Product } from "@/lib/billing";
 import { shortDate, useApi } from "@/lib/sessions";
 import { LoadingScreen } from "@/components/brand/LogoLoader";
 import { EngineerDemo } from "@/components/plans/EngineerDemo";
@@ -92,7 +92,7 @@ function Plans() {
   };
 
   const cancel = async () => {
-    if (!confirm("¿Cancelar la Temporada? La seguís usando hasta el final del mes que pagaste.")) return;
+    if (!confirm("¿Cancelar Piloto profesional? Lo seguís usando hasta el final del mes que pagaste.")) return;
     await api("/api/billing/cancel", await credentials(), { method: "POST" });
     setRev((x) => x + 1);
   };
@@ -100,7 +100,6 @@ function Plans() {
   if (!b) return <main className="mx-auto max-w-[1000px] px-4 pt-6"><LoadingScreen /></main>;
   const season = b.productos.find((p) => p.id === "suscripcion")!;
   const packs = b.productos.filter((p) => p.id !== "suscripcion");
-  const pro = proRaces(b);
   const radioLeft = b.avisos_mes.incluidas == null ? null : Math.max(0, b.avisos_mes.incluidas - b.avisos_mes.usadas);
   const inSeason = b.plan === "suscripcion";
 
@@ -127,7 +126,7 @@ function Plans() {
             )}
           </div>
         </div>
-        <Included b={b} pro={pro} radioLeft={radioLeft} />
+        <Included b={b} radioLeft={radioLeft} />
         {note && <p className="paper px-4 py-3 text-[0.95rem]">{note}</p>}
         {!b.limites && <p className="text-[0.85rem] text-dim">Mientras dure la beta, todo está incluido para todos.</p>}
       </header>
@@ -139,7 +138,7 @@ function Plans() {
           <div className={`card flex flex-col gap-4 p-5 ${b.plan === "gratis" ? "ring-1 ring-line" : ""}`}>
             <PlanHead name="Piloto rookie" price="$ 0" current={b.plan === "gratis"} />
             <ul className="flex flex-col gap-2 text-[0.95rem]">
-              <Item strong>{b.prueba_inicial} carreras con el ingeniero Pro, de regalo</Item>
+              <Item strong>{b.prueba_inicial === 1 ? "1 carrera" : `${b.prueba_inicial} carreras`} con el ingeniero Pro, de regalo</Item>
               <Item>Radio de avisos en {b.avisos_por_mes} carreras por mes</Item>
               <Item>Telemetría, reglaje y clasificaciones</Item>
             </ul>
@@ -159,7 +158,7 @@ function Plans() {
             <div className="mt-auto flex flex-col gap-2">
               {inSeason ? (
                 b.renovacion !== "cancelled" ? (
-                  <button type="button" onClick={() => void cancel()} className="self-start text-[0.85rem] text-[#5b616b] underline">Cancelar la Temporada</button>
+                  <button type="button" onClick={() => void cancel()} className="self-start text-[0.85rem] text-[#5b616b] underline">Cancelar Piloto profesional</button>
                 ) : (
                   <span className="text-[0.85rem] text-[#5b616b]">Cancelada: la usás hasta que termine el mes.</span>
                 )
@@ -226,7 +225,7 @@ function Plans() {
           Te sigue hablando la radio de avisos. Cuando cargás más, vuelve el ingeniero Pro, incluso en medio de la carrera.
         </Faq>
         <Faq q="¿Cómo pago?">
-          Con Mercado Pago, en pesos: tarjeta, débito o dinero en cuenta. La Temporada se cancela desde esta pantalla.
+          Con Mercado Pago, en pesos: tarjeta, débito o dinero en cuenta. Piloto profesional se cancela desde esta pantalla, cuando quieras.
         </Faq>
       </section>
       {/* How each engineer sounds: the same real race, frozen; the Pro one answers live */}
@@ -240,13 +239,11 @@ function Plans() {
 }
 
 /** What the current plan includes: the two engineers with what is left, then the rest. */
-function Included({ b, pro, radioLeft }: { b: Billing; pro: number | null; radioLeft: number | null }) {
+function Included({ b, radioLeft }: { b: Billing; radioLeft: number | null }) {
   const unlimited = b.plan === "cortesia" || !b.limites;
-  const proFrom = [
-    b.prueba > 0 && `${b.prueba} de regalo`,
-    b.carreras_mes.incluidas > 0 && `${Math.max(0, b.carreras_mes.incluidas - b.carreras_mes.usadas)} de este mes`,
-    b.creditos > 0 && `${b.creditos} compradas`,
-  ].filter(Boolean) as string[];
+  const pool = b.pro;
+  const ORIGIN = { regalo: "de regalo", plan: "del plan este mes", compradas: "compradas" } as const;
+  const proFrom = (pool?.origen ?? []).map((o) => `${o.quedan} de ${o.de} ${ORIGIN[o.tipo]}`);
   const radioTotal = b.avisos_mes.incluidas;
   const screens = b.puede.pantallas;
   const extras: [string, boolean][] = [
@@ -258,10 +255,11 @@ function Included({ b, pro, radioLeft }: { b: Billing; pro: number | null; radio
     <div className="grid gap-3 sm:grid-cols-2">
       <Meter
         title="Ingeniero Pro"
-        value={unlimited ? "∞" : String(pro ?? 0)}
-        unit={unlimited ? "sin límite" : pro === 1 ? "carrera disponible" : "carreras disponibles"}
-        detail={unlimited ? "Te habla y le preguntás en todas tus carreras." : proFrom.length ? proFrom.join(" · ") : "Sumá carreras con un pack o con Piloto profesional."}
-        empty={!unlimited && !pro}
+        value={unlimited || !pool ? "∞" : String(pool.quedan)}
+        unit={unlimited || !pool ? "sin límite" : pool.de ? `de ${pool.de}` : pool.quedan === 1 ? "carrera" : "carreras"}
+        fill={!unlimited && pool?.de ? pool.quedan / pool.de : null}
+        detail={unlimited || !pool ? "Te habla y le preguntás en todas tus carreras." : proFrom.length ? proFrom.join(" · ") : "Sumá carreras con un pack o con Piloto profesional."}
+        empty={!unlimited && !pool?.quedan}
         pro
       />
       <Meter

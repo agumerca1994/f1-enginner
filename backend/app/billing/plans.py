@@ -23,12 +23,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import BillingAccount, BillingSetting, RaceUsage
+from app.models import BillingAccount, BillingSetting, Payment, RaceUsage
 
 RACE_MINUTES = 45
-SUB_RACES_PER_MONTH = 3  # Pro races included in the subscription
+SUB_RACES_PER_MONTH = 5  # Pro races included in the subscription
 FREE_RADIO_RACES_PER_MONTH = 5  # alert-radio races on the free plan
-TRIAL_RACES = 3  # Pro races gifted to a new account
+TRIAL_RACES = 1  # Pro races gifted to a new account (accounts made before keep what they got)
 FREE_SCREENS = 1
 PRO_SOURCES = ("suscripcion", "paquete", "prueba", "cortesia")
 DEFAULT_USD_ARS = 1500.0
@@ -89,6 +89,29 @@ async def _used_this_month(db: AsyncSession, tenant_id: int, source: str, now: d
         RaceUsage.tenant_id == tenant_id, RaceUsage.source == source, RaceUsage.created_at >= month_start(now))) or 0
 
 
+async def _used_since(db: AsyncSession, tenant_id: int, source: str, since: datetime | None) -> int:
+    q = select(func.count()).select_from(RaceUsage).where(RaceUsage.tenant_id == tenant_id, RaceUsage.source == source)
+    if since is not None:
+        q = q.where(RaceUsage.created_at >= since)
+    return await db.scalar(q) or 0
+
+
+async def _pro_pool(db: AsyncSession, tenant_id: int, trial: int, credits: int, sub: bool, sub_used: int) -> dict:
+    """The Pro races the player has, as "N of M", by where they come from: the gift, the plan's
+    month and the packs bought. A source shows while it has races left (the plan, every month)."""
+    sources = []
+    if trial > 0:
+        sources.append({"tipo": "regalo", "quedan": trial, "de": trial + await _used_since(db, tenant_id, "prueba", None)})
+    if sub:
+        sources.append({"tipo": "plan", "quedan": max(0, SUB_RACES_PER_MONTH - sub_used), "de": SUB_RACES_PER_MONTH})
+    if credits > 0:
+        # since the last pack bought: "4 of 12", not of every pack ever
+        last = await db.scalar(select(func.max(Payment.approved_at)).where(
+            Payment.tenant_id == tenant_id, Payment.product.like("paquete%"), Payment.status == "aprobado"))
+        sources.append({"tipo": "compradas", "quedan": credits, "de": credits + await _used_since(db, tenant_id, "paquete", last)})
+    return {"quedan": sum(x["quedan"] for x in sources), "de": sum(x["de"] for x in sources), "origen": sources}
+
+
 async def status(db: AsyncSession, tenant_id: int) -> dict:
     """The account's plan as the app shows it, and what it can use now."""
     now = _now()
@@ -109,6 +132,7 @@ async def status(db: AsyncSession, tenant_id: int) -> dict:
         "creditos": credits,
         "prueba": trial,
         "carreras_mes": {"incluidas": SUB_RACES_PER_MONTH if sub else 0, "usadas": used},
+        "pro": None if comp else await _pro_pool(db, tenant_id, trial, credits, sub, used),
         "avisos_mes": {"incluidas": None if free_radio else FREE_RADIO_RACES_PER_MONTH, "usadas": radio_used},
         "limites": limits,
         "puede": {

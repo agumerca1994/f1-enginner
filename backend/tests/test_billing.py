@@ -68,7 +68,8 @@ def _no_trial(tenant_id):
 def test_free_plan_then_a_pack_then_the_subscription(client, limits):
     h = {"X-Dev-User": "paga@planes.test"}
     p = client.get("/api/billing", headers=h).json()
-    assert p["plan"] == "gratis" and p["prueba"] == 3
+    assert p["plan"] == "gratis" and p["prueba"] == 1
+    assert p["pro"] == {"quedan": 1, "de": 1, "origen": [{"tipo": "regalo", "quedan": 1, "de": 1}]}
     assert p["puede"] == {"ingeniero_ia": True, "radio": True, "mcp": False, "pantallas": 1}
     assert p["pagos"] == "simulado" and [x["id"] for x in p["productos"]] == ["suscripcion", "paquete5", "paquete12"]
     t = _tenant("paga@planes.test")
@@ -85,7 +86,9 @@ def test_free_plan_then_a_pack_then_the_subscription(client, limits):
     assert _charge(t, gs) == "paquete" and _charge(t, gs) == "paquete"  # the same block is charged once
     assert client.get("/api/billing", headers=h).json()["creditos"] == 4
     assert _charge(t, gs, 1) == "paquete"  # past 45 minutes, another race
-    assert client.get("/api/billing", headers=h).json()["creditos"] == 3
+    p = client.get("/api/billing", headers=h).json()
+    assert p["creditos"] == 3
+    assert p["pro"] == {"quedan": 3, "de": 5, "origen": [{"tipo": "compradas", "quedan": 3, "de": 5}]}
 
     # The subscription: its monthly races go first, then the pack.
     s = client.post("/api/billing/checkout", json={"producto": "suscripcion"}, headers=h).json()
@@ -93,11 +96,15 @@ def test_free_plan_then_a_pack_then_the_subscription(client, limits):
     p = client.get("/api/billing", headers=h).json()
     assert p["plan"] == "suscripcion" and p["puede"]["mcp"] and p["puede"]["pantallas"] is None
     gs2 = _session(t)
-    for block in range(3):
-        assert _charge(t, gs2, block) == "suscripcion"
-    assert _charge(t, gs2, 3) == "paquete"
+    assert _charge(t, gs2, 0) == "suscripcion"
     p = client.get("/api/billing", headers=h).json()
-    assert p["carreras_mes"] == {"incluidas": 3, "usadas": 3} and p["creditos"] == 2
+    assert p["pro"] == {"quedan": 7, "de": 10, "origen": [{"tipo": "plan", "quedan": 4, "de": 5},
+                                                        {"tipo": "compradas", "quedan": 3, "de": 5}]}
+    for block in range(1, 5):
+        assert _charge(t, gs2, block) == "suscripcion"
+    assert _charge(t, gs2, 5) == "paquete"
+    p = client.get("/api/billing", headers=h).json()
+    assert p["carreras_mes"] == {"incluidas": 5, "usadas": 5} and p["creditos"] == 2
 
 
 def test_courtesy_plan_and_the_reference_dollar(client, limits):
@@ -108,7 +115,8 @@ def test_courtesy_plan_and_the_reference_dollar(client, limits):
     t = _tenant("dueno@planes.test")
     assert _charge(t, _session(t)) == "cortesia"
     assert _charge(t, _session(t), pro=False) == "incluido"
-    assert client.get("/api/billing", headers=h).json()["prueba"] == 3
+    p = client.get("/api/billing", headers=h).json()
+    assert p["prueba"] == 1 and p["pro"] is None
     assert client.post("/internal/billing/grant", json={"email": "dueno@planes.test", "quitar": True}, headers=KEY).json()["plan"] == "gratis"
     # Gifted races for a deal.
     assert client.post("/internal/billing/grant", json={"email": "dueno@planes.test", "carreras": 5}, headers=KEY).json()["creditos"] == 5
@@ -157,21 +165,23 @@ def test_trial_then_free_alert_radio_races_then_silence(client, limits):
     client.get("/api/billing", headers=h)
     t = _tenant("prueba@planes.test")
     gs = _session(t)
-    # A new account: three Pro races gifted.
-    for block in range(3):
+    # A new account: its gifted Pro races.
+    gift = plans.TRIAL_RACES
+    for block in range(gift):
         assert _charge(t, gs, block) == "prueba"
-    assert _charge(t, gs, 3) is None
+    assert _charge(t, gs, gift) is None
     # Then the alert radio, a few races a month.
-    for block in range(3, 3 + plans.FREE_RADIO_RACES_PER_MONTH):
+    for block in range(gift, gift + plans.FREE_RADIO_RACES_PER_MONTH):
         assert _charge(t, gs, block, pro=False) == "avisos"
-    assert _charge(t, gs, 3, pro=False) == "avisos"  # the same block, once
+    assert _charge(t, gs, gift, pro=False) == "avisos"  # the same block, once
     p = client.get("/api/billing", headers=h).json()
     assert p["avisos_mes"] == {"incluidas": plans.FREE_RADIO_RACES_PER_MONTH, "usadas": plans.FREE_RADIO_RACES_PER_MONTH}
     assert p["puede"]["radio"] is False and p["puede"]["ingeniero_ia"] is False
+    assert p["pro"] == {"quedan": 0, "de": 0, "origen": []}
     assert _charge(t, gs, 99, pro=False) is None
     # A pack bought mid-race turns the current alert-radio block into a Pro one.
     client.post("/internal/billing/grant", json={"email": "prueba@planes.test", "carreras": 1}, headers=KEY)
-    assert _charge(t, gs, 3) == "paquete"
+    assert _charge(t, gs, gift) == "paquete"
     assert client.get("/api/billing", headers=h).json()["avisos_mes"]["usadas"] == plans.FREE_RADIO_RACES_PER_MONTH - 1
     # The subscription: the alert radio has no cap.
     s = client.post("/api/billing/checkout", json={"producto": "suscripcion"}, headers=h).json()

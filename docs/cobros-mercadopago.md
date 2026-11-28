@@ -4,8 +4,8 @@ Planes (definidos en `backend/app/billing/plans.py`):
 
 | Plan | Precio | Incluye |
 |---|---|---|
-| Gratis | 0 | 3 carreras Pro de prueba (una vez), radio de avisos en 5 carreras por mes, todo lo que no usa la radio, 1 pantalla vinculada |
-| Suscripción | 3,5 USD por mes | 3 carreras Pro por mes, radio de avisos sin límite, MCP, pantallas sin límite |
+| Gratis | 0 | 1 carrera con el ingeniero Pro de regalo (una vez), radio de avisos en 5 carreras por mes, todo lo que no usa la radio, 1 pantalla vinculada |
+| Suscripción | 3,5 USD por mes | 5 carreras con el ingeniero Pro por mes, radio de avisos sin límite, MCP, pantallas sin límite |
 | 5 carreras | 5 USD | Ingeniero Pro en vivo, no vencen |
 | 12 carreras | 10 USD | Ídem |
 | Cortesía | sin cargo | Todo, para el dueño y los acuerdos (`scripts/plans.sh cortesia`) |
