@@ -112,6 +112,15 @@ function Plans() {
   const packs = b.productos.filter((p) => p.id !== "suscripcion");
   const radioLeft = b.avisos_mes.incluidas == null ? null : Math.max(0, b.avisos_mes.incluidas - b.avisos_mes.usadas);
   const inSeason = b.plan === "suscripcion";
+  // When the plan ends, if it does: a subscription renews or ends, a courtesy plan may never end.
+  const term: { text: string; warn?: boolean } | null =
+    b.plan === "cortesia"
+      ? { text: b.hasta ? `Vence el ${shortDate(b.hasta)}` : "No vence" }
+      : inSeason && b.hasta
+        ? b.renovacion === "cancelled"
+          ? { text: `Termina el ${shortDate(b.hasta)}`, warn: true }
+          : { text: `Se renueva el ${shortDate(b.hasta)}` }
+        : { text: "No vence" };
 
   return (
     <main className="mx-auto flex max-w-[1000px] flex-col gap-8 px-[max(1rem,env(safe-area-inset-left))] py-5 lg:gap-10 lg:py-8">
@@ -129,10 +138,14 @@ function Plans() {
           <div className="min-w-0">
             <span className="eyebrow">Tu plan</span>
             <h1 className="display mt-1 text-[3.4rem] uppercase leading-[0.9] lg:text-[4.2rem]">{PLAN_NAMES[b.plan]}</h1>
-            {inSeason && b.hasta && (
-              <p className="mt-1 text-[0.9rem] text-dim">
-                {b.renovacion === "cancelled" ? `Termina el ${shortDate(b.hasta)}.` : `Se renueva sola cerca del ${shortDate(b.hasta)}.`}
-              </p>
+            {term && (
+              <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.85rem] ${term.warn ? "border-warn text-warn" : "border-line text-soft-fg"}`}>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M3 10h18M8 3v4M16 3v4" />
+                </svg>
+                {term.text}
+              </span>
             )}
           </div>
         </div>
@@ -231,11 +244,11 @@ function Plans() {
         <Faq q="¿Qué cuenta como una carrera?">
           Cada vez que salís a pista y el ingeniero te habla: una práctica, una clasificación o una carrera de hasta {b.minutos_por_carrera} minutos. Menús y boxes no cuentan.
         </Faq>
-        <Faq q="¿Y si me quedo sin carreras con el ingeniero Pro?">
-          Te sigue hablando la radio de avisos. Cuando cargás más, vuelve el ingeniero Pro, incluso en medio de la carrera.
+        <Faq q="¿Y si se termina el ingeniero Pro?">
+          Te sigue hablando la radio de avisos. Cuando sumás carreras, vuelve el Pro, incluso en plena carrera.
         </Faq>
         <Faq q="¿Cómo pago?">
-          Con Mercado Pago, en pesos: tarjeta, débito o dinero en cuenta. Piloto profesional se cancela desde esta pantalla, cuando quieras.
+          Con Mercado Pago, en pesos: tarjeta, débito o dinero en cuenta. Piloto profesional lo cancelás acá, cuando quieras.
         </Faq>
       </section>
       {/* What the Pro engineer is, before trying it */}
