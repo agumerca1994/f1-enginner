@@ -19,6 +19,13 @@ export default function PlansPage() {
   );
 }
 
+const PRO_POINTS: [string, string][] = [
+  ["Estrategia y paradas", "Arma el plan antes de largar y lo cambia sobre la marcha si llueve, si sale el safety car o si las gomas no dan más."],
+  ["Gomas y desgaste", "Sigue el desgaste y la temperatura de cada goma, y te avisa antes de que se te caigan."],
+  ["Más rápido, curva por curva", "Compara cada curva con tu mejor paso y te dice dónde frenás de más y dónde podés acelerar antes."],
+  ["Le hablás y te contesta", "Preguntale lo que quieras con la voz, sin soltar el volante. Se acuerda de todo el fin de semana."],
+];
+
 const pesos = (n: number) => `$ ${n.toLocaleString("es-AR")}`;
 
 /** The plans page: what the player has, how each engineer sounds, and the ways to pay. */
@@ -228,6 +235,26 @@ function Plans() {
           Con Mercado Pago, en pesos: tarjeta, débito o dinero en cuenta. Piloto profesional se cancela desde esta pantalla, cuando quieras.
         </Faq>
       </section>
+      {/* What the Pro engineer is, before trying it */}
+      <section className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
+          <span className="eyebrow">Potenciado con IA</span>
+          <h2 className="display text-[2rem] uppercase leading-none">¿Qué es el ingeniero Pro?</h2>
+          <p className="max-w-[44rem] text-[1.05rem] text-soft-fg">
+            Tu ingeniero de pista, como el de un equipo de verdad. Mira la telemetría de tu auto vuelta a vuelta y te habla por radio
+            mientras corrés: te arma la estrategia, te dice cuándo parar y dónde estás perdiendo tiempo. Y si tenés una duda, le preguntás.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {PRO_POINTS.map(([title, text]) => (
+            <div key={title} className="card flex flex-col gap-1.5 p-4">
+              <span className="title text-[1.05rem]">{title}</span>
+              <p className="text-[0.92rem] text-muted">{text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* How each engineer sounds: the same real race, frozen; the Pro one answers live */}
       <section className="flex flex-col gap-4">
         <h2 className="display text-[2rem] uppercase leading-none">Ingeniero Pro, ¿vale la pena?</h2>
