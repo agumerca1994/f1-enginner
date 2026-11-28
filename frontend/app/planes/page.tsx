@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { PLAN_NAMES, planLine, proRaces, type Billing, type Product } from "@/lib/billing";
+import { PLAN_NAMES, proRaces, type Billing, type Product } from "@/lib/billing";
 import { shortDate, useApi } from "@/lib/sessions";
 import { LoadingScreen } from "@/components/brand/LogoLoader";
 import { EngineerDemo } from "@/components/plans/EngineerDemo";
@@ -120,7 +120,6 @@ function Plans() {
           <div className="min-w-0">
             <span className="eyebrow">Tu plan</span>
             <h1 className="display mt-1 text-[3.4rem] uppercase leading-[0.9] lg:text-[4.2rem]">{PLAN_NAMES[b.plan]}</h1>
-            <p className="mt-3 max-w-[34rem] text-[1.02rem] text-muted">{planLine(b)}</p>
             {inSeason && b.hasta && (
               <p className="mt-1 text-[0.9rem] text-dim">
                 {b.renovacion === "cancelled" ? `Termina el ${shortDate(b.hasta)}.` : `Se renueva sola cerca del ${shortDate(b.hasta)}.`}
