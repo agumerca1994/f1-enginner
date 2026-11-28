@@ -290,8 +290,9 @@ function Plans() {
         <div className="flex min-w-0 flex-col gap-1.5">
           <h2 className="title text-[1.3rem]">Conectá Pit en línea con tu IA</h2>
           <p className="text-[0.95rem] text-muted">
-            Sumá tus carreras a Claude o ChatGPT y preguntale desde donde estés: cómo te fue en el último gran premio, dónde perdiste
-            tiempo, qué reglaje probar en la próxima. Responde con tu telemetría real. Incluido en Piloto profesional.
+            Para cuando no estás corriendo: llevá tus datos a Claude o ChatGPT y analizalos con calma. Repasá una carrera, seguí cómo
+            mejorás de una semana a otra, compará vueltas o prepará el reglaje del próximo gran premio, siempre con tu telemetría real.
+            Incluido en Piloto profesional.
           </p>
         </div>
         <a href={AI_GUIDE_URL} target="_blank" rel="noopener" className="btn shrink-0 self-start whitespace-nowrap px-4 py-2.5 text-[0.95rem] sm:self-center">
