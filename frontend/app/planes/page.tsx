@@ -288,11 +288,13 @@ function Plans() {
       {/* Why connect it to the player's own AI, with the how-to */}
       <section className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="flex min-w-0 flex-col gap-1.5">
-          <h2 className="title text-[1.3rem]">Conectá Pit en línea con tu IA</h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <h2 className="title text-[1.3rem]">Seguí mejorando fuera de la pista</h2>
+            <span className="rounded-full border border-line px-2.5 py-0.5 text-[0.75rem] text-soft-fg">Con Piloto profesional</span>
+          </div>
           <p className="text-[0.95rem] text-muted">
             Para cuando no estás corriendo: llevá tus datos a Claude o ChatGPT y analizalos con calma. Repasá una carrera, seguí cómo
             mejorás de una semana a otra, compará vueltas o prepará el reglaje del próximo gran premio, siempre con tu telemetría real.
-            Incluido en Piloto profesional.
           </p>
         </div>
         <a href={AI_GUIDE_URL} target="_blank" rel="noopener" className="btn shrink-0 self-start whitespace-nowrap px-4 py-2.5 text-[0.95rem] sm:self-center">
