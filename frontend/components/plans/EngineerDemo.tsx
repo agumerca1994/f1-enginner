@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useDictation } from "@/lib/listen";
-import { playRadio, stopRadio, unlockVoice } from "@/lib/voice";
+import { playRadio, speakNow, stopRadio, unlockVoice } from "@/lib/voice";
 
 // Both engineers talk about the same moment: a real race frozen at Austin, lap 4 of 6, in the rain.
 export const DEMO_MOMENT = "Austin, vuelta 4 de 6. Llueve, vas octavo con intermedios, Verstappen medio segundo adelante y Gasly encima.";
@@ -49,7 +49,7 @@ export function AlertsDemo() {
     }
     unlockVoice();
     setPlaying(true);
-    for (const a of ALERTS) await playRadio(a.text, null, false);
+    await speakNow(ALERTS.map((a) => a.text)); // started inside the tap: what phones require
     setPlaying(false);
   };
   useEffect(() => () => stopRadio(), []);
@@ -106,10 +106,15 @@ export function ProDemo() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, busy]);
 
-  const ask = async (question: string) => {
+  const ask = async (question: string, acknowledged = false) => {
     const q = question.trim().slice(0, 300);
     if (!q || busy) return;
-    unlockVoice();
+    if (!acknowledged) {
+      unlockVoice();
+      // like a real radio, and the tap that lets the answer be heard on a phone
+      // (a spoken question already said it when the talk button was released)
+      void speakNow(["Copiado."]);
+    }
     setText("");
     setError(null);
     setBusy(true);
@@ -128,7 +133,8 @@ export function ProDemo() {
     }
   };
 
-  const dictation = useDictation((heard) => void ask(heard));
+  // the spoken question ends on the release of the button: that release is the tap the voice needs
+  const dictation = useDictation((heard) => void ask(heard, true));
   const scripted = left === 0;
 
   return (
@@ -146,7 +152,12 @@ export function ProDemo() {
             {t.respuesta ? (
               <Bubble who="ing" light>
                 {t.respuesta}
-                {t.fuente === "guion" && <span className="mt-1 block text-[0.72rem] text-[#5b616b]">Respuesta de ejemplo</span>}
+                <span className="mt-1 flex items-center gap-3 text-[0.72rem] text-[#5b616b]">
+                  <button type="button" onClick={() => void speakNow([t.respuesta as string])} className="font-semibold underline">
+                    Escuchar
+                  </button>
+                  {t.fuente === "guion" && <span>Respuesta de ejemplo</span>}
+                </span>
               </Bubble>
             ) : (
               <Bubble who="ing" light>
@@ -196,7 +207,11 @@ export function ProDemo() {
               unlockVoice();
               dictation.start();
             }}
-            onPointerUp={dictation.stop}
+            onPointerUp={() => {
+              unlockVoice();
+              void speakNow(["Copiado."]);
+              dictation.stop();
+            }}
             onPointerLeave={() => dictation.listening && dictation.stop()}
             onContextMenu={(e) => e.preventDefault()}
             aria-label="Mantené apretado para hablar"

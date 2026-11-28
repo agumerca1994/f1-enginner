@@ -275,15 +275,44 @@ export function useEngineerVoice(messages: EngineerMessage[], { alwaysOn = false
   return { supported, enabled, toggle };
 }
 
-/** Call inside a tap: wakes the audio and the browser's speech so an answer that arrives
- *  seconds later can still be heard (phones only allow sound that a gesture started). */
+/** Call inside a tap: wakes the audio so sound that starts seconds later can still be heard.
+ *  Phones only allow sound a gesture started; on an iPhone Web Audio also obeys the silent
+ *  switch unless the page asks for playback. */
 export function unlockVoice(): void {
-  radioTones([]);
   try {
-    if ("speechSynthesis" in window && !window.speechSynthesis.speaking) {
-      const u = new SpeechSynthesisUtterance(" ");
-      u.volume = 0;
-      window.speechSynthesis.speak(u);
-    }
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = "playback";
   } catch {}
+  const ctx = audioContext();
+  if (ctx) {
+    // a silent sample started inside the tap: older iOS needs a sound, not only resume()
+    const src = ctx.createBufferSource();
+    src.buffer = ctx.createBuffer(1, 1, 22050);
+    src.connect(ctx.destination);
+    src.start(0);
+  }
+}
+
+/**
+ * Says lines with the browser's voice right now, inside the tap that calls it (phones refuse
+ * speech that starts later, unless the page already spoke in a tap). The lines queue in the
+ * browser's own speech queue. Resolves when the last one ends.
+ */
+export function speakNow(lines: string[]): Promise<void> {
+  generation++;
+  current?.stop();
+  queue = Promise.resolve();
+  if (typeof window === "undefined" || !("speechSynthesis" in window) || !lines.length) return Promise.resolve();
+  window.speechSynthesis.cancel();
+  const voice = pickVoice();
+  return new Promise((resolve) => {
+    lines.forEach((text, i) => {
+      const u = new SpeechSynthesisUtterance(spoken(text));
+      if (voice) u.voice = voice;
+      u.lang = voice?.lang ?? "es-AR";
+      u.rate = 1.05;
+      if (i === lines.length - 1) u.onend = u.onerror = () => resolve();
+      window.speechSynthesis.speak(u);
+    });
+  });
 }
