@@ -190,26 +190,34 @@ function Plans() {
           </div>
 
           <div className="card flex flex-col gap-4 p-5">
-            <PlanHead name="Carreras Pro" price={`desde ${pesos(Math.min(...packs.map((p) => Math.round(p.ars / p.carreras / 10) * 10)))}`} per="c/u" />
-            <p className="text-[0.95rem] text-muted">El ingeniero Pro cuando lo quieras, sin abono. Se suman a tu plan y no vencen.</p>
+            <PlanHead name="Ingeniero Pro" price={`desde ${pesos(Math.min(...packs.map((p) => Math.round(p.ars / p.carreras / 10) * 10)))}`} per="c/u" />
+            <p className="text-[0.95rem] text-muted">Comprá la asistencia del ingeniero Pro para cualquiera de tus planes.</p>
             <div className="mt-auto flex flex-col gap-2">
-              {packs.map((p, i) => (
+              {packs.map((p, i) => {
+                const best = i === packs.length - 1;
+                return (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => void buy(p.id)}
                   disabled={busy != null}
-                  className="btn flex items-center justify-between gap-3 px-4 py-3 text-left disabled:opacity-50"
+                  className={`btn relative flex items-center justify-between gap-3 px-4 py-3 text-left disabled:opacity-50 ${best ? "mt-3 border-accent" : ""}`}
                 >
+                  {best && (
+                    <span className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[0.72rem] font-semibold uppercase tracking-wider text-white">
+                      La que más conviene
+                    </span>
+                  )}
                   <span>
                     <span className="block font-semibold">{p.carreras} carreras</span>
                     <span className="block text-[0.78rem] text-muted">
-                      {pesos(Math.round(p.ars / p.carreras / 10) * 10)} cada una{i === packs.length - 1 ? " · la que más conviene" : ""}
+                      {pesos(Math.round(p.ars / p.carreras / 10) * 10)} cada una
                     </span>
                   </span>
                   <span className="shrink-0 whitespace-nowrap font-mono">{busy === p.id ? "…" : pesos(p.ars)}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
