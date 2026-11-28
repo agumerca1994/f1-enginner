@@ -19,6 +19,9 @@ export default function PlansPage() {
   );
 }
 
+// The how-to for connecting the player's AI (Claude, ChatGPT) to their sessions.
+const AI_GUIDE_URL = "https://web-f1.imanzanastore.com.ar/instructivos#claude";
+
 const PRO_POINTS: [string, string][] = [
   ["Estrategia y paradas", "Arma el plan antes de largar y lo cambia sobre la marcha si llueve, si sale el safety car o si las gomas no dan más."],
   ["Gomas y desgaste", "Sigue el desgaste y la temperatura de cada goma, y te avisa antes de que se te caigan."],
@@ -267,6 +270,20 @@ function Plans() {
         <h2 className="display text-[2rem] uppercase leading-none">Ingeniero Pro, ¿vale la pena?</h2>
         <p className="text-muted">Una carrera real, en la vuelta 4 de 6 con lluvia. Escuchá la radio de avisos y preguntale al ingeniero Pro lo que quieras para ver la diferencia.</p>
         <EngineerDemo />
+      </section>
+
+      {/* Why connect it to the player's own AI, with the how-to */}
+      <section className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h2 className="title text-[1.3rem]">Conectá Pit en línea con tu IA</h2>
+          <p className="text-[0.95rem] text-muted">
+            Sumá tus carreras a Claude o ChatGPT y preguntale desde donde estés: cómo te fue en el último gran premio, dónde perdiste
+            tiempo, qué reglaje probar en la próxima. Responde con tu telemetría real. Incluido en Piloto profesional.
+          </p>
+        </div>
+        <a href={AI_GUIDE_URL} target="_blank" rel="noopener" className="btn shrink-0 self-start whitespace-nowrap px-4 py-2.5 text-[0.95rem] sm:self-center">
+          Cómo conectarla ›
+        </a>
       </section>
     </main>
   );
