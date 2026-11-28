@@ -3,6 +3,7 @@
 import QRCode from "qrcode";
 import { useCallback, useEffect, useState } from "react";
 
+import { LogoMark } from "@/components/brand/LogoMark";
 import { CockpitGrid } from "@/components/cockpit/CockpitGrid";
 import { useScreenOn } from "@/components/cockpit/CockpitFull";
 import { PieceBody } from "@/components/cockpit/Pieces";
@@ -86,7 +87,7 @@ function Pairing({ onLinked }: { onLinked: (token: string) => void }) {
   return (
     <main className="grid min-h-dvh items-center gap-12 bg-bg px-[max(1.5rem,6vw)] py-10 lg:grid-cols-[1fr_auto]">
       <div className="flex max-w-[44rem] flex-col gap-6">
-        <span className="display text-[1.6rem]">PIT EN LÍNEA</span>
+        <span className="display flex items-center gap-3 text-[1.6rem]"><LogoMark size={40} />PIT EN LÍNEA</span>
         <h1 className="display text-[clamp(2.6rem,6vw,5rem)] uppercase">Sumá esta pantalla a tu box</h1>
         <ol className="list-decimal pl-7 text-[clamp(1.1rem,1.8vw,1.5rem)] leading-relaxed text-soft-fg">
           <li>Abrí la cámara de tu celular, donde ya usás la app</li>
