@@ -116,7 +116,7 @@ export function ScreensSection() {
         + Sumar pantalla
       </Link>
       <p className="text-[0.82rem] text-dim">
-        En la tele, la tablet o la otra compu abrí <b className="text-muted">la app en /pantalla</b>. Te muestra un código: escanealo con este celular o escribilo en Sumar pantalla.
+        Entrá a <b className="text-muted">pitenlinea.com.ar/pantalla</b> desde la tele, la tablet o la otra compu y vinculá las pantallas que quieras.
       </p>
       <h4 className="eyebrow mt-2">Tus cockpits</h4>
       <div className="card flex flex-col">
