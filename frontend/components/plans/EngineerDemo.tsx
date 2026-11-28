@@ -43,6 +43,74 @@ type Turn = { pregunta: string; respuesta: string | null; fuente?: "ia" | "guion
 type DemoAnswer = { radio: string; audio: string | null; fuente: "ia" | "guion"; restantes: number };
 
 
+/** Lets a mouse drag a row that scrolls sideways (touch already can), and the wheel scroll it too. */
+function useDragScroll<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let startX = 0;
+    let startLeft = 0;
+    let down = false;
+    let dragged = false;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      down = true;
+      dragged = false;
+      startX = e.clientX;
+      startLeft = el.scrollLeft;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!down) return;
+      const dx = e.clientX - startX;
+      if (!dragged && Math.abs(dx) > 4) {
+        dragged = true;
+        try {
+          el.setPointerCapture(e.pointerId);
+        } catch {}
+        el.style.cursor = "grabbing";
+      }
+      if (dragged) el.scrollLeft = startLeft - dx;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!down) return;
+      down = false;
+      el.style.cursor = "";
+      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    };
+    // a drag is not a click on the chip it ended on
+    const onClick = (e: MouseEvent) => {
+      if (dragged) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragged = false;
+      }
+    };
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if ((e.deltaY < 0 && el.scrollLeft <= 0) || (e.deltaY > 0 && el.scrollLeft >= max)) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onUp);
+    el.addEventListener("click", onClick, true);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onUp);
+      el.removeEventListener("click", onClick, true);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, []);
+  return ref;
+}
+
 /** One radio message: the engineer's on the left, the driver's on the right. */
 function Bubble({ who, tag, children, lit, dim }: { who: "ing" | "vos"; tag?: string; children: React.ReactNode; lit?: boolean; dim?: boolean }) {
   const mine = who === "vos";
@@ -177,6 +245,7 @@ function ProRadio({ left: initialLeft }: { left: number | null }) {
 
   // the chat keeps its size and scrolls: the newest message always in view
   const chat = useRef<HTMLDivElement>(null);
+  const chipRow = useDragScroll<HTMLDivElement>();
   useEffect(() => {
     const el = chat.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
@@ -184,7 +253,9 @@ function ProRadio({ left: initialLeft }: { left: number | null }) {
 
   return (
     <Radio pro title="Ingeniero Pro" line="Le preguntás lo que quieras y te contesta con tu carrera.">
-      <div ref={chat} className="-mr-2 flex h-64 flex-col gap-3 overflow-y-auto overscroll-contain pr-2" aria-live="polite">
+      {/* the chat takes the height the alert radio leaves (side by side) and scrolls inside it */}
+      <div className="relative h-56 md:h-auto md:min-h-[9rem] md:flex-1">
+        <div ref={chat} className="absolute inset-0 -mr-2 flex flex-col gap-3 overflow-y-auto overscroll-contain pr-2" aria-live="polite">
         <Bubble who="ing" tag="Ingeniero">Acá estoy. ¿Qué necesitás?</Bubble>
         {turns.map((t, n) => (
           <div key={n} className="flex flex-col gap-2">
@@ -198,15 +269,16 @@ function ProRadio({ left: initialLeft }: { left: number | null }) {
         ))}
         {mic.listening && <Bubble who="vos"><span className="animate-pulse">{mic.interim || "Te escucho…"}</span></Bubble>}
       </div>
+      </div>
 
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:-mx-5 sm:px-5 [&::-webkit-scrollbar]:hidden">
+      <div ref={chipRow} className="flex cursor-grab select-none gap-2 overflow-x-auto py-0.5 [mask-image:linear-gradient(to_right,#000_85%,transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {chips.map((q) => (
           <button
             key={q}
             type="button"
             disabled={busy}
             onClick={() => void ask(q)}
-            className={`shrink-0 whitespace-nowrap rounded-full border border-line px-3 py-1.5 text-[0.88rem] hover:border-accent disabled:opacity-50 ${asked.has(q) ? "text-dim" : "text-soft-fg"}`}
+            className={`shrink-0 whitespace-nowrap rounded-full border border-line px-3 py-1.5 text-[0.88rem] outline-none hover:border-accent focus-visible:border-accent disabled:opacity-50 ${asked.has(q) ? "text-dim" : "text-soft-fg"}`}
           >
             {q}
           </button>
