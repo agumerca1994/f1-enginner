@@ -238,9 +238,16 @@ function Plans() {
       {/* What the Pro engineer is, before trying it */}
       <section className="flex flex-col gap-5">
         <div className="flex flex-col gap-3">
-          <span className="eyebrow">Potenciado con IA</span>
-          <h2 className="display text-[2rem] uppercase leading-none">¿Qué es el ingeniero Pro?</h2>
-          <p className="max-w-[44rem] text-[1.05rem] text-soft-fg">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h2 className="display text-[2rem] uppercase leading-none">¿Qué es el ingeniero Pro?</h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-[0.8rem] font-semibold uppercase tracking-wider text-accent-fg">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 12l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9L19 14z" />
+              </svg>
+              Potenciado con IA
+            </span>
+          </div>
+          <p className="text-[1.05rem] text-soft-fg">
             Tu ingeniero de pista, como el de un equipo de verdad. Mira la telemetría de tu auto vuelta a vuelta y te habla por radio
             mientras corrés: te arma la estrategia, te dice cuándo parar y dónde estás perdiendo tiempo. Y si tenés una duda, le preguntás.
           </p>
