@@ -290,7 +290,7 @@ function Plans() {
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <h2 className="title text-[1.3rem]">¿Por qué conectar Pit en línea con tu IA?</h2>
-            <span className="rounded-full border border-line px-2.5 py-0.5 text-[0.75rem] text-soft-fg">Con Piloto profesional</span>
+            <span className="rounded-full border border-line px-2.5 py-0.5 text-[0.75rem] text-soft-fg">Solo para Piloto profesional</span>
           </div>
           <p className="text-[0.95rem] text-muted">
             Si le preguntás a ChatGPT o a Claude cómo configurar el reglaje de tu monoplaza, o cualquier duda sobre tu sesión, la
