@@ -243,7 +243,7 @@ function Included({ b, radioLeft }: { b: Billing; radioLeft: number | null }) {
   const unlimited = b.plan === "cortesia" || !b.limites;
   const pool = b.pro;
   const ORIGIN = { regalo: "de regalo", plan: "del plan este mes", compradas: "compradas" } as const;
-  const proFrom = (pool?.origen ?? []).map((o) => `${o.quedan} de ${o.de} ${ORIGIN[o.tipo]}`);
+  const proFrom = (pool?.origen ?? []).map((o) => `${o.quedan} ${ORIGIN[o.tipo]}`);
   const radioTotal = b.avisos_mes.incluidas;
   const screens = b.puede.pantallas;
   const extras: [string, boolean][] = [
