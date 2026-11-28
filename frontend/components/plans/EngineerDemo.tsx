@@ -51,39 +51,45 @@ function useDragScroll<T extends HTMLElement>() {
     if (!el) return;
     let startX = 0;
     let startLeft = 0;
-    let down = false;
     let dragged = false;
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || e.button !== 0) return;
-      down = true;
-      dragged = false;
-      startX = e.clientX;
-      startLeft = el.scrollLeft;
-    };
+    // the drag follows the mouse over the whole window and ends whenever the button is up,
+    // wherever it was released
     const onMove = (e: PointerEvent) => {
-      if (!down) return;
+      if ((e.buttons & 1) === 0) return end();
       const dx = e.clientX - startX;
       if (!dragged && Math.abs(dx) > 4) {
         dragged = true;
-        try {
-          el.setPointerCapture(e.pointerId);
-        } catch {}
         el.style.cursor = "grabbing";
+        document.body.style.cursor = "grabbing";
       }
       if (dragged) el.scrollLeft = startLeft - dx;
     };
-    const onUp = (e: PointerEvent) => {
-      if (!down) return;
-      down = false;
+    const end = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      window.removeEventListener("blur", end);
       el.style.cursor = "";
-      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+      document.body.style.cursor = "";
+      // the click that follows the release still sees the drag; anything after it is a real click
+      setTimeout(() => (dragged = false), 0);
+    };
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      end();
+      dragged = false;
+      startX = e.clientX;
+      startLeft = el.scrollLeft;
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", end);
+      window.addEventListener("pointercancel", end);
+      window.addEventListener("blur", end);
     };
     // a drag is not a click on the chip it ended on
     const onClick = (e: MouseEvent) => {
       if (dragged) {
         e.preventDefault();
         e.stopPropagation();
-        dragged = false;
       }
     };
     const onWheel = (e: WheelEvent) => {
@@ -94,16 +100,11 @@ function useDragScroll<T extends HTMLElement>() {
       el.scrollLeft += e.deltaY;
     };
     el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup", onUp);
-    el.addEventListener("pointercancel", onUp);
     el.addEventListener("click", onClick, true);
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
+      end();
       el.removeEventListener("pointerdown", onDown);
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerup", onUp);
-      el.removeEventListener("pointercancel", onUp);
       el.removeEventListener("click", onClick, true);
       el.removeEventListener("wheel", onWheel);
     };
