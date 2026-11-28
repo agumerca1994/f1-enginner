@@ -195,7 +195,7 @@ function Plans() {
               ) : b.plan === "gratis" ? (
                 <>
                   <button type="button" onClick={() => void buy("suscripcion")} disabled={busy != null} className="btn-ink px-5 py-3 disabled:opacity-50">
-                    {busy === "suscripcion" ? "Abriendo Mercado Pago…" : "Pasarme a Piloto profesional"}
+                    {busy === "suscripcion" ? "Abriendo Mercado Pago…" : "Convertite en Piloto profesional"}
                   </button>
                   <span className="text-center text-[0.8rem] text-[#5b616b]">Cancelás cuando quieras</span>
                 </>

@@ -127,7 +127,7 @@ export function ScreensSection() {
                   Eliminar
                 </button>
               )}
-              <Link href={`/cockpit/editar?id=${c.id}`} className="btn px-3 py-1.5 text-[0.88rem]">Armar</Link>
+              <Link href={`/cockpit/editar?id=${c.id}`} className="btn px-3 py-1.5 text-[0.88rem]">Editar</Link>
             </div>
           </div>
         ))}
